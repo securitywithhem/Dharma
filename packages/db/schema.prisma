@@ -1,0 +1,241 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+model Organization {
+  id          String               @id @default(cuid())
+  name        String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  users       User[]
+  frameworks  Framework[]
+  evidences   Evidence[]
+  policies    Policy[]
+  auditLogs   AuditLog[]
+  auditorKeys AuditorAccess[]
+  invites     OrganizationInvite[]
+
+  @@index([createdAt])
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String?
+  image          String?
+  emailVerified  DateTime?
+  role           Role          @default(VIEWER)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accounts       Account[]
+  sessions       Session[]
+  auditLogs      AuditLog[]
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+enum Role {
+  ADMIN
+  COMPLIANCE_MANAGER
+  VIEWER
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Framework {
+  id             String       @id @default(cuid())
+  name           String
+  version        String       @default("1.0")
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  controls       Control[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model Control {
+  id          String        @id @default(cuid())
+  frameworkId String
+  framework   Framework     @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  domain      String
+  title       String
+  description String        @db.Text
+  guidance    String?       @db.Text
+  status      ControlStatus @default(NOT_STARTED)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  evidence    Evidence[]
+
+  @@index([frameworkId])
+  @@index([domain])
+}
+
+enum ControlStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLIANT
+  NOT_APPLICABLE
+}
+
+model Evidence {
+  id             String                @id @default(cuid())
+  controlId      String
+  control        Control               @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fileName       String
+  filePath       String
+  type           EvidenceType
+  summary        String?               @db.Text
+  collectedAt    DateTime              @default(now())
+  expiresAt      DateTime?
+  embedding      Unsupported("vector(384)")?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([controlId])
+  @@index([organizationId])
+  @@index([type])
+}
+
+enum EvidenceType {
+  SCREENSHOT
+  POLICY_DOC
+  API_RESPONSE
+  LOG_EXCERPT
+  CERTIFICATE
+  OTHER
+}
+
+model Policy {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  content        String       @db.Text
+  version        Int          @default(1)
+  isPublished    Boolean      @default(false)
+  policyType     PolicyType
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([policyType])
+}
+
+enum PolicyType {
+  PRIVACY_POLICY
+  DATA_RETENTION
+  ACCESS_CONTROL
+  INCIDENT_RESPONSE
+  OTHER
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action         String
+  entity         String
+  entityId       String
+  changes        Json?
+  timestamp      DateTime     @default(now())
+  previousHash   String?
+  currentHash    String
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([timestamp])
+  @@index([userId])
+}
+
+model RegulationSnippet {
+  id            String                     @id @default(cuid())
+  frameworkName String
+  sectionNumber String
+  content       String                     @db.Text
+  embedding     Unsupported("vector(384)")?
+  createdAt     DateTime                   @default(now())
+
+  @@index([frameworkName])
+}
+
+model AuditorAccess {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  token          String       @unique
+  expiresAt      DateTime
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([expiresAt])
+}
+
+model OrganizationInvite {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           Role         @default(VIEWER)
+  token          String       @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, email])
+  @@index([expiresAt])
+}

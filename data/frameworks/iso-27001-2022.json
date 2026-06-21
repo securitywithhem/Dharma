@@ -1,0 +1,171 @@
+{
+  "frameworkName": "ISO 27001:2022",
+  "version": "1.0",
+  "description": "International standard for Information Security Management Systems (ISMS). Annex A controls aligned to ISO/IEC 27001:2022.",
+  "domains": [
+    {
+      "name": "Organisational Controls",
+      "controls": [
+        {
+          "id": "iso-org-001",
+          "title": "Information Security Policies",
+          "description": "Define, approve, publish, and communicate an information security policy and topic-specific policies aligned to business strategy and regulatory requirements.",
+          "guidance": "Policies must be approved by top management, reviewed at planned intervals or after significant changes, and communicated to all relevant personnel and external parties."
+        },
+        {
+          "id": "iso-org-002",
+          "title": "Information Security Roles and Responsibilities",
+          "description": "Assign and communicate information security responsibilities across the organization.",
+          "guidance": "Document all information security roles. Ensure accountability is established for the protection of assets. Include responsibilities in job descriptions and contracts."
+        },
+        {
+          "id": "iso-org-003",
+          "title": "Segregation of Duties",
+          "description": "Separate conflicting duties and areas of responsibility to reduce opportunities for unauthorized access, fraud, or misuse.",
+          "guidance": "Identify conflicting roles (e.g., developer and production deployer). Implement compensating controls where segregation is impractical. Document exceptions and their mitigations."
+        },
+        {
+          "id": "iso-org-004",
+          "title": "Threat Intelligence",
+          "description": "Collect and analyze information about information security threats to produce actionable threat intelligence.",
+          "guidance": "Subscribe to threat intelligence feeds. Monitor CVE databases and vendor security advisories. Integrate threat intelligence into risk assessment and incident response processes."
+        },
+        {
+          "id": "iso-org-005",
+          "title": "Information Security in Project Management",
+          "description": "Integrate information security into project management throughout the project lifecycle.",
+          "guidance": "Include security requirements in project initiation. Conduct security reviews at key project milestones. Ensure security sign-off before project go-live."
+        },
+        {
+          "id": "iso-org-006",
+          "title": "Supplier Relationships Security",
+          "description": "Define and implement processes to manage information security risks associated with using products or services from suppliers.",
+          "guidance": "Conduct supplier security assessments before engagement. Include security requirements in supplier contracts. Monitor supplier compliance periodically. Manage risks from the supplier's supply chain."
+        }
+      ]
+    },
+    {
+      "name": "People Controls",
+      "controls": [
+        {
+          "id": "iso-people-001",
+          "title": "Pre-Employment Screening",
+          "description": "Verify the identity and background of all candidates for employment commensurate with the sensitivity of information they will access.",
+          "guidance": "Background checks should include identity verification, employment history, criminal record check (where legally permitted), reference checks, and qualification verification."
+        },
+        {
+          "id": "iso-people-002",
+          "title": "Information Security Awareness, Education and Training",
+          "description": "Ensure all personnel receive appropriate information security awareness training relevant to their role, at hire and on a regular basis.",
+          "guidance": "Provide annual security awareness training for all staff. Deliver role-specific training for technical staff, administrators, and developers. Track completion and conduct phishing simulations."
+        },
+        {
+          "id": "iso-people-003",
+          "title": "Termination and Change of Employment",
+          "description": "Protect the organization's information security interests upon termination or change of employment.",
+          "guidance": "Revoke all access on the last day of employment. Retrieve organization assets. Require departing employees to return data. Brief employees on confidentiality obligations that survive termination."
+        },
+        {
+          "id": "iso-people-004",
+          "title": "Remote Working Security",
+          "description": "Implement controls to protect information accessed, processed, or stored at remote working sites.",
+          "guidance": "Enforce VPN use for accessing internal systems remotely. Apply device management policies to remote devices. Provide guidance on securing home office environments. Conduct periodic reviews of remote access."
+        }
+      ]
+    },
+    {
+      "name": "Physical Controls",
+      "controls": [
+        {
+          "id": "iso-physical-001",
+          "title": "Physical Security Perimeters",
+          "description": "Define and use physical security perimeters to protect areas that contain information and other associated assets.",
+          "guidance": "Implement physical barriers (locked doors, badge access). Use CCTV surveillance. Maintain visitor logs. Conduct physical security audits at least annually."
+        },
+        {
+          "id": "iso-physical-002",
+          "title": "Physical Entry Controls",
+          "description": "Secure areas must be protected by appropriate entry controls to ensure only authorized personnel are allowed access.",
+          "guidance": "Use multi-factor physical access (badge + PIN) for sensitive areas. Escort visitors at all times. Review access logs regularly. Remove access for leavers immediately."
+        },
+        {
+          "id": "iso-physical-003",
+          "title": "Equipment Security",
+          "description": "Protect equipment from physical and environmental threats and hazards to reduce the risk of unauthorized access and loss or damage.",
+          "guidance": "Secure server equipment in locked racks. Protect against environmental threats (fire, flood, power surge). Implement a clear desk and clear screen policy. Secure equipment before disposal."
+        },
+        {
+          "id": "iso-physical-004",
+          "title": "Secure Disposal or Re-Use of Equipment",
+          "description": "Ensure all sensitive data and licensed software are securely removed from equipment prior to disposal or re-use.",
+          "guidance": "Use certified data destruction methods (NIST SP 800-88). Maintain records of disposal. Obtain certificates of destruction from third-party disposal vendors."
+        }
+      ]
+    },
+    {
+      "name": "Technological Controls",
+      "controls": [
+        {
+          "id": "iso-tech-001",
+          "title": "User Endpoint Devices",
+          "description": "Protect information stored on, processed by, or accessible via user endpoint devices.",
+          "guidance": "Apply mobile device management (MDM). Enforce full disk encryption on all endpoints. Enable remote wipe capability. Keep operating systems and applications patched."
+        },
+        {
+          "id": "iso-tech-002",
+          "title": "Privileged Access Rights",
+          "description": "Restrict and carefully manage the allocation and use of privileged access rights.",
+          "guidance": "Use privileged access workstations (PAWs) or just-in-time access. Log all privileged sessions. Review privileged accounts quarterly. Enforce MFA for all administrative access."
+        },
+        {
+          "id": "iso-tech-003",
+          "title": "User Authentication",
+          "description": "Ensure the identity of users and systems is verified as a prerequisite for granting access to information systems.",
+          "guidance": "Enforce multi-factor authentication (MFA) on all externally-facing systems and sensitive internal systems. Use strong password policies (minimum 12 characters, complexity). Disable accounts after prolonged inactivity."
+        },
+        {
+          "id": "iso-tech-004",
+          "title": "Cryptography and Key Management",
+          "description": "Implement and manage the use of cryptography to protect the confidentiality, authenticity, and integrity of information.",
+          "guidance": "Use TLS 1.2+ for data in transit. Use AES-256 for data at rest. Maintain a key management procedure covering key generation, distribution, storage, rotation, and destruction. Review cryptographic algorithms annually."
+        },
+        {
+          "id": "iso-tech-005",
+          "title": "Vulnerability Management",
+          "description": "Identify and remediate technical vulnerabilities in a timely manner to reduce the risk of exploitation.",
+          "guidance": "Run automated vulnerability scans weekly. Patch critical vulnerabilities within 30 days, high within 60 days. Conduct penetration tests annually. Maintain a remediation tracking process."
+        },
+        {
+          "id": "iso-tech-006",
+          "title": "Network Security",
+          "description": "Protect networks and network services from unauthorized access, use, and attack.",
+          "guidance": "Segment networks based on sensitivity. Use firewalls and intrusion detection/prevention systems. Monitor network traffic. Restrict and log remote access connections."
+        },
+        {
+          "id": "iso-tech-007",
+          "title": "Logging and Monitoring",
+          "description": "Produce, store, protect, and analyze event logs to detect, investigate, and recover from anomalous or malicious events.",
+          "guidance": "Enable logging on all critical systems. Centralize logs in a SIEM. Retain logs for at least 12 months. Configure alerts for suspicious activity. Review logs daily for critical systems."
+        },
+        {
+          "id": "iso-tech-008",
+          "title": "Information Backup",
+          "description": "Maintain and regularly test copies of information, software, and systems to ensure recovery from data loss incidents.",
+          "guidance": "Follow the 3-2-1 backup rule (3 copies, 2 media types, 1 offsite). Encrypt backups at rest. Test restoration monthly. Document recovery time and recovery point objectives (RTO/RPO)."
+        },
+        {
+          "id": "iso-tech-009",
+          "title": "Secure Development Lifecycle",
+          "description": "Establish and apply rules for the secure development of software and systems.",
+          "guidance": "Follow secure coding standards (OWASP, SANS). Conduct static analysis (SAST) in CI/CD pipelines. Require security code reviews for all changes. Use dependency scanning to detect vulnerable libraries."
+        },
+        {
+          "id": "iso-tech-010",
+          "title": "Data Leakage Prevention",
+          "description": "Apply measures to detect and prevent the unauthorized disclosure or exfiltration of sensitive information.",
+          "guidance": "Deploy DLP tools on email, endpoints, and cloud storage. Classify data and apply sensitivity labels. Monitor and alert on bulk data transfers. Restrict use of removable media."
+        }
+      ]
+    }
+  ]
+}

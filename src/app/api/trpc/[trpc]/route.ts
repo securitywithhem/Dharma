@@ -1,0 +1,22 @@
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { appRouter } from "@/server/routers";
+import { createTRPCContext } from "@/server/trpc";
+
+const handler = (request: Request) =>
+  fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req: request,
+    router: appRouter,
+    createContext: () =>
+      createTRPCContext({
+        headers: request.headers
+      }),
+    onError:
+      process.env.NODE_ENV === "development"
+        ? ({ error, path }) => {
+            console.error(`tRPC failed on ${path ?? "<unknown>"}`, error);
+          }
+        : undefined
+  });
+
+export { handler as GET, handler as POST };

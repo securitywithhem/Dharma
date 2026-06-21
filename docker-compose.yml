@@ -1,0 +1,148 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: dharma-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dharma_db
+      POSTGRES_USER: dharma
+      POSTGRES_PASSWORD: dharma_secure_password_change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dharma -d dharma_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dharma-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: dharma-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dharma-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: dharma-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin_change_me
+    command: server /data --console-address ":9001"
+    ports:
+      - "9005:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dharma-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dharma-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    networks:
+      - dharma-network
+
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dharma-nextjs
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://dharma:dharma_secure_password_change_me@postgres:5432/dharma_db?schema=public
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: change-me-to-a-random-string-at-least-32-chars
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST:-}
+      EMAIL_SERVER_PORT: ${EMAIL_SERVER_PORT:-587}
+      EMAIL_SERVER_USER: ${EMAIL_SERVER_USER:-}
+      EMAIL_SERVER_PASSWORD: ${EMAIL_SERVER_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@dharma.local}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin_change_me
+      MINIO_BUCKET: dharma-evidence
+      MINIO_USE_SSL: "false"
+      OLLAMA_BASE_URL: http://ollama:11434
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install && prisma generate --schema packages/db/schema.prisma && npm run dev"
+    networks:
+      - dharma-network
+
+  caddy:
+    image: caddy:latest
+    container_name: dharma-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - nextjs
+    networks:
+      - dharma-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  ollama_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  dharma-network:
+    driver: bridge

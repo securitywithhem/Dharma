@@ -1,0 +1,200 @@
+{
+  "frameworkName": "SOC 2 Type II",
+  "version": "1.0",
+  "description": "AICPA Service Organization Control 2 Type II — Trust Service Criteria for Security, Availability, Confidentiality, Processing Integrity, and Privacy.",
+  "domains": [
+    {
+      "name": "Security",
+      "controls": [
+        {
+          "id": "soc2-cc1-001",
+          "title": "Organisational Control Environment",
+          "description": "The organization demonstrates a commitment to integrity and ethical values, and the board exercises oversight responsibility for the design and operation of the system of internal control.",
+          "guidance": "Document and communicate a code of conduct. Conduct annual ethics training. Board-level oversight of security controls via audit committee. Maintain documented governance structure."
+        },
+        {
+          "id": "soc2-cc2-001",
+          "title": "Logical and Physical Access Controls",
+          "description": "Restrict logical and physical access to the system to authorized individuals and protect against threats and unauthorized removal of data.",
+          "guidance": "Implement least-privilege access. Enforce MFA for all user accounts. Conduct quarterly access reviews. Remove access within 24 hours of termination. Use badge-based physical access controls."
+        },
+        {
+          "id": "soc2-cc2-002",
+          "title": "Credential and Authentication Management",
+          "description": "Manage credentials, authentication, and authorization throughout the user lifecycle.",
+          "guidance": "Enforce password complexity and rotation policies. Disable inactive accounts after 90 days. Use a centralized identity provider (IdP) with SSO. Audit authentication events."
+        },
+        {
+          "id": "soc2-cc3-001",
+          "title": "Risk Assessment Process",
+          "description": "Identify and assess risks to the achievement of objectives, including risks from changes in the environment.",
+          "guidance": "Conduct a formal risk assessment at least annually and upon significant changes. Document risk register with likelihood, impact, and risk owners. Track risk treatment plans to completion."
+        },
+        {
+          "id": "soc2-cc4-001",
+          "title": "Monitoring Controls",
+          "description": "Select, develop, and perform ongoing and/or separate evaluations to ascertain whether the components of internal control are present and functioning.",
+          "guidance": "Deploy continuous security monitoring tools (SIEM, IDS/IPS). Conduct quarterly internal control reviews. Respond to control deficiencies within defined SLAs. Report monitoring results to management."
+        },
+        {
+          "id": "soc2-cc5-001",
+          "title": "Control Activities — Change Management",
+          "description": "Select and develop control activities that contribute to the mitigation of risks to achievement of objectives to acceptable levels.",
+          "guidance": "Implement a formal change management process with approvals. Test changes in a staging environment before production deployment. Maintain a change log. Restrict production access to authorized change agents."
+        },
+        {
+          "id": "soc2-cc6-001",
+          "title": "Logical Access — System Boundaries",
+          "description": "Restrict access to the system to authorized users and protect against unauthorized access at the system boundary.",
+          "guidance": "Implement web application firewalls (WAF). Use network segmentation. Conduct penetration testing annually. Monitor and alert on unauthorized access attempts."
+        },
+        {
+          "id": "soc2-cc6-002",
+          "title": "Encryption Controls",
+          "description": "Protect sensitive data in transit and at rest using industry-standard encryption.",
+          "guidance": "Enforce TLS 1.2+ for all API and web traffic. Encrypt databases and storage volumes with AES-256. Manage encryption keys using a Hardware Security Module (HSM) or cloud KMS. Audit key usage."
+        },
+        {
+          "id": "soc2-cc7-001",
+          "title": "Security Incident Detection and Response",
+          "description": "Detect and respond to security incidents in a timely manner to minimize impact to the system and its users.",
+          "guidance": "Maintain a documented incident response plan. Test the plan through tabletop exercises twice per year. Define incident severity levels with response SLAs. Conduct post-incident reviews and capture lessons learned."
+        },
+        {
+          "id": "soc2-cc8-001",
+          "title": "Change Management — Secure Development",
+          "description": "Authorize, design, develop, acquire, implement, configure, and maintain infrastructure, data, software, and processes to support the achievement of the entity's objectives.",
+          "guidance": "Enforce code review for all changes to production systems. Use automated testing (unit, integration, SAST) in CI/CD pipelines. Conduct security design reviews for new features involving sensitive data."
+        },
+        {
+          "id": "soc2-cc9-001",
+          "title": "Risk Mitigation — Vendor and Third-Party Management",
+          "description": "Assess and manage risks introduced by vendors, business partners, and other third parties.",
+          "guidance": "Complete a security questionnaire for all vendors with access to customer data. Include security requirements in vendor contracts. Conduct annual vendor risk reviews. Monitor for vendor data breaches."
+        }
+      ]
+    },
+    {
+      "name": "Availability",
+      "controls": [
+        {
+          "id": "soc2-a1-001",
+          "title": "System Availability Commitments",
+          "description": "The system is available for operation and use as committed or agreed upon in SLAs.",
+          "guidance": "Define and publish uptime SLAs (e.g., 99.9% monthly). Track availability with monitoring tools. Report uptime metrics to customers monthly. Maintain status pages with incident communications."
+        },
+        {
+          "id": "soc2-a1-002",
+          "title": "Redundancy and Failover",
+          "description": "Implement redundant infrastructure to maintain service availability during component failures.",
+          "guidance": "Deploy across multiple availability zones or regions. Use load balancers and auto-scaling. Test failover procedures quarterly. Document and test disaster recovery plan (DRP)."
+        },
+        {
+          "id": "soc2-a1-003",
+          "title": "Backup and Recovery",
+          "description": "Maintain and test backups to ensure data can be recovered within defined recovery objectives.",
+          "guidance": "Perform daily automated backups. Encrypt backups at rest. Store backups in a separate geographic region. Test restoration monthly and document results. Define and meet RTO/RPO targets."
+        },
+        {
+          "id": "soc2-a1-004",
+          "title": "Business Continuity Planning",
+          "description": "Develop, maintain, and test a business continuity plan (BCP) to ensure continued operations during disruptions.",
+          "guidance": "Review and update the BCP annually and after significant changes. Conduct BCP tests at least annually. Assign owners for all critical processes. Document escalation procedures."
+        }
+      ]
+    },
+    {
+      "name": "Processing Integrity",
+      "controls": [
+        {
+          "id": "soc2-pi1-001",
+          "title": "Data Processing Completeness and Accuracy",
+          "description": "System processing is complete, valid, accurate, timely, and authorized to meet the entity's objectives.",
+          "guidance": "Implement input validation on all data entry points. Use checksums and reconciliation for batch processing. Log all processing errors and review daily. Conduct periodic data quality audits."
+        },
+        {
+          "id": "soc2-pi1-002",
+          "title": "Error Handling and Correction",
+          "description": "Detect and correct processing errors in a timely manner to maintain the integrity of data.",
+          "guidance": "Implement centralized error logging with alerting. Define SLAs for error resolution by severity. Notify customers of processing errors that affect their data. Document and remediate root causes."
+        }
+      ]
+    },
+    {
+      "name": "Confidentiality",
+      "controls": [
+        {
+          "id": "soc2-c1-001",
+          "title": "Confidential Information Identification and Classification",
+          "description": "Identify information designated as confidential and implement controls to protect it through its lifecycle.",
+          "guidance": "Implement a data classification policy with at least three tiers (Public, Internal, Confidential). Apply classification labels in documents and data systems. Train staff on handling each classification level."
+        },
+        {
+          "id": "soc2-c1-002",
+          "title": "Confidential Information Disposal",
+          "description": "Dispose of confidential information in a manner consistent with the entity's objectives related to confidentiality.",
+          "guidance": "Use certified secure deletion for digital files. Shred physical documents containing confidential information. Obtain destruction certificates from disposal vendors. Retain disposal records for audit purposes."
+        },
+        {
+          "id": "soc2-c1-003",
+          "title": "Non-Disclosure Obligations",
+          "description": "Ensure employees, contractors, and vendors with access to confidential information are bound by non-disclosure agreements.",
+          "guidance": "Include NDAs in employment contracts and onboarding documentation. Require NDAs for all contractors and vendors with access to confidential data. Remind departing employees of ongoing NDA obligations."
+        }
+      ]
+    },
+    {
+      "name": "Privacy",
+      "controls": [
+        {
+          "id": "soc2-p1-001",
+          "title": "Privacy Notice and Communication",
+          "description": "Communicate to data subjects the purpose for which personal information is collected, used, retained, and disclosed.",
+          "guidance": "Publish a comprehensive and up-to-date privacy policy. Notify individuals at the point of data collection. Update the privacy policy within 30 days of any material change."
+        },
+        {
+          "id": "soc2-p2-001",
+          "title": "Consent and Choice",
+          "description": "Obtain consent for collection, use, and disclosure of personal information and provide individuals with the ability to exercise choice.",
+          "guidance": "Use explicit opt-in consent for sensitive data. Provide opt-out mechanisms for marketing communications. Honor consent preferences within 10 business days."
+        },
+        {
+          "id": "soc2-p3-001",
+          "title": "Collection of Personal Information",
+          "description": "Collect personal information only for the purposes identified in the privacy notice.",
+          "guidance": "Apply data minimization principles. Do not collect personal information beyond what is necessary. Document the legal basis for each data collection activity."
+        },
+        {
+          "id": "soc2-p4-001",
+          "title": "Use, Retention, and Disposal of Personal Information",
+          "description": "Limit the use of personal information to the purposes for which it was collected, and retain it only as long as necessary.",
+          "guidance": "Implement automated data retention schedules. Conduct an annual data inventory and disposal exercise. Document retention periods for each data category."
+        },
+        {
+          "id": "soc2-p5-001",
+          "title": "Access to Personal Information",
+          "description": "Provide individuals with access to their personal information and allow them to correct or update inaccurate information.",
+          "guidance": "Build a self-service privacy portal for data access and correction requests. Respond to requests within 30 days. Log all requests and outcomes."
+        },
+        {
+          "id": "soc2-p6-001",
+          "title": "Disclosure and Notification",
+          "description": "Disclose personal information only to authorized parties and notify individuals of privacy breaches that may harm them.",
+          "guidance": "Maintain a record of all data disclosures. Notify affected individuals of privacy breaches within 72 hours. Notify regulators as required by applicable law."
+        },
+        {
+          "id": "soc2-p7-001",
+          "title": "Quality of Personal Information",
+          "description": "Maintain accurate, complete, and relevant personal information.",
+          "guidance": "Allow users to update their information in the platform. Conduct periodic data quality reviews. Remove or correct inaccurate data upon request or discovery."
+        },
+        {
+          "id": "soc2-p8-001",
+          "title": "Privacy Monitoring and Enforcement",
+          "description": "Monitor compliance with privacy policies and respond to privacy inquiries, complaints, and disputes.",
+          "guidance": "Designate a privacy officer or DPO. Publish a privacy contact mechanism. Track and resolve privacy complaints within 30 days. Conduct annual privacy compliance audits."
+        }
+      ]
+    }
+  ]
+}

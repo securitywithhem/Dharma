@@ -1,0 +1,152 @@
+{
+  "frameworkName": "DPDP Act 2023",
+  "version": "1.0",
+  "description": "Digital Personal Data Protection Act 2023 - Compliance requirements for Indian organizations handling personal data.",
+  "domains": [
+    {
+      "name": "Consent & Notice",
+      "controls": [
+        {
+          "id": "dpdp-consent-001",
+          "title": "Consent Mechanism Implementation",
+          "description": "Establish and implement a formal consent mechanism for collecting personal data. Consent must be free, specific, informed, unconditional, and unambiguous.",
+          "guidance": "Use a consent management system to track when, how, and for what purpose consent was obtained. Maintain records for 5 years. Support withdrawal of consent at any time without affecting prior processing."
+        },
+        {
+          "id": "dpdp-consent-002",
+          "title": "Data Collection Notice",
+          "description": "Provide clear notice to data principals before or at the time of collecting personal data, in clear and plain language.",
+          "guidance": "Notice must include: organization details (name, contact), categories of personal data collected, purpose of processing, retention period, rights of data principal, cross-border transfer details, grievance officer contact information."
+        },
+        {
+          "id": "dpdp-consent-003",
+          "title": "Purpose Limitation",
+          "description": "Process personal data only for the specific purpose explicitly communicated to the data principal at the time of consent.",
+          "guidance": "Do not repurpose data without obtaining fresh consent. Maintain processing logs with explicit purpose references. Conduct periodic audits to detect purpose creep."
+        },
+        {
+          "id": "dpdp-consent-004",
+          "title": "Consent for Children and Persons with Disabilities",
+          "description": "Obtain verifiable consent from parents or legal guardians before processing data of children under 18 years or persons with disabilities.",
+          "guidance": "Implement age verification mechanisms. Obtain and record parental/guardian consent. Do not process children's data for behavioral tracking, targeted advertising, or profiling."
+        }
+      ]
+    },
+    {
+      "name": "Data Principal Rights",
+      "controls": [
+        {
+          "id": "dpdp-rights-001",
+          "title": "Right to Access Information",
+          "description": "Enable data principals to access a summary of personal data held, the processing activities, and the identities of third parties with whom data was shared.",
+          "guidance": "Build a self-service data access portal. Respond to access requests within 30 days. Provide data in a structured, readable format. Do not charge a fee for access requests."
+        },
+        {
+          "id": "dpdp-rights-002",
+          "title": "Right to Correction and Completion",
+          "description": "Allow data principals to correct inaccurate, incomplete, or outdated personal data held by the organization.",
+          "guidance": "Process correction requests within 30 days. Update all copies and downstream systems. Confirm completion to the data principal. Maintain a log of all corrections made."
+        },
+        {
+          "id": "dpdp-rights-003",
+          "title": "Right to Erasure",
+          "description": "Enable data principals to request deletion of their personal data when consent is withdrawn or the stated purpose is fulfilled.",
+          "guidance": "Honor erasure requests unless data retention is required by applicable law. Securely delete all copies including backups within a defined timeframe. Notify data processors to delete as well."
+        },
+        {
+          "id": "dpdp-rights-004",
+          "title": "Right to Grievance Redressal",
+          "description": "Provide a mechanism for data principals to register grievances regarding DPDP Act compliance, handled by a designated Grievance Officer.",
+          "guidance": "Acknowledge grievances within 48 hours. Resolve within 30 days. Maintain a grievance log. Grievance Officer must be contactable and empowered to act."
+        },
+        {
+          "id": "dpdp-rights-005",
+          "title": "Right to Nominate",
+          "description": "Allow data principals to nominate another individual to exercise their rights in case of death or incapacity.",
+          "guidance": "Provide a nomination mechanism within your platform or via written request. Maintain records of nominations. Honor nominations upon verified request."
+        }
+      ]
+    },
+    {
+      "name": "Data Fiduciary Responsibilities",
+      "controls": [
+        {
+          "id": "dpdp-fiduciary-001",
+          "title": "Data Protection Officer Designation",
+          "description": "Designate a Data Protection Officer (DPO) responsible for overseeing DPDP Act compliance and serving as the point of contact for data principals.",
+          "guidance": "DPO should be independent, have necessary authority and expertise, report directly to senior management, and be published on the organization website. The DPO must be based in India for Significant Data Fiduciaries."
+        },
+        {
+          "id": "dpdp-fiduciary-002",
+          "title": "Processing Activity Records",
+          "description": "Maintain comprehensive and current records of all personal data processing activities conducted by the organization.",
+          "guidance": "Document for each processing activity: data categories, purposes, recipient categories, retention periods, security measures, third parties involved, cross-border transfer details. Review and update records quarterly."
+        },
+        {
+          "id": "dpdp-fiduciary-003",
+          "title": "Personal Data Breach Notification",
+          "description": "Detect, assess, and report significant personal data breaches to the Data Protection Board of India and affected data principals without undue delay.",
+          "guidance": "Notify the Data Protection Board within 72 hours of becoming aware of a breach. Notify affected data principals if the breach is likely to result in harm. Document the breach, its causes, and remediation steps."
+        },
+        {
+          "id": "dpdp-fiduciary-004",
+          "title": "Data Processor Agreements",
+          "description": "Ensure all data processors engaged by the organization are bound by valid contracts that mandate DPDP Act compliance and appropriate security measures.",
+          "guidance": "Include in contracts: scope and purpose limitations, security obligations, sub-processing restrictions, breach notification timelines, audit rights, data deletion requirements upon contract termination."
+        },
+        {
+          "id": "dpdp-fiduciary-005",
+          "title": "Data Protection Impact Assessment",
+          "description": "Conduct Data Protection Impact Assessments (DPIA) before initiating new high-risk processing activities or deploying new technologies affecting personal data.",
+          "guidance": "DPIAs are mandatory for Significant Data Fiduciaries. Include: description of processing, necessity assessment, risk identification, risk mitigation measures. Consult DPO before finalizing DPIA."
+        }
+      ]
+    },
+    {
+      "name": "Technical & Organisational Measures",
+      "controls": [
+        {
+          "id": "dpdp-tech-001",
+          "title": "Data Encryption in Transit and at Rest",
+          "description": "Encrypt all personal data both in transit across networks and at rest in storage systems using industry-standard cryptographic algorithms.",
+          "guidance": "Use TLS 1.2 or higher for data in transit. Use AES-256 for data at rest. Maintain a key management policy. Rotate encryption keys at least annually. Document all systems storing personal data and their encryption status."
+        },
+        {
+          "id": "dpdp-tech-002",
+          "title": "Access Control and Least Privilege",
+          "description": "Implement role-based access controls to restrict personal data access to only those employees who require it for their job function.",
+          "guidance": "Grant minimum necessary access. Log and monitor all access to personal data. Conduct quarterly access reviews. Revoke access immediately upon role change or termination. Use multi-factor authentication for access to sensitive personal data systems."
+        },
+        {
+          "id": "dpdp-tech-003",
+          "title": "Data Retention and Deletion Schedule",
+          "description": "Establish and enforce a formal data retention policy that specifies how long each category of personal data is retained and how it is securely deleted thereafter.",
+          "guidance": "Delete personal data as soon as the purpose is fulfilled unless law requires longer retention. Automate deletion where possible. Document retention periods for each data category. Use secure deletion methods (e.g., cryptographic erasure) for digital data."
+        },
+        {
+          "id": "dpdp-tech-004",
+          "title": "Security Audit and Vulnerability Management",
+          "description": "Conduct regular security audits, vulnerability assessments, and penetration tests of systems processing personal data.",
+          "guidance": "Perform vulnerability scans at least quarterly and after significant changes. Conduct penetration tests at least annually. Remediate critical vulnerabilities within 30 days. Document all findings and remediation actions."
+        }
+      ]
+    },
+    {
+      "name": "Cross-Border Data Transfers",
+      "controls": [
+        {
+          "id": "dpdp-xborder-001",
+          "title": "Cross-Border Transfer Compliance",
+          "description": "Ensure that personal data transferred outside India is done only to countries or territories permitted by the Central Government.",
+          "guidance": "Monitor the list of permitted countries published by the Central Government. Implement technical controls to restrict transfers to permitted destinations only. Maintain records of all cross-border transfers."
+        },
+        {
+          "id": "dpdp-xborder-002",
+          "title": "Data Localization for Sensitive Personal Data",
+          "description": "Retain a copy of sensitive personal data on servers physically located in India as specified by the Central Government.",
+          "guidance": "Identify all categories of data subject to localization requirements. Implement data residency controls. Audit periodically to verify compliance. Update procedures as government notifications evolve."
+        }
+      ]
+    }
+  ]
+}
