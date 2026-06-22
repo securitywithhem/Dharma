@@ -43,6 +43,8 @@ function createCaller(orgId: string, uid: string, role: Role = Role.ADMIN) {
       },
       expires: new Date(Date.now() + 86_400_000).toISOString(),
     },
+    isAuditor: false,
+    auditorTokenExpiry: undefined
   });
 }
 

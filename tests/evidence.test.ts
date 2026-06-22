@@ -91,8 +91,10 @@ function createCaller(orgId: string, uid: string, role: Role = Role.ADMIN) {
         organizationId: orgId,
         role,
       },
-      expires: new Date(Date.now() + 86_400_000).toISOString(),
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString()
     },
+    isAuditor: false,
+    auditorTokenExpiry: undefined
   });
 }
 

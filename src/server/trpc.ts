@@ -17,13 +17,45 @@ type CreateContextOptions = {
 };
 
 export async function createInnerTRPCContext(options: CreateContextOptions) {
-  const session: Session | null =
+  let session: Session | null =
     options.session ?? (await getServerSession(authOptions));
+
+  let isAuditor = false;
+  let auditorTokenExpiry: Date | undefined;
+
+  const cookieHeader = options.headers.get("cookie");
+  if (cookieHeader && !session) {
+    const match = cookieHeader.match(/dharma_auditor_token=([^;]+)/);
+    if (match) {
+      const token = match[1];
+      const prismaClient = options.prismaClient ?? prisma;
+      const auditorAccess = await prismaClient.auditorAccess.findUnique({
+        where: { token },
+      });
+
+      if (auditorAccess && auditorAccess.isActive && auditorAccess.expiresAt > new Date()) {
+        session = {
+          user: {
+            id: "auditor",
+            email: "auditor@dharma",
+            name: "Auditor",
+            role: Role.VIEWER,
+            organizationId: auditorAccess.organizationId,
+          },
+          expires: auditorAccess.expiresAt.toISOString(),
+        };
+        isAuditor = true;
+        auditorTokenExpiry = auditorAccess.expiresAt;
+      }
+    }
+  }
 
   return {
     headers: options.headers,
     prisma: options.prismaClient ?? prisma,
-    session
+    session,
+    isAuditor,
+    auditorTokenExpiry,
   };
 }
 
@@ -112,12 +144,23 @@ const enforceAdminRole = t.middleware(({ ctx, next }) => {
   return next();
 });
 
+const preventAuditorMutations = t.middleware(({ ctx, type, next }) => {
+  if (ctx.isAuditor && type !== "query") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Auditors have read-only access and cannot perform mutations."
+    });
+  }
+  return next();
+});
+
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 export const publicProcedure = t.procedure.use(timingMiddleware);
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
-  .use(enforceAuthenticatedUser);
+  .use(enforceAuthenticatedUser)
+  .use(preventAuditorMutations);
 export const orgProcedure = protectedProcedure.use(enforceOrganizationContext);
 export const managerProcedure = orgProcedure.use(enforceManagementRole);
 export const adminProcedure = orgProcedure.use(enforceAdminRole);
