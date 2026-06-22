@@ -116,9 +116,14 @@ model Control {
   updatedAt   DateTime      @updatedAt
   evidence    Evidence[]
 
+  // pgvector embedding for semantic similarity search against Evidence embeddings
+  embedding   Unsupported("vector(384)")?
+
   @@index([frameworkId])
   @@index([domain])
+  @@index([status])
 }
+
 
 enum ControlStatus {
   NOT_STARTED
