@@ -199,7 +199,7 @@ services:
   nextjs:
     build:
       context: .
-      dockerfile: Dockerfile.nextjs
+      dockerfile: docker/nextjs/Dockerfile
       args:
         NODE_ENV: ${NODE_ENV:-development}
     container_name: dharma-nextjs
@@ -264,7 +264,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: docker/worker/Dockerfile
     container_name: dharma-worker
     restart: on-failure:3
     env_file:
@@ -310,7 +310,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     environment:

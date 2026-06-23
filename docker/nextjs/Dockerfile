@@ -1,5 +1,5 @@
 # ============================================================
-# Dockerfile.nextjs – Next.js Application
+# Dockerfile – Next.js Application (Moved to docker/nextjs/)
 # Multi-stage build: deps → builder → runner
 # ============================================================
 

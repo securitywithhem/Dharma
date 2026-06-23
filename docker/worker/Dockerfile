@@ -1,5 +1,5 @@
 # ============================================================
-# Dockerfile.worker – BullMQ Background Worker
+# Dockerfile – BullMQ Background Worker (Moved to docker/worker/)
 # Runs the evidence classification and policy generation queues.
 # ============================================================
 
