@@ -3,6 +3,7 @@ import { auditRouter } from "@/server/routers/audit";
 import { controlRouter } from "@/server/routers/control";
 import { evidenceRouter } from "@/server/routers/evidence";
 import { frameworkRouter } from "@/server/routers/framework";
+import { healthRouter } from "@/server/routers/health";
 import { policyRouter } from "@/server/routers/policy";
 import { settingsRouter } from "@/server/routers/settings";
 
@@ -11,6 +12,7 @@ export const appRouter = createTRPCRouter({
   control: controlRouter,
   evidence: evidenceRouter,
   framework: frameworkRouter,
+  health: healthRouter,
   policy: policyRouter,
   settings: settingsRouter
 });

@@ -1,91 +1,224 @@
+# ============================================================
+# Dharma – Production-Ready Docker Compose
+# Phase 2 Part 1: Docker Compose Stabilization
+# Phase 2 Part 2: Backup Scheduler + Monitoring Stack
+# ============================================================
+# Core:    caddy, nextjs, postgres, redis, minio, ollama, worker
+# Backups: backup-scheduler (ofelia cron)
+# Monitor: prometheus, grafana, postgres-exporter, redis-exporter
+#
+# Usage:
+#   docker compose --env-file .env.docker up -d
+#   docker compose --env-file .env.docker --profile monitoring up -d
+#   docker compose --env-file .env.docker down
+# ============================================================
+
 services:
+
+  # ------------------------------------------------------------
+  # PostgreSQL 15 + pgvector extension
+  # ------------------------------------------------------------
   postgres:
-    image: ankane/pgvector:latest
+    image: ankane/pgvector:v0.5.1
     container_name: dharma-postgres
-    restart: unless-stopped
+    restart: on-failure:3
     environment:
-      POSTGRES_DB: dharma_db
-      POSTGRES_USER: dharma
-      POSTGRES_PASSWORD: dharma_secure_password_change_me
+      POSTGRES_DB: ${POSTGRES_DB:-dharma_db}
+      POSTGRES_USER: ${POSTGRES_USER:-dharma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dharmapass}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/01-init-postgres.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dharma -d dharma_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dharma} -d ${POSTGRES_DB:-dharma_db}"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     networks:
       - dharma-network
 
+  # ------------------------------------------------------------
+  # Redis 7 – BullMQ queue backend
+  # ------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: dharma-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
+    restart: on-failure:3
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass ${REDIS_PASSWORD:-redispass}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
     networks:
       - dharma-network
 
+  # ------------------------------------------------------------
+  # MinIO – S3-compatible object storage
+  # ------------------------------------------------------------
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-06-22T05-26-45Z
     container_name: dharma-minio
-    restart: unless-stopped
+    restart: on-failure:3
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin_change_me
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin_change_me}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_CONSOLE_URL:-http://localhost:9001}
     command: server /data --console-address ":9001"
     ports:
-      - "9005:9000"
-      - "9001:9001"
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
     networks:
       - dharma-network
 
+  # ------------------------------------------------------------
+  # MinIO Init – Creates buckets and sets versioning
+  # Runs once then exits (no restart)
+  # ------------------------------------------------------------
+  minio-init:
+    image: minio/mc:latest
+    container_name: dharma-minio-init
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_change_me}
+      MINIO_BUCKET: ${MINIO_BUCKET:-dharma-evidence}
+    entrypoint: >
+      /bin/sh -c "
+        echo '⏳ Configuring MinIO client...' &&
+        mc alias set dharma-minio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY &&
+        echo '✅ MinIO alias set. Creating bucket...' &&
+        mc mb dharma-minio/$$MINIO_BUCKET --ignore-existing &&
+        mc version enable dharma-minio/$$MINIO_BUCKET || true &&
+        echo '✅ MinIO initialization complete.'
+      "
+    networks:
+      - dharma-network
+
+  # ------------------------------------------------------------
+  # Ollama – Local LLM inference runtime
+  # ------------------------------------------------------------
   ollama:
     image: ollama/ollama:latest
     container_name: dharma-ollama
-    restart: unless-stopped
+    restart: on-failure:3
     ports:
-      - "11434:11434"
+      - "${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_MODELS: /root/.ollama/models
+      OLLAMA_KEEP_ALIVE: "24h"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
     networks:
       - dharma-network
 
+  # ------------------------------------------------------------
+  # Ollama Init – Pulls required models (runs once then exits)
+  # ------------------------------------------------------------
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: dharma-ollama-init
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL_LLM: ${OLLAMA_MODEL_LLM:-llama3:8b}
+      OLLAMA_MODEL_EMBEDDING: ${OLLAMA_MODEL_EMBEDDING:-nomic-embed-text}
+    entrypoint: >
+      /bin/sh -c "
+        echo '⏳ Pulling embedding model: '$$OLLAMA_MODEL_EMBEDDING &&
+        curl -X POST $$OLLAMA_BASE_URL/api/pull -H 'Content-Type: application/json' -d '{\"name\":\"'$$OLLAMA_MODEL_EMBEDDING'\"}' &&
+        echo '✅ Embedding model pulled.' &&
+        echo '⏳ Pulling LLM model: '$$OLLAMA_MODEL_LLM &&
+        curl -X POST $$OLLAMA_BASE_URL/api/pull -H 'Content-Type: application/json' -d '{\"name\":\"'$$OLLAMA_MODEL_LLM'\"}' &&
+        echo '✅ LLM model pulled. Ollama init complete.'
+      "
+    networks:
+      - dharma-network
+
+  # ------------------------------------------------------------
+  # Next.js Application – tRPC API gateway & frontend
+  # ------------------------------------------------------------
   nextjs:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.nextjs
+      args:
+        NODE_ENV: ${NODE_ENV:-development}
     container_name: dharma-nextjs
-    restart: unless-stopped
-    working_dir: /app
+    restart: on-failure:3
+    env_file:
+      - .env.docker
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://dharma:dharma_secure_password_change_me@postgres:5432/dharma_db?schema=public
-      REDIS_URL: redis://redis:6379
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: change-me-to-a-random-string-at-least-32-chars
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispass}@redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_change_me}
+      MINIO_BUCKET: ${MINIO_BUCKET:-dharma-evidence}
+      OLLAMA_BASE_URL: http://ollama:11434
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-to-a-random-string-at-least-32-chars}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST:-}
@@ -93,16 +226,10 @@ services:
       EMAIL_SERVER_USER: ${EMAIL_SERVER_USER:-}
       EMAIL_SERVER_PASSWORD: ${EMAIL_SERVER_PASSWORD:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@dharma.local}
-      MINIO_ENDPOINT: minio
-      MINIO_PORT: 9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin_change_me
-      MINIO_BUCKET: dharma-evidence
-      MINIO_USE_SSL: "false"
-      OLLAMA_BASE_URL: http://ollama:11434
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      SEED_DATABASE: ${SEED_DATABASE:-false}
     ports:
-      - "3000:3000"
+      - "${NEXTJS_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,14 +242,70 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    command: sh -c "npm install && prisma generate --schema packages/db/schema.prisma && npm run dev"
+      - /app/.next
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     networks:
       - dharma-network
 
+  # ------------------------------------------------------------
+  # BullMQ Worker – Background job processor
+  # ------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: dharma-worker
+    restart: on-failure:3
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispass}@redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_change_me}
+      MINIO_BUCKET: ${MINIO_BUCKET:-dharma-evidence}
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    networks:
+      - dharma-network
+
+  # ------------------------------------------------------------
+  # Caddy – Reverse proxy (HTTP / HTTPS termination)
+  # ------------------------------------------------------------
   caddy:
-    image: caddy:latest
+    image: caddy:2.8-alpine
     container_name: dharma-caddy
-    restart: unless-stopped
+    restart: on-failure:3
     ports:
       - "80:80"
       - "443:443"
@@ -130,19 +313,268 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    environment:
+      DOMAIN: ${CADDY_DOMAIN:-localhost}
     depends_on:
-      - nextjs
+      nextjs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/api/health > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
     networks:
       - dharma-network
 
+  # ------------------------------------------------------------
+  # Backup Scheduler – Ofelia cron runner
+  # Schedules nightly pg + MinIO backups via container labels.
+  # ------------------------------------------------------------
+  backup-scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: dharma-backup-scheduler
+    restart: on-failure:3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/ofelia.ini:/etc/ofelia/config.ini:ro
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command: daemon --config=/etc/ofelia/config.ini
+    labels:
+      # ── Nightly PostgreSQL backup (02:00 UTC) ──────────────
+      ofelia.job-run.backup-postgres.schedule: "0 2 * * *"
+      ofelia.job-run.backup-postgres.container: "dharma-backup-scheduler"
+      ofelia.job-run.backup-postgres.command: >
+        /bin/sh -c
+        "docker exec dharma-postgres pg_dump
+        -h localhost -U ${POSTGRES_USER:-dharma}
+        ${POSTGRES_DB:-dharma_db} | gzip > /backups/pg/dharma_$(date +%Y%m%d_%H%M%S).sql.gz"
+      ofelia.job-run.backup-postgres.no-overlap: "true"
+      # ── Nightly MinIO backup (02:30 UTC) ──────────────────
+      ofelia.job-run.backup-minio.schedule: "30 2 * * *"
+      ofelia.job-run.backup-minio.container: "dharma-backup-scheduler"
+      ofelia.job-run.backup-minio.command: /scripts/backup-minio.sh
+      ofelia.job-run.backup-minio.no-overlap: "true"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ------------------------------------------------------------
+  # PostgreSQL Exporter – Prometheus metrics for Postgres
+  # Profile: monitoring (opt-in)
+  # ------------------------------------------------------------
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: dharma-postgres-exporter
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?sslmode=disable
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ------------------------------------------------------------
+  # Redis Exporter – Prometheus metrics for Redis
+  # Profile: monitoring (opt-in)
+  # ------------------------------------------------------------
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.63.0
+    container_name: dharma-redis-exporter
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispass}
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ------------------------------------------------------------
+  # Prometheus – Metrics collection & storage
+  # Profile: monitoring (opt-in)
+  # Access: http://localhost:9090
+  # ------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: dharma-prometheus
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      - postgres-exporter
+      - redis-exporter
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ------------------------------------------------------------
+  # Grafana – Metrics visualization dashboards
+  # Profile: monitoring (opt-in)
+  # Access: http://localhost:3001  (admin / dharma-grafana)
+  # ------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: dharma-grafana
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-dharma-grafana}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_LOG_LEVEL: warn
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+# ============================================================
+# Named Volumes – Persistent data storage
+# ============================================================
 volumes:
   postgres_data:
+    driver: local
+    name: dharma_postgres_data
   redis_data:
+    driver: local
+    name: dharma_redis_data
   minio_data:
+    driver: local
+    name: dharma_minio_data
   ollama_data:
+    driver: local
+    name: dharma_ollama_data
   caddy_data:
+    driver: local
+    name: dharma_caddy_data
   caddy_config:
+    driver: local
+    name: dharma_caddy_config
+  # Backup storage (maps to host /backups or a named volume)
+  backups:
+    driver: local
+    name: dharma_backups
+    driver_opts:
+      type: none
+      o: bind
+      device: ${BACKUP_HOST_PATH:-/tmp/dharma-backups}
+  # Monitoring
+  prometheus_data:
+    driver: local
+    name: dharma_prometheus_data
+  grafana_data:
+    driver: local
+    name: dharma_grafana_data
 
+# ============================================================
+# Networks
+# ============================================================
 networks:
   dharma-network:
     driver: bridge
+    name: dharma-network

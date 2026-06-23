@@ -1,0 +1,79 @@
+# ============================================================
+# monitoring/prometheus.yml
+# Prometheus scrape configuration for Dharma services.
+# ============================================================
+
+global:
+  scrape_interval:     15s   # How often to scrape targets
+  evaluation_interval: 15s   # How often to evaluate rules
+  scrape_timeout:      10s
+  external_labels:
+    environment: 'development'
+    service: 'dharma'
+
+# ── Alerting (optional – configure Alertmanager separately) ──────────────
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# ── Rule files ────────────────────────────────────────────────────────────
+rule_files:
+  - "rules/*.yml"
+
+# ── Scrape configurations ─────────────────────────────────────────────────
+scrape_configs:
+
+  # Prometheus self-metrics
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          component: 'prometheus'
+
+  # PostgreSQL exporter (postgres-exporter)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          component: 'database'
+          db: 'dharma_db'
+    scrape_interval: 30s
+
+  # Redis exporter (redis-exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          component: 'cache'
+    scrape_interval: 15s
+
+  # Next.js application – custom metrics via /api/metrics (if implemented)
+  # or basic HTTP probe
+  - job_name: 'nextjs'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['nextjs:3000']
+        labels:
+          component: 'application'
+    scrape_interval: 30s
+    # Allow failure if /api/metrics isn't implemented yet
+    honor_timestamps: true
+
+  # MinIO metrics
+  - job_name: 'minio'
+    metrics_path: '/minio/v2/metrics/cluster'
+    scheme: http
+    static_configs:
+      - targets: ['minio:9000']
+        labels:
+          component: 'storage'
+    scrape_interval: 30s
+
+  # Caddy metrics (via Caddy admin endpoint)
+  - job_name: 'caddy'
+    static_configs:
+      - targets: ['caddy:2019']
+        labels:
+          component: 'proxy'
+    scrape_interval: 30s

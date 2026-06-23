@@ -1,11 +1,26 @@
 :80 {
   encode gzip zstd
 
+  # Caddy-level health endpoint (returns 200 immediately)
+  respond /health 200 {
+    body "ok"
+    close
+  }
+
+  # Proxy all traffic to Next.js
   handle_path /api/* {
-    reverse_proxy nextjs:3000
+    reverse_proxy nextjs:3000 {
+      health_uri     /api/health
+      health_interval 15s
+      health_timeout  5s
+    }
   }
 
   handle {
-    reverse_proxy nextjs:3000
+    reverse_proxy nextjs:3000 {
+      health_uri     /api/health
+      health_interval 15s
+      health_timeout  5s
+    }
   }
 }

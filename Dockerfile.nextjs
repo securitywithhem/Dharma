@@ -1,0 +1,86 @@
+# ============================================================
+# Dockerfile.nextjs – Next.js Application
+# Multi-stage build: deps → builder → runner
+# ============================================================
+
+# ── Stage 1: Install dependencies ────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Install OS packages required for native modules (e.g., sharp, tesseract)
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++
+
+COPY package.json package-lock.json ./
+COPY packages/db/schema.prisma ./packages/db/schema.prisma
+
+RUN npm ci --ignore-scripts
+
+# Generate Prisma client in the deps stage
+RUN npx prisma generate --schema packages/db/schema.prisma
+
+# ── Stage 2: Build the application ───────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/db/schema.prisma ./packages/db/schema.prisma
+COPY . .
+
+# Build-time env (non-secret, public vars only)
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
+# ── Stage 3: Production runtime ───────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install runtime OS dependencies
+RUN apk add --no-cache \
+    libc6-compat \
+    curl \
+    wget \
+    postgresql-client \
+    redis \
+    bash
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser  -S nextjs -u 1001 -G nodejs
+
+# Copy build artifacts from builder
+COPY --from=builder --chown=nextjs:nodejs /app/public           ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next             ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules     ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json     ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.js   ./next.config.js
+COPY --from=builder --chown=nextjs:nodejs /app/packages         ./packages
+
+# Copy entrypoint and scripts
+COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+USER nextjs
+
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Docker-level HEALTHCHECK (independent of Compose healthcheck)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+  CMD wget -qO- http://localhost:3000/api/health > /dev/null || exit 1
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["npm", "run", "start"]
