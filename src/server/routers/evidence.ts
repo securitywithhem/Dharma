@@ -62,16 +62,33 @@ export const evidenceRouter = createTRPCRouter({
       z.object({
         fileName: z.string().min(1).max(255),
         contentType: z.string().min(1).max(127),
-        controlId: z.string().min(1),
+        controlId: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await ensureBucket();
 
+      let targetControlId = input.controlId;
+
+      // If controlId is empty, fallback to the first control in the organization
+      if (!targetControlId) {
+        const firstControl = await ctx.prisma.control.findFirst({
+          where: { framework: { organizationId: ctx.session.user.organizationId } },
+          select: { id: true },
+        });
+        if (!firstControl) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No controls found to attach evidence to.",
+          });
+        }
+        targetControlId = firstControl.id;
+      }
+
       // Verify control belongs to the organisation
       const control = await ctx.prisma.control.findFirst({
         where: {
-          id: input.controlId,
+          id: targetControlId,
           framework: { organizationId: ctx.session.user.organizationId },
         },
         select: { id: true },
@@ -87,7 +104,7 @@ export const evidenceRouter = createTRPCRouter({
       const uniqueId = crypto.randomUUID();
       const storageKey = buildStorageKey(
         ctx.session.user.organizationId,
-        input.controlId,
+        targetControlId,
         input.fileName,
         uniqueId,
       );
@@ -108,7 +125,7 @@ export const evidenceRouter = createTRPCRouter({
   create: managerProcedure
     .input(
       z.object({
-        controlId: z.string().min(1),
+        controlId: z.string().optional(),
         fileName: z.string().min(1).max(255),
         filePath: z.string().min(1).max(1024),
         type: evidenceTypeSchema,
@@ -117,10 +134,26 @@ export const evidenceRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      let targetControlId = input.controlId;
+
+      if (!targetControlId) {
+        const firstControl = await ctx.prisma.control.findFirst({
+          where: { framework: { organizationId: ctx.session.user.organizationId } },
+          select: { id: true },
+        });
+        if (!firstControl) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No controls found to attach evidence to.",
+          });
+        }
+        targetControlId = firstControl.id;
+      }
+
       // Verify control ownership
       const control = await ctx.prisma.control.findFirst({
         where: {
-          id: input.controlId,
+          id: targetControlId,
           framework: { organizationId: ctx.session.user.organizationId },
         },
         select: { id: true, title: true },
@@ -135,7 +168,7 @@ export const evidenceRouter = createTRPCRouter({
 
       const evidence = await ctx.prisma.evidence.create({
         data: {
-          controlId: input.controlId,
+          controlId: targetControlId,
           organizationId: ctx.session.user.organizationId,
           fileName: input.fileName,
           filePath: input.filePath,
@@ -158,7 +191,7 @@ export const evidenceRouter = createTRPCRouter({
         changes: {
           fileName: input.fileName,
           type: input.type,
-          controlId: input.controlId,
+          controlId: targetControlId,
           controlTitle: control.title,
         },
       });

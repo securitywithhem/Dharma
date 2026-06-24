@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
+import { initializeBucket } from '@/lib/storage/minioClient';
 
 // Force Node.js runtime (not Edge) since we use Prisma
 export const runtime = "nodejs";
@@ -21,8 +22,20 @@ export const runtime = "nodejs";
 // Allow this route to be called without auth (no middleware checks)
 export const dynamic = "force-dynamic";
 
+let minioInitialized = false;
+
 export async function GET() {
   const timestamp = new Date().toISOString();
+
+  if (!minioInitialized) {
+    try {
+      await initializeBucket();
+      minioInitialized = true;
+    } catch (error) {
+      console.error('Failed to initialize MinIO bucket:', error);
+      // We don't fail the health check entirely, just log it.
+    }
+  }
 
   try {
     // Quick liveness check – single row query with timeout
