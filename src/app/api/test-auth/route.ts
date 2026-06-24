@@ -12,25 +12,52 @@ export async function GET(req: NextRequest) {
 
   const email = req.nextUrl.searchParams.get("email") ?? "admin@dharma.local";
 
-  // Find or create test user
-  let user = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (!user) {
-    let org = await prisma.organization.findFirst();
-    if (!org) {
+  let org = await prisma.organization.findFirst();
+  if (!org) {
+    try {
       org = await prisma.organization.create({
         data: { name: "Dharma E2E Test Organization" },
       });
+    } catch (e) {
+      org = await prisma.organization.findFirst();
     }
+  }
 
-    user = await prisma.user.create({
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: {},
+    create: {
+      email,
+      name: "Test Admin User",
+      role: Role.ADMIN,
+      organizationId: org!.id,
+    },
+  });
+
+  // Ensure at least one framework and control exists for evidence tests
+  let framework = await prisma.framework.findFirst({
+    where: { organizationId: org!.id },
+  });
+  if (!framework) {
+    framework = await prisma.framework.create({
       data: {
-        email,
-        name: "Test Admin User",
-        role: Role.ADMIN,
-        organizationId: org.id,
+        organizationId: org!.id,
+        name: "Test Framework",
+        description: "Test Framework",
+      },
+    });
+  }
+
+  let control = await prisma.control.findFirst({
+    where: { frameworkId: framework.id },
+  });
+  if (!control) {
+    await prisma.control.create({
+      data: {
+        frameworkId: framework.id,
+        domain: "Access Control",
+        title: "Test Control",
+        description: "Test Control Description",
       },
     });
   }

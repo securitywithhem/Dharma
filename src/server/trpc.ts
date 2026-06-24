@@ -24,14 +24,19 @@ export async function createInnerTRPCContext(options: CreateContextOptions) {
   let auditorTokenExpiry: Date | undefined;
 
   const cookieHeader = options.headers.get("cookie");
+  console.log("[TRPC Context] cookieHeader:", cookieHeader);
+  console.log("[TRPC Context] session before auditor check:", !!session);
+
   if (cookieHeader && !session) {
     const match = cookieHeader.match(/dharma_auditor_token=([^;]+)/);
+    console.log("[TRPC Context] match result:", !!match);
     if (match) {
       const token = match[1];
       const prismaClient = options.prismaClient ?? prisma;
       const auditorAccess = await prismaClient.auditorAccess.findUnique({
         where: { token },
       });
+      console.log("[TRPC Context] auditorAccess found:", !!auditorAccess, auditorAccess?.isActive, auditorAccess?.expiresAt);
 
       if (auditorAccess && auditorAccess.isActive && auditorAccess.expiresAt > new Date()) {
         session = {
@@ -46,6 +51,7 @@ export async function createInnerTRPCContext(options: CreateContextOptions) {
         };
         isAuditor = true;
         auditorTokenExpiry = auditorAccess.expiresAt;
+        console.log("[TRPC Context] Auditor session set successfully!");
       }
     }
   }
