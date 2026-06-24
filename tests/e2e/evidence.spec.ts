@@ -23,6 +23,10 @@ test.describe("Evidence Upload Flow", () => {
     // Verify dialog shows up
     await expect(page.getByText("Upload Compliance Evidence")).toBeVisible();
 
+    page.on("console", (msg) => console.log("EVIDENCE BROWSER LOG:", msg.type(), msg.text()));
+    page.on("pageerror", (err) => console.log("EVIDENCE BROWSER ERROR:", err.message));
+    page.on("requestfailed", request => console.log("EVIDENCE BROWSER REQ FAILED:", request.url(), request.failure()?.errorText));
+
     // Create a temporary file to upload
     const tempFilePath = path.join(__dirname, "temp-test-evidence.txt");
     fs.writeFileSync(tempFilePath, "This is E2E test evidence content.");

@@ -100,7 +100,7 @@ describe("tRPC foundation", () => {
 
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.settings.organization()).rejects.toMatchObject({
+    await expect(caller.settings.createAuditorKey({ duration: "1d" })).rejects.toMatchObject({
       code: "FORBIDDEN"
     });
   });

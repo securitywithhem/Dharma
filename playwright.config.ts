@@ -5,13 +5,13 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://localhost:3001",
     trace: "on-first-retry"
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: true
+    command: "PORT=3001 npm run dev",
+    url: "http://localhost:3001",
+    reuseExistingServer: !process.env.CI
   },
   projects: [
     {

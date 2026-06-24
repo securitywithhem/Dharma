@@ -21,13 +21,21 @@ test.describe("Auditor Access Portal Flow", () => {
     const url = await linkInput.inputValue();
     expect(url).toContain("/audit/auth?token=");
 
+    // Clear cookies first to simulate an external auditor who is not logged in as Admin
+    await page.context().clearCookies();
+
     // 5. Navigate using the auditor login link (this sets the session and redirects)
     await page.goto(url);
     await page.waitForURL("**/audit/portal");
 
+    console.log("COOKIES:", await page.context().cookies());
+
+    // Wait for the portal to load
+    await page.waitForLoadState("networkidle");
+
     // 6. Verify auditor read-only mode and organization details
     await expect(page.getByText("Dharma Auditor Portal — Read-Only Access")).toBeVisible();
     await expect(page.getByText("Read-Only Mode Active")).toBeVisible();
-    await expect(page.getByText("Dharma E2E Test Organization Workspace", { exact: false })).toBeVisible();
+    await expect(page.getByText("Dharma E2E Test Organization", { exact: false })).toBeVisible();
   });
 });

@@ -14,11 +14,22 @@ const config: Config = {
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
-    "\\.(css|less|scss|sass)$": "identity-obj-proxy"
+    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+    "^uuid$": require.resolve("uuid"),
+    "^preact/jsx-runtime$": require.resolve("preact/jsx-runtime"),
+    "^preact-render-to-string$": require.resolve("preact-render-to-string"),
+    "^preact$": require.resolve("preact")
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "node",
   testPathIgnorePatterns: ["/node_modules/", "/.next/", "/tests/e2e/"]
 };
 
-export default createJestConfig(config);
+export default async function jestConfig() {
+  const nextConfig = await createJestConfig(config)();
+  // Override transformIgnorePatterns to allow transforming ESM packages
+  nextConfig.transformIgnorePatterns = [
+    "node_modules/(?!(superjson|jose|openid-client|copy-anything|is-what|msgpackr|@panva|uuid|next-auth|@auth|preact)/)"
+  ];
+  return nextConfig;
+}

@@ -68,6 +68,8 @@ async function clearLogs() {
   await prisma.auditLog.deleteMany({ where: { organizationId } });
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // ------------------------------------------------------------------
 // Unit tests: computeAuditHash
 // ------------------------------------------------------------------
@@ -162,6 +164,7 @@ describe("createAuditLog — chain linking", () => {
       entityId: "e1",
       changes: null,
     });
+    await sleep(10);
 
     const second = await createAuditLog(prisma, {
       organizationId,
@@ -171,6 +174,7 @@ describe("createAuditLog — chain linking", () => {
       entityId: "e2",
       changes: null,
     });
+    await sleep(10);
 
     const third = await createAuditLog(prisma, {
       organizationId,
@@ -268,6 +272,7 @@ describe("verifyAuditChain — intact chain", () => {
         entityId: `e${i}`,
         changes: { index: i },
       });
+      await sleep(10);
     }
 
     const logs = await prisma.auditLog.findMany({
@@ -293,6 +298,7 @@ describe("verifyAuditChain — tamper detection", () => {
       entityId: "e-tamper-1",
       changes: null,
     });
+    await sleep(10);
 
     await createAuditLog(prisma, {
       organizationId,
@@ -331,6 +337,7 @@ describe("verifyAuditChain — tamper detection", () => {
       entityId: "e1",
       changes: null,
     });
+    await sleep(10);
 
     const second = await createAuditLog(prisma, {
       organizationId,
