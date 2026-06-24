@@ -7,29 +7,31 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 
+import type { Route } from "next";
+
 const navigation = [
   {
-    href: "/dashboard",
+    href: "/dashboard" as Route,
     label: "Overview",
     icon: LayoutDashboard
   },
   {
-    href: "/dashboard/frameworks",
+    href: "/dashboard/frameworks" as Route,
     label: "Frameworks",
     icon: Shield
   },
   {
-    href: "/dashboard/policies",
+    href: "/dashboard/policies" as Route,
     label: "Policies",
     icon: FileText
   },
   {
-    href: "/dashboard/evidence",
+    href: "/dashboard/evidence" as Route,
     label: "Evidence",
     icon: FileCheck2
   },
   {
-    href: "/dashboard/settings",
+    href: "/dashboard/settings" as Route,
     label: "Settings",
     icon: Settings2
   }

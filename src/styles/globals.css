@@ -60,3 +60,36 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* CSS Variables for Design System */
+:root {
+  --color-primary: #D97706; /* amber-600 */
+  --color-success: #10B981; /* emerald-500 */
+  --color-warning: #F59E0B; /* amber-500 */
+  --color-danger: #EF4444; /* red-500 */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #F59E0B; /* amber-500 */
+  }
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Loading animation */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
