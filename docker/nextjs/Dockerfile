@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     libc6-compat \
     python3 \
     make \
-    g++
+    g++ \
+    openssl
 
 COPY package.json package-lock.json ./
 COPY packages/db/schema.prisma ./packages/db/schema.prisma
@@ -54,7 +55,8 @@ RUN apk add --no-cache \
     wget \
     postgresql-client \
     redis \
-    bash
+    bash \
+    openssl
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

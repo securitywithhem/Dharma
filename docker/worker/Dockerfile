@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     libc6-compat \
     python3 \
     make \
-    g++
+    g++ \
+    openssl
 
 COPY package.json package-lock.json ./
 COPY packages/db/schema.prisma ./packages/db/schema.prisma
@@ -30,7 +31,8 @@ ENV NODE_ENV=production
 RUN apk add --no-cache \
     libc6-compat \
     curl \
-    bash
+    bash \
+    openssl
 
 # Non-root user
 RUN addgroup -g 1001 -S nodejs && \

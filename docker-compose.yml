@@ -97,7 +97,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -153,7 +153,7 @@ services:
       OLLAMA_MODELS: /root/.ollama/models
       OLLAMA_KEEP_ALIVE: "24h"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 15s
       retries: 10
@@ -201,7 +201,7 @@ services:
       context: .
       dockerfile: docker/nextjs/Dockerfile
       args:
-        NODE_ENV: ${NODE_ENV:-development}
+        NODE_ENV: production
     container_name: dharma-nextjs
     restart: on-failure:3
     env_file:
