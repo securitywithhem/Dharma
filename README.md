@@ -1,8 +1,45 @@
-# Dharma
+# Dharma – Self-Hosted Compliance Platform
 
 Dharma is a self-hosted, enterprise-ready compliance management platform built for Indian MSMEs and startups to comply with local regulations (such as the **DPDP Act 2023**) alongside international frameworks (**ISO 27001**, **SOC 2 Type II**). All data processing, AI operations, and storage remain strictly inside your own boundary.
 
-## System Architecture
+---
+
+## 🎯 Problems Solved & Efficiency Benefits
+
+### 1. Strict Data Sovereignty
+*   **The Problem:** Traditional SaaS compliance tools (e.g., Vanta, Drata) require you to upload highly sensitive organizational data—such as cloud configurations, employee details, policy drafts, and internal network logs—to external third-party cloud servers. This violates internal privacy protocols and data-residency laws like India's **DPDP Act 2023**.
+*   **Dharma's Solution:** By executing 100% of its data operations inside your own network boundary (using a local `pgvector` database, a local `MinIO` S3 storage server, and local `Ollama` models), Dharma guarantees that zero sensitive compliance data ever leaves your company's network.
+
+### 2. Manual & Complex Framework Mapping
+*   **The Problem:** Manually parsing compliance standards (which have hundreds of controls) and mapping them to relevant evidence files (e.g., firewall logs, screenshots, password policies) takes compliance teams weeks of manual effort.
+*   **Dharma's Solution:** Dharma extracts text from uploaded evidence and uses local embeddings (`nomic-embed-text`) via `pgvector` to automatically perform semantic cosine similarity searches. It instantly recommends the top 3 controls a piece of evidence satisfies, reducing mapping times from hours to single-click actions.
+
+### 3. Prohibitive Compliance Costs
+*   **The Problem:** Commercial compliance platforms charge between $10,000 to $50,000+ annually in subscription fees. This creates a massive financial barrier for startups and MSMEs needing SOC 2 or ISO 27001 to close enterprise clients.
+*   **Dharma's Solution:** Dharma is entirely open-source and runs on self-hosted infrastructure. By utilizing local LLMs via Ollama, it eliminates external API token billing (e.g., OpenAI/Anthropic APIs), resulting in zero marginal cost per compliance operation.
+
+### 4. Drafting Regulatory-Compliant Policies
+*   **The Problem:** Drafting core security and privacy policies (e.g., DPDP Consent Notice, Access Control Policy) requires specialized legal and compliance knowledge. Engaging external consultants is expensive and slow.
+*   **Dharma's Solution:** Dharma leverages a local **RAG (Retrieval-Augmented Generation)** pipeline. It retrieves the exact sections of regulations (e.g., clauses from the DPDP Act 2023) and feeds them alongside your company profile into local LLMs (e.g., Llama 3 8B) to instantly draft context-specific, professional policies.
+
+### 5. Vulnerable Compliance Records & Logs
+*   **The Problem:** Standard database-logged audit trails can be altered by system administrators, making it difficult to verify that compliance records have not been retrospectively modified or deleted during audits.
+*   **Dharma's Solution:** Dharma implements **Cryptographic Hash Chaining** (similar to a blockchain ledger). Every mutating audit event is hashed using SHA-256 and linked sequentially to the hash of the preceding record. If any past row is altered, the chain breaks immediately, flagging the tampering.
+
+### 6. Secure and Dynamic Auditor Access
+*   **The Problem:** Sharing compliance evidence with external auditors typically involves sending zip files over email or creating permanent, hard-to-revoke user accounts in internal tools.
+*   **Dharma's Solution:** Dharma provides a temporary, read-only portal for external compliance auditors. It generates expiring access tokens with customized durations (e.g., 24 hours), showing count-down banners and revoking access automatically upon expiration.
+
+---
+
+## 🚀 How Is It Efficient?
+*   **Zero Cloud Costs:** Uses Ollama local models (`nomic-embed-text` and `llama3`) and self-hosted database/storage.
+*   **Background Processing Async Architecture:** Heavy lifting (generating embeddings, compiling PDFs, querying Ollama models) is offloaded to a Redis-backed BullMQ background worker queue, preventing UI/API request thread blocks.
+*   **Strict Type-Safety:** Built on a single monorepo using Next.js, Prisma, and tRPC v11, ensuring compile-time safety and automatic sync between the DB model and client UI.
+
+---
+
+## 🏗️ System Architecture
 
 ```
                                   ┌───────────────────────────┐
@@ -22,10 +59,10 @@ Dharma is a self-hosted, enterprise-ready compliance management platform built f
                                   │    NEXT.JS APPLICATION    │
                                   │ (tRPC Gateway & SSR Pages)│
                                   └────┬────────┬────────┬────┘
-                                       │        │        │
-                              Prisma   │        │        │ Presigned
-                              Queries  │        │        │ URLs
-                                       ▼        │        ▼
+                                        │        │        │
+                               Prisma   │        │        │ Presigned
+                               Queries  │        │        │ URLs
+                                        ▼        │        ▼
  ┌──────────────────────────────────────┐        │    ┌──────────────────────────┐
  │          POSTGRES DATABASE           │        │    │       MINIO STORAGE      │
  │  (Frameworks, Policies, AuditLogs,   │◄───────┼───►│ (Evidence files, PDFs)   │
@@ -52,298 +89,136 @@ Dharma is a self-hosted, enterprise-ready compliance management platform built f
                                    └──────────────────────────┘
 ```
 
-## Platform Features
+---
 
-1. **Security & Rate Limiting**: Built-in HTTP security headers (CSP, HSTS, X-Content-Type-Options) and sliding-window rate limit checks inside standard Next.js middleware.
-2. **AI-Powered Framework Mapping**: cosine-similarity mapping between uploaded evidence files and regulatory controls via local `pgvector` index.
-3. **Automated RAG Policies**: RAG-based drafting of policies (Privacy Policy, Access Control, etc.) using DPDP regulation context chunks fed directly into local Llama 3.
-4. **Verifiable Audit Logging**: Sequential cryptographic SHA-256 hash chaining applied to all mutating events, preventing silent database tampering.
-5. **Auditor access Portal**: One-click generation of read-only temporary keys with automatically calculated expirations and banner countdowns.
+## 🛠️ Step-by-Step Clone & Run Guide
 
-## Tech Stack
+Follow these steps to download the repository, set up local configuration, and run the entire suite of services.
 
-- **Frontend/Backend**: Next.js 14 (App Router), tRPC v11, TypeScript 5.5, Tailwind CSS
-- **Database/ORM**: PostgreSQL, `pgvector`, Prisma 5
-- **Queue/Worker**: Redis 7, BullMQ 5
-- **Object Store**: MinIO (S3-compatible)
-- **Local AI**: Ollama (`nomic-embed-text`, `llama3`)
-- **Reverse Proxy**: Caddy
-- **Testing/CI**: Jest, Playwright, GitHub Actions
+### 📋 Prerequisites
+Make sure you have the following installed on your machine:
+*   [Git](https://git-scm.com/)
+*   [Docker & Docker Compose](https://www.docker.com/) (Ensure the Docker daemon is running)
+*   [Node.js](https://nodejs.org/) (Version >= 18.18.0, only required if running outside Docker)
 
-## Local setup
-
-
-1. Copy the environment template.
-
+### 1. Clone the Repository
+Clone the codebase to your local directory and navigate into it:
 ```bash
-cp .env.example .env.local
+git clone https://github.com/your-username/dharma-compliance.git
+cd dharma-compliance
 ```
 
-2. Install dependencies.
-
+### 2. Configure Environment Variables
+Dharma reads configurations from environment files. We provide pre-configured files for both host and Docker runs:
 ```bash
-npm install
+# Setup Docker environment config
+cp .env.example .env.docker
+
+# Setup local environment config (if running Next.js directly on host)
+cp .env.example .env
 ```
 
-3. Start the supporting services.
-
-```bash
-docker compose up -d postgres redis minio ollama
-```
-
-4. Generate the Prisma client and apply migrations.
-
-```bash
-npm run db:generate
-npm run db:deploy
-```
-
-5. Seed the baseline organization and framework records.
-
-```bash
-npm run db:seed
-```
-
-6. Start the Next.js app.
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-## Full Docker flow
-
-The full containerized developer flow is available through Compose:
-
+### 3. Spin Up the Services (Docker Flow)
+The fastest way to run Dharma is to run all services containerized. This includes PostgreSQL, Redis, MinIO, Ollama, Next.js, and Caddy:
 ```bash
 docker compose up -d --build
 ```
+This command starts:
+*   **PostgreSQL (`pgvector`)** on port `5432`
+*   **Redis** on port `6379`
+*   **MinIO Console** on port `9001` (API on port `9000`)
+*   **Ollama AI engine** on port `11434`
+*   **Next.js App** on port `3000`
+*   **Caddy Proxy** on ports `80` and `443`
 
-This starts:
-
-- `postgres` on `5432`
-- `redis` on `6379`
-- `minio` on `9000` with console on `9001`
-- `ollama` on `11434`
-- `nextjs` on `3000`
-- `caddy` on `80` and `443`
-
-## Authentication notes
-
-- Google OAuth is enabled when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
-- Email magic-link sign-in always exists. If SMTP variables are missing, the verification URL is logged to the server console for development.
-- New users are provisioned into a newly created organization automatically, with the first session receiving the `ADMIN` role for that workspace.
-- `/dashboard/*` routes are protected by `middleware.ts` and revalidated server-side in the dashboard layout.
-
-## Useful scripts
-
+### 4. Initialize and Seed the Database
+Apply migrations, generate the Prisma schema, and seed the default organization along with compliance frameworks (DPDP, ISO 27001, SOC 2):
 ```bash
-npm run dev
-npm run build
-npm run type-check
-npm run test
-npm run test:e2e
-npm run db:generate
-npm run db:migrate
-npm run db:deploy
-npm run db:seed
-npm run docker:up
-npm run docker:down
+docker exec dharma-nextjs npm run seed:all
 ```
+*This command runs database schemas, sets up the cryptographic log chain, and inserts 144 compliance controls across the frameworks.*
 
-## Database notes
+### 5. Access the Web App & Sign In
+Open your web browser (Chrome) and navigate to the application:
+*   **Application Link:** [http://localhost:3000](http://localhost:3000) (or via reverse proxy: [http://localhost:80](http://localhost:80))
+*   **MinIO Console:** [http://localhost:9001](http://localhost:9001) (User: `minioadmin` | Password: `minioadmin_change_me`)
 
-- Prisma schema lives at `packages/db/schema.prisma`.
-- The initial SQL migration is stored in `packages/db/migrations/20260621000100_init/migration.sql`.
-- Vector indexes for `Evidence.embedding` and `RegulationSnippet.embedding` are created manually in the migration using HNSW.
-- The seed script creates a default organization and baseline framework rows. Set `SEED_ADMIN_EMAIL` to attach an explicit admin account.
-
-## Testing & E2E Validation
-
-The platform includes two testing suites:
-
-### 1. Unit & Integration (Jest)
-Runs unit validations for server-side logic:
-```bash
-npm run test
-```
-Covered areas:
-- NextAuth JWT session transformations
-- RBAC helpers
-- tRPC procedure scoping and organization contexts
-- Tamper detection on the cryptographic audit chain
-
-### 2. End-to-End Validation (Playwright)
-Executes simulated user workflows on a headless/headed browser:
-```bash
-npm run test:e2e
-```
-Available spec suites:
-- `auth.spec.ts`: Magic Link inputs, landing page entry, redirection to sign-in.
-- `evidence.spec.ts`: Uploading file to MinIO, mapping control requirements, matching suggestions, and audit trail verification.
-- `policy.spec.ts`: Stepper-based policy wizard inputs, local Ollama generation waiting states, TipTap editor controls, and publishing.
-- `auditor.spec.ts`: Auditor link generation via Settings, auditor token cookie generation, read-only dashboard layout, and remaining countdown timer banner.
-
-### 3. CI Pipeline (GitHub Actions)
-A workflow `.github/workflows/e2e.yml` is executed on every push and pull request to the `main` branch. The runner automatically spins up the Docker Compose services, waits for health states, runs DB migrations/seeds, and executes Playwright tests, archiving reports on failure.
-
-
-## Known operational requirements
-
-- Docker must be installed locally for the full stack.
-- OAuth requires external credentials from Google Cloud.
-- SMTP is optional for development but required for actual email delivery.
-- Ollama starts empty; pull models separately after the container is healthy.
-
-## Suggested first commands
-
-```bash
-cp .env.example .env.local
-npm install
-docker compose up -d postgres redis minio ollama
-npm run db:generate
-npm run db:deploy
-npm run db:seed
-npm run dev
-```
+#### 🔑 Magic-Link Signing In Walkthrough:
+Dharma uses secure passwordless email sign-ins. In local development environments:
+1. Enter your email (e.g. `admin@dharma.local`) on the sign-in screen and click **Sign In**.
+2. Run the following command in your terminal to view the server console logs:
+   ```bash
+   docker compose logs -f nextjs
+   ```
+3. Look for the logged NextAuth magic link (e.g., `http://localhost:3000/api/auth/callback/email?...`).
+4. Copy the link, paste it into Chrome, and you will be logged in with the `ADMIN` role.
 
 ---
 
-## Backup & Restore
+## 🛠️ Local Development (Alternative Host-Based Flow)
+
+If you plan to modify Next.js code and need hot reloading, run Next.js on your host machine while keeping databases in Docker:
+
+1. Start only the supporting databases and AI engines:
+   ```bash
+   docker compose up -d postgres redis minio ollama
+   ```
+2. Install npm packages:
+   ```bash
+   npm install
+   ```
+3. Build database clients and seed records:
+   ```bash
+   npm run db:generate
+   npm run db:deploy
+   npm run db:seed
+   npm run seed:frameworks
+   ```
+4. Start Next.js on your host:
+   ```bash
+   npm run dev
+   ```
+5. View the app at [http://localhost:3000](http://localhost:3000).
+
+---
+
+## 🗄️ Backup & Restore
 
 ### Automated Backups
+The `backup-scheduler` container (powered by Ofelia cron) automatically manages backups:
+*   **PostgreSQL:** Every night at `02:00 UTC` (`/backups/pg/dharma_YYYYMMDD_HHMMSS.sql.gz`)
+*   **MinIO Objects:** Every night at `02:30 UTC` (`/backups/minio/dharma-evidence_YYYYMMDD_HHMMSS/`)
 
-The `backup-scheduler` service (Ofelia cron) runs automatically with Docker Compose and triggers nightly backups:
-
-| Schedule | Job | Output |
-|---|---|---|
-| `0 2 * * *` (02:00 UTC) | PostgreSQL pg_dump | `/backups/pg/dharma_YYYYMMDD_HHMMSS.sql.gz` |
-| `30 2 * * *` (02:30 UTC) | MinIO mirror | `/backups/minio/dharma-evidence_YYYYMMDD_HHMMSS/` |
-
-Configure the host backup path via:
+### Manual Backups
+Trigger immediate snapshots:
 ```bash
-# In .env.docker
-BACKUP_HOST_PATH=/your/host/backup/dir   # default: /tmp/dharma-backups
-BACKUP_RETENTION_DAYS=7                  # how many days to keep
+# Backup databases and files simultaneously
+docker exec dharma-backup-scheduler /scripts/backup-all.sh
 ```
 
-### Manual Backup
-
+### Restoring Snapshots
+To restore from the latest automated backup:
 ```bash
-# PostgreSQL
-docker exec dharma-postgres bash -c \
-  "BACKUP_DIR=/backups/pg /scripts/backup-pg.sh"
+# Restore Database (Warning: Overwrites existing tables)
+docker exec -it dharma-postgres /scripts/restore-pg.sh
 
-# MinIO
-docker exec dharma-backup-scheduler bash -c \
-  "/scripts/backup-minio.sh"
-
-# Both at once (master orchestrator)
-docker exec dharma-backup-scheduler bash -c \
-  "/scripts/backup-all.sh"
-```
-
-### Restore PostgreSQL
-
-> ⚠️ **Warning:** Restoring drops and recreates the database. All current data is lost.
-
-```bash
-# Restore from latest backup (auto-detected)
-docker exec -it dharma-postgres bash -c \
-  "FORCE_RESTORE=true /scripts/restore-pg.sh"
-
-# Restore from a specific file
-docker exec -it dharma-postgres bash -c \
-  "/scripts/restore-pg.sh /backups/pg/dharma_20240101_120000.sql.gz"
-```
-
-After restore, apply any pending migrations:
-```bash
-npm run db:deploy
-```
-
-### Restore MinIO
-
-```bash
-# Restore from latest snapshot (via symlink)
-docker exec -it dharma-backup-scheduler bash -c \
-  "FORCE_RESTORE=true /scripts/restore-minio.sh"
-
-# Restore from a specific snapshot directory
-docker exec -it dharma-backup-scheduler bash -c \
-  "/scripts/restore-minio.sh /backups/minio/dharma-evidence_20240101_120000"
+# Restore MinIO Objects
+docker exec -it dharma-backup-scheduler /scripts/restore-minio.sh
 ```
 
 ---
 
-## Monitoring
+## 📊 Monitoring & Observability
 
-### Start the monitoring stack
+Dharma includes a pre-packaged monitoring profile featuring Prometheus, Grafana, and resource exporters.
 
-Monitoring services use Docker Compose profiles to keep them opt-in (they don't start with the default `up`):
-
+### Start the Monitoring Stack
 ```bash
-# Start core stack + monitoring
-docker compose --env-file .env.docker --profile monitoring up -d
-
-# Start monitoring only (core already running)
-docker compose --env-file .env.docker --profile monitoring up -d \
-  prometheus grafana postgres-exporter redis-exporter
+docker compose --profile monitoring up -d
 ```
 
-### Access URLs
-
-| Service | URL | Credentials |
-|---|---|---|
-| **Grafana** | http://localhost:3001 | `admin` / `dharma-grafana` |
-| **Prometheus** | http://localhost:9090 | — |
-| **PostgreSQL Exporter** | http://localhost:9187/metrics | — |
-| **Redis Exporter** | http://localhost:9121/metrics | — |
-
-### Health & Status Endpoints
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/health` | Lightweight liveness probe (DB check only) |
-| `GET /api/status` | Full status: DB, Redis, MinIO, Ollama + latency |
-| `GET /api/trpc/health.checkAll` | tRPC health check (all services) |
-| `GET /api/trpc/health.ping` | Ultra-fast liveness ping |
-
-```bash
-# Quick health check
-curl http://localhost:3000/api/health
-
-# Full service status
-curl http://localhost:3000/api/status | jq .
-
-# tRPC health
-curl http://localhost:3000/api/trpc/health.checkAll | jq .
-```
-
-### Viewing logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f nextjs
-docker compose logs -f postgres
-docker compose logs -f backup-scheduler
-
-# Last N lines
-docker compose logs --tail=100 worker
-```
-
----
-
-## Docker Scripts Reference
-
-```bash
-npm run docker:up       # Start all services (detached)
-npm run docker:down     # Stop all services
-npm run docker:logs     # Follow Next.js logs
-npm run docker:reset    # Full reset (down -v + rebuild)
-```
-
+### Access Ports & Metrics
+*   **Grafana Dashboard:** [http://localhost:3001](http://localhost:3001) (User: `admin` | Password: `dharma-grafana`)
+*   **Prometheus Console:** [http://localhost:9090](http://localhost:9090)
+*   **Liveness Probe:** `curl http://localhost:3000/api/health`
+*   **Full Service Health (latency checks):** `curl http://localhost:3000/api/status`

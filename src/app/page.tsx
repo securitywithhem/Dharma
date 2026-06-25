@@ -87,7 +87,7 @@ export default async function LandingPage() {
           <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#architecture" className="hover:text-foreground transition-colors">Architecture</a>
-            <a href="https://github.com/sickn33/antigravity-awesome-skills" target="_blank" className="hover:text-foreground transition-colors">Documentation</a>
+            <Link href="/docs" className="hover:text-foreground transition-colors">Documentation</Link>
           </nav>
 
           <div className="flex items-center space-x-3">
