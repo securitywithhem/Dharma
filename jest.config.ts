@@ -29,7 +29,7 @@ export default async function jestConfig() {
   const nextConfig = await createJestConfig(config)();
   // Override transformIgnorePatterns to allow transforming ESM packages
   nextConfig.transformIgnorePatterns = [
-    "node_modules/(?!(superjson|jose|openid-client|copy-anything|is-what|msgpackr|@panva|uuid|next-auth|@auth|preact)/)"
+    "node_modules/(?!(superjson|jose|openid-client|copy-anything|is-what|msgpackr|@panva|uuid|next-auth|@auth|preact|@react-pdf/fns|@react-pdf/font|@react-pdf/image|@react-pdf/layout|@react-pdf/pdfkit|@react-pdf/primitives|@react-pdf/reconciler|@react-pdf/render|@react-pdf/renderer|@react-pdf/stylesheet|@react-pdf/svg|@react-pdf/textkit|@react-pdf/types|color-string|color-name|yoga-layout|emoji-regex-xs)/)"
   ];
   return nextConfig;
 }
