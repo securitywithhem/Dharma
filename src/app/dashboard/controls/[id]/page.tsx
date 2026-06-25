@@ -16,7 +16,7 @@ import { api } from '@/lib/trpc';
 
 export default function ControlDetailPage() {
   const params = useParams();
-  const controlId = params.id as string;
+  const controlId = (params?.id ?? '') as string;
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Fetch control details - wait, let's assume api.control.getById exists or fallback.
@@ -44,9 +44,9 @@ export default function ControlDetailPage() {
 
   const statusColors = {
     NOT_STARTED: 'secondary',
-    IN_PROGRESS: 'yellow',
-    COMPLIANT: 'green',
-    NOT_APPLICABLE: 'gray',
+    IN_PROGRESS: 'warning',
+    COMPLIANT: 'success',
+    NOT_APPLICABLE: 'outline',
   } as const;
 
   return (

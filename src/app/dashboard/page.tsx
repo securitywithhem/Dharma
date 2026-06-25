@@ -1,81 +1,110 @@
-"use client";
+'use client';
 
-import { ShieldCheck, ShieldX } from "lucide-react";
-import { api } from "@/hooks/trpc";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Skeleton } from '@/components/ui/skeleton';
+import { OverallReadinessScore } from '@/components/dashboard/OverallReadinessScore';
+import { FrameworkProgressCards } from '@/components/dashboard/FrameworkProgressCards';
+import { DomainGapHeatmap } from '@/components/dashboard/DomainGapHeatmap';
+import { RecentActivityFeed } from '@/components/dashboard/RecentActivityFeed';
+import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
+import { ExportReportCard } from '@/components/report/ExportReportCard';
+import { api } from '@/hooks/trpc';
 
 export default function DashboardPage() {
-  const sessionQuery = api.settings.session.useQuery();
-  const orgQuery = api.settings.organization.useQuery(undefined, {
-    retry: false
-  });
-  const frameworksQuery = api.framework.list.useQuery();
-  const evidenceQuery = api.evidence.list.useQuery();
-  const auditQuery = api.audit.verifyIntegrity.useQuery();
+  const { data: stats, isLoading, error } = api.dashboard.getStats.useQuery();
 
-  const stats = [
-    {
-      label: "Frameworks",
-      value: frameworksQuery.data?.length ?? 0,
-      note: "Active compliance frameworks"
-    },
-    {
-      label: "Evidence",
-      value: evidenceQuery.data?.items.length ?? 0,
-      note: "Artifacts registered in storage"
-    },
-    {
-      label: "Users",
-      value: orgQuery.data?._count.users ?? 0,
-      note: "Workspace members"
-    }
-  ];
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <Skeleton className="h-64 w-full" />
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <p className="text-red-600">Failed to load dashboard data: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <p className="text-red-600">Failed to load dashboard data.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <Badge variant="success">Authenticated session</Badge>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Welcome back{sessionQuery.data?.name ? `, ${sessionQuery.data.name}` : ""}.
-          </h1>
-          <p className="max-w-2xl text-muted-foreground">
-            Your foundation layer is live with protected routing, typed APIs, and organization-scoped persistence.
-          </p>
-        </div>
-        <Card className="min-w-[280px] border-primary/10">
-          <CardContent className="flex items-center gap-4 p-6">
-            {auditQuery.data?.ok ? (
-              <ShieldCheck className="h-10 w-10 text-emerald-500" />
-            ) : (
-              <ShieldX className="h-10 w-10 text-destructive" />
-            )}
-            <div>
-              <p className="font-semibold">Audit chain</p>
-              <p className="text-sm text-muted-foreground">
-                {auditQuery.data?.ok
-                  ? "Integrity verified for the current organization."
-                  : auditQuery.data?.reason ?? "Waiting for audit data."}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="p-8 max-w-7xl mx-auto space-y-8"
+    >
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-4xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+          Compliance Dashboard
+        </h1>
+        <p className="text-stone-600 dark:text-stone-400">
+          Real-time overview of your compliance posture across all frameworks.
+        </p>
+      </motion.div>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader>
-              <CardDescription>{stat.label}</CardDescription>
-              <CardTitle className="text-4xl">{stat.value}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{stat.note}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
-    </div>
+      {/* Overall Readiness Score */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <OverallReadinessScore
+          score={stats.overallScore}
+          totalControls={stats.totalControls}
+          compliantControls={stats.compliantControls}
+        />
+      </motion.div>
+
+      {/* Quick Actions */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <QuickActionsCard />
+      </motion.div>
+
+      {/* Framework Progress Cards */}
+      <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-4">
+          Framework Progress
+        </h2>
+        <FrameworkProgressCards frameworks={stats.frameworks} />
+      </motion.section>
+
+      {/* Gap Heatmap */}
+      <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <DomainGapHeatmap domains={stats.domains} />
+      </motion.section>
+
+      {/* Recent Activity */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+      >
+        <div className="lg:col-span-2">
+          <RecentActivityFeed activities={stats.recentActivity} />
+        </div>
+
+        {/* Reporting Section */}
+        <div>
+          <h3 className="text-lg font-bold text-stone-900 dark:text-stone-50 mb-4">
+            Reporting
+          </h3>
+          <ExportReportCard />
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
