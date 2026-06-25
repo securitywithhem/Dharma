@@ -56,8 +56,8 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 2. Auth protection for dashboard
-  if (pathname.startsWith("/dashboard")) {
+  // 2. Auth protection for dashboard and onboarding
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token) {
       const signInUrl = new URL("/auth/signin", req.url);
