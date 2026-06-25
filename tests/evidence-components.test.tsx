@@ -6,7 +6,6 @@ jest.mock('@/lib/hooks/useEvidence', () => ({
   })
 }));
 
-import { describe, it, expect } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
 import { EvidenceList } from '@/components/evidence/EvidenceList';
 import React from 'react';
