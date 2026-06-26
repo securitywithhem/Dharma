@@ -8,9 +8,9 @@
 # Monitor: prometheus, grafana, postgres-exporter, redis-exporter
 #
 # Usage:
-#   docker compose --env-file .env.docker up -d
-#   docker compose --env-file .env.docker --profile monitoring up -d
-#   docker compose --env-file .env.docker down
+#   docker compose --env-file envs/.env.docker up -d
+#   docker compose --env-file envs/.env.docker --profile monitoring up -d
+#   docker compose --env-file envs/.env.docker down
 # ============================================================
 
 services:
@@ -205,7 +205,7 @@ services:
     container_name: dharma-nextjs
     restart: on-failure:3
     env_file:
-      - .env.docker
+      - envs/.env.docker
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?schema=public
@@ -268,7 +268,7 @@ services:
     container_name: dharma-worker
     restart: on-failure:3
     env_file:
-      - .env.docker
+      - envs/.env.docker
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?schema=public
