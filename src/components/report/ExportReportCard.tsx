@@ -64,7 +64,7 @@ export function ExportReportCard() {
               <div>
                 <CardTitle>Export Compliance Report</CardTitle>
                 <CardDescription>
-                  Generate a signed PDF with all frameworks, controls, and evidence.
+                  Generate a signed PDF for auditors, customers, or investors.
                 </CardDescription>
               </div>
             </div>
@@ -84,7 +84,7 @@ export function ExportReportCard() {
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  Export & Download Report
+                  Generate Report
                 </>
               )}
             </Button>

@@ -63,7 +63,7 @@ async function getEmbedding(text: string): Promise<number[]> {
     );
   }
 
-  return data.embedding;
+  return data.embedding.slice(0, 384);
 }
 
 function vectorToSql(vec: number[]): string {

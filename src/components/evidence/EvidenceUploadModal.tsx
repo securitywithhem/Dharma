@@ -103,9 +103,9 @@ export function EvidenceUploadModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Upload Evidence</DialogTitle>
+          <DialogTitle>Add Proof</DialogTitle>
           <DialogDescription>
-            {controlTitle ? `For control: ${controlTitle}` : 'Link evidence to your compliance control'}
+            {controlTitle ? `For requirement: ${controlTitle}` : 'Link proof to the requirement it satisfies'}
           </DialogDescription>
         </DialogHeader>
 
@@ -134,7 +134,7 @@ export function EvidenceUploadModal({
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Select the type of evidence you are uploading.
+                      Select the type of proof you are uploading.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -191,7 +191,7 @@ export function EvidenceUploadModal({
                       Uploading...
                     </>
                   ) : (
-                    'Upload Evidence'
+                    'Add Proof'
                   )}
                 </Button>
               </div>

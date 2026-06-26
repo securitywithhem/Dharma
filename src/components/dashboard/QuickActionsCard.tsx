@@ -17,31 +17,31 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    label: 'Upload Evidence',
-    description: 'Add files to support compliance',
+    label: 'Add Proof',
+    description: 'Upload files that show you meet a requirement',
     icon: <Upload className="w-5 h-5" />,
     href: '/dashboard/evidence',
     variant: 'default',
   },
   {
-    label: 'Generate Policy',
-    description: 'Create AI-drafted compliance policies',
+    label: 'Auto-Draft Policy',
+    description: 'Create a smart draft for a required policy',
     icon: <FileText className="w-5 h-5" />,
     href: '/dashboard/policies/new',
     variant: 'default',
   },
   {
-    label: 'View Frameworks',
-    description: 'Track control requirements',
+    label: 'View Goals',
+    description: 'Track the requirements behind each certification goal',
     icon: <BarChart3 className="w-5 h-5" />,
     href: '/dashboard/frameworks',
     variant: 'outline',
   },
   {
-    label: 'Export Report',
-    description: 'Generate signed compliance report',
+    label: 'Share with Auditor',
+    description: 'Generate a read-only report for external review',
     icon: <Shield className="w-5 h-5" />,
-    href: '/dashboard',
+    href: '/dashboard/settings',
     variant: 'outline',
   },
 ];

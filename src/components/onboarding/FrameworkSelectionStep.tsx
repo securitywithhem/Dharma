@@ -58,9 +58,9 @@ export function FrameworkSelectionStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Select Your Compliance Frameworks</CardTitle>
+        <CardTitle>Choose your certification goals</CardTitle>
         <CardDescription>
-          Choose the frameworks you need to comply with. You can add more later.
+          Pick the goals you want to work toward. You can add more later.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -86,12 +86,7 @@ export function FrameworkSelectionStep({
         </div>
 
         <div className="flex gap-3 mt-8">
-          <Button
-            variant="outline"
-            onClick={onBack}
-            disabled={isLoading}
-            className="flex-1"
-          >
+          <Button variant="outline" onClick={onBack} disabled={isLoading} className="flex-1">
             Back
           </Button>
           <Button
@@ -99,7 +94,7 @@ export function FrameworkSelectionStep({
             disabled={selectedFrameworks.length === 0 || isLoading}
             className="flex-1"
           >
-            {isLoading ? 'Loading...' : 'Continue'}
+          {isLoading ? 'Working...' : 'Continue'}
           </Button>
         </div>
       </CardContent>

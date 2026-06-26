@@ -74,7 +74,7 @@ interface EvidenceUploadFormProps {
 export function EvidenceUploadForm({
   controlId,
   onSuccess,
-  triggerLabel = "Upload Evidence",
+  triggerLabel = "Add Proof",
 }: EvidenceUploadFormProps) {
   const [open, setOpen] = useState(false);
   const [uploadState, setUploadState] = useState<UploadState>({ phase: "idle" });
@@ -253,10 +253,10 @@ export function EvidenceUploadForm({
         >
           <DialogHeader>
             <DialogTitle id="evidence-upload-title">
-              Upload Compliance Evidence
+                  Add Proof
             </DialogTitle>
             <DialogDescription>
-              Attach a file as proof for this control. Supported: PDF, images,
+              Attach a file as proof for this requirement. Supported: PDF, images,
               JSON, CSV, ZIP — max&nbsp;50 MB.
             </DialogDescription>
           </DialogHeader>

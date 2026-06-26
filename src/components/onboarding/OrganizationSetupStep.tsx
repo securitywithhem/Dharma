@@ -33,9 +33,9 @@ export function OrganizationSetupStep({ onNext }: OrganizationSetupStepProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Let's Set Up Your Organization</CardTitle>
+        <CardTitle>Let's get your company ready</CardTitle>
         <CardDescription>
-          Tell us about your organization so we can tailor the compliance experience.
+          Share a few details so we can suggest the fastest compliance path.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -46,7 +46,7 @@ export function OrganizationSetupStep({ onNext }: OrganizationSetupStepProps) {
               name="organizationName"
               render={({ field }: any) => (
                 <FormItem>
-                  <FormLabel>Organization Name</FormLabel>
+                  <FormLabel>Company Name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g., Acme Corp"
@@ -54,7 +54,7 @@ export function OrganizationSetupStep({ onNext }: OrganizationSetupStepProps) {
                     />
                   </FormControl>
                   <FormDescription>
-                    The legal name of your organization.
+                    The name your team uses every day.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -66,10 +66,10 @@ export function OrganizationSetupStep({ onNext }: OrganizationSetupStepProps) {
               name="industry"
               render={({ field }: any) => (
                 <FormItem>
-                  <FormLabel>Industry (Optional)</FormLabel>
+                  <FormLabel>Industry</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., FinTech, Healthcare"
+                      placeholder="e.g., SaaS, FinTech, Healthcare"
                       {...field}
                     />
                   </FormControl>

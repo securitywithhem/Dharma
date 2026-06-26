@@ -12,7 +12,7 @@ export default function PoliciesPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Policies</h1>
         <p className="text-muted-foreground">
-          Versioned policy records are organization-scoped and ready for future editing workflows.
+          Keep the drafts your team needs for audits, customers, and internal reviews.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export default function PoliciesPage() {
           <Card>
             <CardHeader>
               <CardTitle>No policies yet</CardTitle>
-              <CardDescription>Create them through the `policy.create` router as this layer expands.</CardDescription>
+              <CardDescription>Create your first draft from the policy workflow.</CardDescription>
             </CardHeader>
           </Card>
         ) : null}

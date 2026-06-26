@@ -72,9 +72,9 @@ export function TeamSetupStep({ onNext, onBack }: TeamSetupStepProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add Team Members</CardTitle>
+        <CardTitle>Invite your team</CardTitle>
         <CardDescription>
-          Invite team members to collaborate on compliance. (You can skip this for now.)
+          Add the people who will help manage proof, policies, and reviews. You can skip this for now.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -93,7 +93,7 @@ export function TeamSetupStep({ onNext, onBack }: TeamSetupStepProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="COMPLIANCE_MANAGER">Compliance Mgr</SelectItem>
+                <SelectItem value="COMPLIANCE_MANAGER">Compliance Manager</SelectItem>
                 <SelectItem value="VIEWER">Viewer</SelectItem>
               </SelectContent>
             </Select>

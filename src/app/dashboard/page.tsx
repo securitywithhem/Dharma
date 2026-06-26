@@ -52,12 +52,38 @@ export default function DashboardPage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-4xl font-bold text-stone-900 dark:text-stone-50 mb-2">
-          Compliance Dashboard
+          Compliance Status
         </h1>
         <p className="text-stone-600 dark:text-stone-400">
-          Real-time overview of your compliance posture across all frameworks.
+          Your current readiness, the biggest gaps, and the next action to take.
         </p>
       </motion.div>
+
+      <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-4">
+          Next best action
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {stats.topIncompleteControls.slice(0, 3).map((control, index) => (
+            <div key={control.id} className="rounded-xl border bg-card p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Priority {index + 1}
+              </p>
+              <p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">
+                {control.title}
+              </p>
+              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
+                {control.frameworkName} · {control.domain}
+              </p>
+              <p className="mt-3 text-sm text-stone-700 dark:text-stone-300">
+                {control.evidenceCount === 0
+                  ? "No proof uploaded yet."
+                  : `${control.evidenceCount} proof item(s) already linked.`}
+              </p>
+            </div>
+          ))}
+        </div>
+      </motion.section>
 
       {/* Overall Readiness Score */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>

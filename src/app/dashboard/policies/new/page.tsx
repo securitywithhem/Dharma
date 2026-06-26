@@ -106,13 +106,13 @@ export default function NewPolicyPage() {
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">AI Policy Wizard</h1>
-        <p className="text-gray-500 mt-1">Generate DPDP compliant policies tailored to your organization.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Smart Policy Draft</h1>
+        <p className="text-gray-500 mt-1">Generate a policy draft tailored to your organization and compliance goal.</p>
       </div>
 
       {step === 1 && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Step 1: Select Policy Type</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Step 1: Choose a policy type</h2>
           <div className="space-y-4">
             <select
               value={policyType}
@@ -130,7 +130,7 @@ export default function NewPolicyPage() {
                 onClick={() => setStep(2)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium"
               >
-                Next Step
+                Continue
               </button>
             </div>
           </div>
@@ -139,9 +139,9 @@ export default function NewPolicyPage() {
 
       {step === 2 && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 animate-in fade-in slide-in-from-bottom-4">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Step 2: Organizational Context</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Step 2: Add context</h2>
           <p className="text-sm text-gray-500 mb-4">
-            Briefly describe your data processing activities. For example: "We are an e-commerce platform that collects user names, addresses, and payment info."
+            Briefly describe how your business handles customer data and operations.
           </p>
           <textarea
             value={context}
@@ -162,7 +162,7 @@ export default function NewPolicyPage() {
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium flex items-center"
             >
               <Wand2 className="w-4 h-4 mr-2" />
-              Generate Policy
+              Draft Policy
             </button>
           </div>
         </div>
@@ -171,8 +171,8 @@ export default function NewPolicyPage() {
       {step === 3 && !jobStatus?.result && (
         <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center animate-in fade-in">
           <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-gray-900">Drafting Policy...</h2>
-          <p className="text-gray-500 mt-2">Our AI is analyzing the DPDP Act 2023 and drafting your policy based on your context. This typically takes 30-60 seconds.</p>
+          <h2 className="text-xl font-medium text-gray-900">Drafting policy...</h2>
+          <p className="text-gray-500 mt-2">Our AI is preparing a first draft based on your context. This typically takes 30-60 seconds.</p>
         </div>
       )}
 
@@ -181,7 +181,7 @@ export default function NewPolicyPage() {
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center text-green-600">
               <CheckCircle2 className="w-5 h-5 mr-2" />
-              <span className="font-medium">Policy Generated Successfully</span>
+              <span className="font-medium">Policy draft ready</span>
             </div>
             <div className="flex space-x-3">
               <button

@@ -34,7 +34,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     return new Array(384).fill(0.01);
   }
 
-  return embedding;
+  return embedding.slice(0, 384);
 }
 
 /**

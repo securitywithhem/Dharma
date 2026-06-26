@@ -51,7 +51,7 @@ export function CompletionStep() {
         transition={{ delay: 0.3 }}
         className="text-3xl font-bold text-stone-900 dark:text-stone-50 mb-2 text-center"
       >
-        Welcome to Dharma!
+        You're ready to go!
       </motion.h2>
 
       <motion.p
@@ -60,7 +60,7 @@ export function CompletionStep() {
         transition={{ delay: 0.5 }}
         className="text-stone-600 dark:text-stone-400 text-center mb-8 max-w-md"
       >
-        Your organization is ready for compliance. Redirecting to dashboard...
+        Your workspace is set up. Taking you to Compliance Status...
       </motion.p>
 
       <motion.div
@@ -69,7 +69,7 @@ export function CompletionStep() {
         transition={{ delay: 0.7 }}
       >
         <Button onClick={handleGoToDashboard} size="lg">
-          Go to Dashboard Now
+          Open Compliance Status
         </Button>
       </motion.div>
     </div>

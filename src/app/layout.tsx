@@ -16,9 +16,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dharma",
+  title: "Dharma | Compliance Status",
   description:
-    "Self-hosted compliance management for DPDP, ISO 27001, and SOC 2 evidence operations."
+    "Self-hosted compliance workspace for Indian startups and MSMEs preparing for DPDP, ISO 27001, and SOC 2."
 };
 
 export default async function RootLayout({

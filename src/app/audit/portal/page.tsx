@@ -10,7 +10,7 @@ export default function AuditorPortalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Compliance Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Auditor Portal</h1>
         <p className="text-gray-500 mt-1">
           Reviewing evidence and controls for: <span className="font-semibold text-gray-700">{organization?.name}</span>
         </p>

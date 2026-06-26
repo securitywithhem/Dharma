@@ -6,13 +6,11 @@ import {
   Database, 
   LockKeyhole, 
   Server, 
-  Sparkles, 
   Cpu, 
   ShieldCheck, 
   Clock, 
   ChevronRight, 
   Globe, 
-  Layers 
 } from "lucide-react";
 import { authOptions } from "@/server/auth";
 import { Badge } from "@/components/ui/badge";
@@ -21,38 +19,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 const features = [
   {
-    title: "On-Premises AI Engine",
-    description: "Run nomic-embed-text and Llama 3 8B models locally via Ollama. 100% vector similarity mapping, completely offline.",
+    title: "Private AI Guidance",
+    description: "Get compliance recommendations without sending sensitive data outside your boundary.",
     icon: Cpu,
     color: "from-amber-500/10 to-orange-500/10 border-orange-500/20"
   },
   {
-    title: "Tamper-Evident Logs",
-    description: "Every action is linked in a cryptographic SHA-256 chain. The verification engine catches any database tampering instantly.",
+    title: "Tamper-Proof Audit Trail",
+    description: "Every action is tracked in a verifiable audit trail so changes are easy to review.",
     icon: LockKeyhole,
     color: "from-indigo-500/10 to-blue-500/10 border-indigo-500/20"
   },
   {
-    title: "Bypassed Object Store",
-    description: "Evidence is uploaded directly to your self-hosted MinIO bucket via secure 15-minute presigned URLs.",
+    title: "Secure Evidence Vault",
+    description: "Upload files into your own storage with secure links and controlled access.",
     icon: Server,
     color: "from-emerald-500/10 to-teal-500/10 border-emerald-500/20"
   },
   {
-    title: "Auditor Token Portals",
-    description: "Create time-bound, read-only dashboard access tokens for external compliance regulators with automatic expiration.",
+    title: "Auditor Access",
+    description: "Share a time-bound, read-only link with external auditors when needed.",
     icon: ShieldCheck,
     color: "from-purple-500/10 to-pink-500/10 border-purple-500/20"
   },
   {
     title: "DPDP Act Alignment",
-    description: "Pre-loaded consent structures, notice requirements, and principal rights mapped directly to Indian regulations.",
+    description: "Start with DPDP-friendly consent, notices, and privacy requirements for Indian businesses.",
     icon: Globe,
     color: "from-red-500/10 to-rose-500/10 border-red-500/20"
   },
   {
-    title: "Full tRPC & Prisma Stack",
-    description: "End-to-end TypeScript type-safety mapping the Postgres database layer directly to the React components.",
+    title: "Reliable Workflow Stack",
+    description: "A type-safe foundation that keeps data, workflows, and reports consistent.",
     icon: Database,
     color: "from-sky-500/10 to-cyan-500/10 border-sky-500/20"
   }
@@ -124,14 +122,15 @@ export default async function LandingPage() {
               </span>
             </h1>
             <p className="max-w-2xl mx-auto text-base sm:text-lg text-muted-foreground leading-relaxed">
-              Dharma delivers an enterprise-ready compliance backbone directly inside your boundary. Mapped to the **DPDP Act 2023**, **ISO 27001**, and **SOC 2** — powered by local vector embedding similarity search and cryptographic proof logs.
+              Dharma helps Indian founders and MSMEs get audit-ready faster. Stay inside your own boundary while preparing for{" "}
+              <strong>DPDP Act 2023</strong>, <strong>ISO 27001</strong>, and <strong>SOC 2</strong>.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link href="/auth/signin?callbackUrl=/dashboard">
               <Button size="lg" className="h-12 px-6 bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-700 hover:to-orange-600 text-white border-0 shadow-lg shadow-orange-500/20 gap-2">
-                Enter Workspace
+                Open Compliance Status
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -163,9 +162,9 @@ export default async function LandingPage() {
       {/* Bento Grid Features Section */}
       <section id="features" className="container mx-auto px-4 py-20 border-t border-border/40 bg-muted/20">
         <div className="max-w-3xl mx-auto text-center space-y-4 mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Built to secure enterprise compliance</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Built to guide founders to readiness</h2>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Every component of Dharma is optimized to run locally within Docker containers, keeping user data and compliance artifacts secure and verifiable.
+            Every part of Dharma is designed to help you understand what to do next without exposing sensitive data.
           </p>
         </div>
 
@@ -192,7 +191,7 @@ export default async function LandingPage() {
             <div className="h-5 w-5 rounded bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white font-bold text-[10px]">
               D
             </div>
-            <span className="font-semibold text-foreground/80">Dharma MSME Compliance Platform</span>
+            <span className="font-semibold text-foreground/80">Dharma Compliance Workspace</span>
           </div>
           <p>© {new Date().getFullYear()} Dharma. All data remains within your self-hosted host boundary.</p>
         </div>

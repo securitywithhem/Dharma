@@ -61,7 +61,7 @@ export default function ControlDetailPage() {
         className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 mb-6"
       >
         <ChevronLeft className="w-4 h-4" />
-        Back to Frameworks
+        Back to Certification Goals
       </Link>
 
       {/* Control Header */}
@@ -91,14 +91,14 @@ export default function ControlDetailPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Evidence & Documentation</CardTitle>
-              <CardDescription>Upload files to demonstrate compliance with this control</CardDescription>
+              <CardDescription>Upload files to demonstrate this requirement is covered</CardDescription>
             </div>
             <Button
               onClick={() => setIsUploadModalOpen(true)}
               className="gap-2"
             >
               <Upload className="w-4 h-4" />
-              Upload Evidence
+              Add Proof
             </Button>
           </div>
         </CardHeader>

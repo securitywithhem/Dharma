@@ -14,7 +14,7 @@ export function TopNav() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            Compliance command center
+            Compliance status
           </div>
           <p className="text-sm font-medium text-foreground">
             {session?.user?.email ?? "Signed-in workspace"}

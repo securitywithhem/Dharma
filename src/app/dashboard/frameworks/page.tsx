@@ -43,8 +43,8 @@ export default function FrameworksPage() {
             )}
           </div>
           <p className="text-muted-foreground text-sm max-w-xl">
-            Track your organisation&apos;s compliance posture across DPDP Act
-            2023, ISO 27001:2022, SOC 2 Type II, and custom frameworks.
+          Track your organisation&apos;s certification goals across DPDP Act
+          2023, ISO 27001:2022, SOC 2 Type II, and custom requirements.
           </p>
         </div>
 

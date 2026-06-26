@@ -71,7 +71,7 @@ export default function EvidencePage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-semibold tracking-tight">
-              Compliance Evidence
+              Proof
             </h1>
             {!listQuery.isLoading && (
               <Badge variant="outline" className="text-xs">
@@ -80,9 +80,8 @@ export default function EvidencePage() {
             )}
           </div>
           <p className="text-sm text-muted-foreground max-w-xl">
-            Upload screenshots, policy documents, API responses, and
-            certificates to prove control compliance. Files are stored securely
-            in MinIO and linked to your audit trail.
+            Upload screenshots, policy documents, API responses, and certificates
+            to prove you meet each requirement. Files stay in your secure vault.
           </p>
         </div>
 

@@ -12,12 +12,12 @@ import type { Route } from "next";
 const navigation = [
   {
     href: "/dashboard" as Route,
-    label: "Overview",
+    label: "Compliance Status",
     icon: LayoutDashboard
   },
   {
     href: "/dashboard/frameworks" as Route,
-    label: "Frameworks",
+    label: "Certification Goals",
     icon: Shield
   },
   {
@@ -47,9 +47,9 @@ export function Sidebar() {
           Dharma
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Foundation Layer</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Compliance Workspace</h1>
           <p className="text-sm text-muted-foreground">
-            Self-hosted compliance workspace for frameworks, evidence, and policies.
+            Self-hosted compliance workspace for proof, policies, and certification goals.
           </p>
         </div>
       </div>

@@ -39,7 +39,7 @@ export default function SignInPage() {
         <CardHeader className="space-y-3">
           <CardTitle className="text-3xl">Sign in to Dharma</CardTitle>
           <CardDescription>
-            Use a configured Google workspace or SMTP-backed magic link to enter your compliance workspace.
+            Use Google or a magic link to enter your compliance workspace.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -50,13 +50,11 @@ export default function SignInPage() {
             onClick={() => handleProviderSignIn("google")}
           >
             <Chrome className="h-4 w-4" />
-            {googleEnabled ? "Continue with Google" : "Google OAuth not configured"}
+            {googleEnabled ? "Continue with Google" : "Google sign-in not configured"}
           </Button>
 
           <div className="space-y-3">
-            <label className="text-sm font-medium" htmlFor="email">
-              Magic link
-            </label>
+            <label className="text-sm font-medium" htmlFor="email">Magic link</label>
             <div className="flex gap-3">
               <Input
                 id="email"
@@ -77,7 +75,7 @@ export default function SignInPage() {
             </div>
             {!emailEnabled ? (
               <p className="text-sm text-muted-foreground">
-                Magic links activate once SMTP variables are set in `.env.local`.
+                Magic links activate once SMTP variables are set.
               </p>
             ) : null}
           </div>

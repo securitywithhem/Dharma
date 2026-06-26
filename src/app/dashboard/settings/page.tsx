@@ -45,7 +45,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Admin-only organization context and session claims exposed through tRPC.
+          Manage your workspace, team access, and auditor sharing.
         </p>
       </div>
 
@@ -53,8 +53,8 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Session context</CardTitle>
-              <CardDescription>These values come from the customized NextAuth session callback.</CardDescription>
+              <CardTitle>Workspace session</CardTitle>
+              <CardDescription>These values describe the signed-in workspace member.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p>User ID: {sessionQuery.data?.id ?? "Unavailable"}</p>
@@ -65,7 +65,7 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Organization</CardTitle>
+              <CardTitle>Workspace</CardTitle>
               <CardDescription>Counts reflect the currently authenticated organization.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
@@ -86,17 +86,17 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-amber-500" />
-                Auditor Access Portal
+                Share with Auditor
               </CardTitle>
               <CardDescription>
-                Generate a time-limited, read-only login link for external auditors or compliance regulators.
+                Generate a time-limited, read-only link for external auditors or compliance reviewers.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 flex-1 flex flex-col justify-between">
               {isAdmin ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Link Duration</label>
+                    <label className="text-sm font-medium">Link duration</label>
                     <Select
                       value={duration}
                       onValueChange={(val) => setDuration(val as "1d" | "7d" | "30d")}
@@ -140,7 +140,7 @@ export default function SettingsPage() {
                       </div>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        This token will automatically expire after {duration === "1d" ? "24 hours" : duration === "7d" ? "7 days" : "30 days"}.
+                        This link will automatically expire after {duration === "1d" ? "24 hours" : duration === "7d" ? "7 days" : "30 days"}.
                       </p>
                     </div>
                   )}
@@ -157,4 +157,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

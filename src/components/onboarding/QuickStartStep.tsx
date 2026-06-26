@@ -13,23 +13,23 @@ interface QuickStartStepProps {
 export function QuickStartStep({ onNext, onBack }: QuickStartStepProps) {
   const tips = [
     {
-      title: 'Upload Evidence',
-      description: 'Start by uploading screenshots, policies, and logs to support compliance.',
+      title: 'Add Proof',
+      description: 'Upload screenshots, policies, and logs that prove each requirement.',
       icon: '📄',
     },
     {
-      title: 'Generate Policies',
-      description: 'Use AI to draft compliance policies tailored to your frameworks.',
+      title: 'Auto-Draft Policies',
+      description: 'Use AI to create a first draft for the policies you need.',
       icon: '✨',
     },
     {
-      title: 'Track Controls',
-      description: 'Monitor compliance status across all controls in real-time.',
+      title: 'Track Progress',
+      description: 'See what is done, what is missing, and what needs attention next.',
       icon: '📊',
     },
     {
-      title: 'Export Reports',
-      description: 'Generate signed, audit-ready compliance reports anytime.',
+      title: 'Share Reports',
+      description: 'Generate a report you can send to auditors or customers.',
       icon: '📋',
     },
   ];
@@ -37,9 +37,9 @@ export function QuickStartStep({ onNext, onBack }: QuickStartStepProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Quick Start Guide</CardTitle>
+        <CardTitle>How founders use Dharma</CardTitle>
         <CardDescription>
-          Here's what you can do with Dharma to accelerate your compliance journey.
+          Here is the fastest path from signup to audit-ready.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -70,7 +70,7 @@ export function QuickStartStep({ onNext, onBack }: QuickStartStepProps) {
             Back
           </Button>
           <Button onClick={onNext} className="flex-1">
-            Complete Setup
+            Go to Compliance Status
           </Button>
         </div>
       </CardContent>
