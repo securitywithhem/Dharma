@@ -8,8 +8,6 @@ const handler = (request: Request) =>
     req: request,
     router: appRouter,
     createContext: () => {
-      console.log(`[TRPC INCOMING] URL: ${request.url}`);
-      console.log(`[TRPC INCOMING] Cookie: ${request.headers.get("cookie")}`);
       return createTRPCContext({
         headers: request.headers
       });

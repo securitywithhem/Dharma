@@ -6,6 +6,7 @@ import { appRouter } from '@/server/routers';
 const prisma = new PrismaClient();
 let organizationId: string;
 let userId: string;
+let controlId: string;
 
 function createCaller(orgId: string, uid: string, role: Role = Role.ADMIN) {
   const factory = createCallerFactory(appRouter);
@@ -44,13 +45,14 @@ describe('evidence router', () => {
     });
     userId = user.id;
 
-    // Create a framework and control so that there is at least one control in the org for getUploadUrl fallback
+    // Create a framework and control so the test can target an explicit requirement
     const framework = await prisma.framework.create({
       data: { name: 'Test Framework', organizationId }
     });
-    await prisma.control.create({
+    const control = await prisma.control.create({
       data: { frameworkId: framework.id, title: 'Test Control', domain: 'Test Domain', description: 'Test Control Description' }
     });
+    controlId = control.id;
   });
 
   afterAll(async () => {
@@ -62,7 +64,8 @@ describe('evidence router', () => {
     const caller = createCaller(organizationId, userId);
     const result = await caller.evidence.getUploadUrl({
       fileName: 'screenshot.png',
-      contentType: 'image/png'
+      contentType: 'image/png',
+      controlId
     });
     expect(result.uploadUrl).toContain('http');
     expect(result.filePath).toBeDefined();

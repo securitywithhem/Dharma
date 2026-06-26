@@ -222,9 +222,11 @@ model AuditorAccess {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  token          String       @unique
+  tokenHash      String?      @unique
+  sessionTokenHash String?    @unique
   expiresAt      DateTime
   isActive       Boolean      @default(true)
+  exchangedAt    DateTime?
   createdAt      DateTime     @default(now())
 
   @@index([organizationId])

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import type { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
-type AuditWriter = Pick<PrismaClient, "auditLog">;
+type AuditWriter = PrismaClient;
 
 type HashableAuditEntry = {
   organizationId: string;
@@ -47,28 +47,41 @@ export async function createAuditLog(
   prismaClient: AuditWriter,
   input: Omit<HashableAuditEntry, "timestamp" | "previousHash">,
 ) {
-  const timestamp = new Date();
-  const previous = await prismaClient.auditLog.findFirst({
-    where: { organizationId: input.organizationId },
-    orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }]
-  });
+  return prismaClient.$transaction(
+    async (tx) => {
+      const timestamp = new Date();
+      const lockKey = `audit-log:${input.organizationId}`;
 
-  const previousHash = previous?.currentHash ?? null;
-  const currentHash = computeAuditHash({
-    ...input,
-    previousHash,
-    timestamp: timestamp.toISOString()
-  });
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${lockKey}), 0)
+      `;
 
-  return prismaClient.auditLog.create({
-    data: {
-      ...input,
-      changes: input.changes ?? undefined,
-      timestamp,
-      previousHash,
-      currentHash
-    }
-  });
+      const previous = await tx.auditLog.findFirst({
+        where: { organizationId: input.organizationId },
+        orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }],
+      });
+
+      const previousHash = previous?.currentHash ?? null;
+      const currentHash = computeAuditHash({
+        ...input,
+        previousHash,
+        timestamp: timestamp.toISOString(),
+      });
+
+      return tx.auditLog.create({
+        data: {
+          ...input,
+          changes: input.changes ?? undefined,
+          timestamp,
+          previousHash,
+          currentHash,
+        },
+      });
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
 }
 
 export function verifyAuditChain(

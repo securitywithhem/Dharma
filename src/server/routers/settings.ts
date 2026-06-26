@@ -1,6 +1,9 @@
 import { createTRPCRouter, adminProcedure, orgProcedure } from "@/server/trpc";
 import { z } from "zod";
-import crypto from "crypto";
+import {
+  generateAuditorExchangeCode,
+  hashAuditorToken,
+} from "@/server/auditor-access";
 export const settingsRouter = createTRPCRouter({
   session: orgProcedure.query(async ({ ctx }) => {
     return {
@@ -32,7 +35,8 @@ export const settingsRouter = createTRPCRouter({
       duration: z.enum(["1d", "7d", "30d"])
     }))
     .mutation(async ({ ctx, input }) => {
-      const token = crypto.randomBytes(32).toString("hex");
+      const exchangeCode = generateAuditorExchangeCode();
+      const tokenHash = hashAuditorToken(exchangeCode);
       
       const durationMs = 
         input.duration === "1d" ? 24 * 60 * 60 * 1000 :
@@ -44,12 +48,12 @@ export const settingsRouter = createTRPCRouter({
       await ctx.prisma.auditorAccess.create({
         data: {
           organizationId: ctx.session.user.organizationId,
-          token,
+          tokenHash,
           expiresAt,
           isActive: true
         }
       });
 
-      return { url: `/audit/auth?token=${token}` };
+      return { url: `/audit/auth?code=${exchangeCode}` };
     })
 });

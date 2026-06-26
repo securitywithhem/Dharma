@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import {
   FileText,
   RefreshCw,
   ShieldCheck,
-  Upload,
 } from "lucide-react";
 import { api } from "@/hooks/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EvidenceUploadForm } from "./EvidenceUploadForm";
 import { EvidenceTable } from "./EvidenceTable";
 
 // ------------------------------------------------------------------
@@ -41,8 +39,6 @@ function StatCard({
 // ------------------------------------------------------------------
 
 export default function EvidencePage() {
-  const utils = api.useUtils();
-
   const listQuery = api.evidence.list.useQuery(
     {},
     { staleTime: 30_000 },
@@ -59,10 +55,6 @@ export default function EvidencePage() {
   const expiredCount = items.filter(
     (e) => e.expiresAt && new Date(e.expiresAt) < new Date(),
   ).length;
-
-  async function handleUploadSuccess() {
-    await utils.evidence.list.invalidate();
-  }
 
   return (
     <div className="space-y-8">
@@ -98,11 +90,12 @@ export default function EvidencePage() {
             />
             Refresh
           </Button>
-          {/* Global upload — controlId will be empty and the user selects control in the form */}
-          <EvidenceUploadForm
-            controlId="" /* replaced per-row by the ControlTable */
-            onSuccess={handleUploadSuccess}
-          />
+          <Link
+            href="/dashboard/frameworks"
+            className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold hover:bg-accent hover:text-accent-foreground"
+          >
+            Upload proof from a requirement
+          </Link>
         </div>
       </div>
 

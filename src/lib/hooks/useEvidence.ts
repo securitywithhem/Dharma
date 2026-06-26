@@ -36,7 +36,7 @@ export function useEvidence() {
   // Handler: Upload file and create evidence record
   const uploadEvidence = useCallback(
     async (
-      controlId: string | undefined,
+      controlId: string,
       file: File,
       type: EvidenceType
     ) => {

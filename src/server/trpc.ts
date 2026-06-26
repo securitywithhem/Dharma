@@ -7,6 +7,10 @@ import { ZodError } from "zod";
 import { authOptions } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { hasManagementAccess, isAdminRole } from "@/server/rbac";
+import {
+  AUDITOR_COOKIE_NAME,
+  hashAuditorToken
+} from "@/server/auditor-access";
 
 export type PrismaLike = PrismaClient;
 
@@ -24,21 +28,23 @@ export async function createInnerTRPCContext(options: CreateContextOptions) {
   let auditorTokenExpiry: Date | undefined;
 
   const cookieHeader = options.headers.get("cookie");
-  console.log("[TRPC Context] cookieHeader:", cookieHeader);
-  console.log("[TRPC Context] session before auditor check:", !!session);
 
   if (cookieHeader && !session) {
-    const match = cookieHeader.match(/dharma_auditor_token=([^;]+)/);
-    console.log("[TRPC Context] match result:", !!match);
+    const match = cookieHeader.match(
+      new RegExp(`(?:^|;\\s*)${AUDITOR_COOKIE_NAME}=([^;]+)`)
+    );
     if (match) {
-      const token = match[1];
+      const tokenHash = hashAuditorToken(decodeURIComponent(match[1]));
       const prismaClient = options.prismaClient ?? prisma;
-      const auditorAccess = await prismaClient.auditorAccess.findUnique({
-        where: { token },
+      const auditorAccess = await prismaClient.auditorAccess.findFirst({
+        where: {
+          sessionTokenHash: tokenHash,
+          isActive: true,
+          expiresAt: { gt: new Date() }
+        },
       });
-      console.log("[TRPC Context] auditorAccess found:", !!auditorAccess, auditorAccess?.isActive, auditorAccess?.expiresAt);
 
-      if (auditorAccess && auditorAccess.isActive && auditorAccess.expiresAt > new Date()) {
+      if (auditorAccess) {
         session = {
           user: {
             id: "auditor",
@@ -51,7 +57,6 @@ export async function createInnerTRPCContext(options: CreateContextOptions) {
         };
         isAuditor = true;
         auditorTokenExpiry = auditorAccess.expiresAt;
-        console.log("[TRPC Context] Auditor session set successfully!");
       }
     }
   }

@@ -1,39 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/server/db";
+import {
+  AUDITOR_COOKIE_NAME,
+  AUDITOR_EXCHANGE_PARAM,
+  generateAuditorSessionToken,
+  hashAuditorToken,
+} from "@/server/auditor-access";
 
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
+  const exchangeCode = req.nextUrl.searchParams.get(AUDITOR_EXCHANGE_PARAM);
 
-  if (!token) {
-    console.log("[Audit Auth] No token provided in URL");
+  if (!exchangeCode) {
     return NextResponse.redirect(new URL("/audit/portal", req.url));
   }
 
-  // Validate token
-  const auditorAccess = await prisma.auditorAccess.findUnique({
-    where: { token },
+  const tokenHash = hashAuditorToken(exchangeCode);
+  const now = new Date();
+
+  const auditorAccess = await prisma.auditorAccess.findFirst({
+    where: {
+      tokenHash,
+      isActive: true,
+      exchangedAt: null,
+      expiresAt: { gt: now },
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      expiresAt: true,
+    },
   });
 
   if (!auditorAccess) {
-    console.log(`[Audit Auth] Token not found in DB: ${token}`);
-    return NextResponse.redirect(new URL("/audit/portal", req.url));
-  }
-  
-  if (auditorAccess.expiresAt < new Date()) {
-    console.log(`[Audit Auth] Token expired: ${token}, expiresAt: ${auditorAccess.expiresAt}`);
     return NextResponse.redirect(new URL("/audit/portal", req.url));
   }
 
-  console.log(`[Audit Auth] Valid token found: ${token}. Setting cookie!`);
+  const sessionToken = generateAuditorSessionToken();
+  const sessionTokenHash = hashAuditorToken(sessionToken);
+  const updated = await prisma.auditorAccess.updateMany({
+    where: {
+      id: auditorAccess.id,
+      tokenHash,
+      exchangedAt: null,
+    },
+    data: {
+      tokenHash: null,
+      sessionTokenHash,
+      exchangedAt: now,
+    },
+  });
 
-  // Generate the response redirecting to the portal
+  if (updated.count !== 1) {
+    return NextResponse.redirect(new URL("/audit/portal", req.url));
+  }
+
   const response = NextResponse.redirect(new URL("/audit/portal", req.url));
-
-  // Set HTTP-only cookie using next/headers
-  cookies().set({
-    name: "dharma_auditor_token",
-    value: token,
+  response.cookies.set({
+    name: AUDITOR_COOKIE_NAME,
+    value: sessionToken,
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     path: "/",
