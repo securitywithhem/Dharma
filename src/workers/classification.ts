@@ -164,57 +164,24 @@ function truncateText(text: string, maxChars = 2000): string {
 // Ollama API helpers
 // ------------------------------------------------------------------
 
-const OLLAMA_BASE_URL = env.OLLAMA_BASE_URL ?? "http://localhost:11434";
+import { getEmbedding, generateText } from "./ollama";
+
+const OLLAMA_MODEL_LLM = process.env.OLLAMA_MODEL_LLM || "llama3:8b";
+const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING || "nomic-embed-text";
 
 /** Generate a 1-sentence compliance summary via Ollama. */
 async function generateSummary(text: string): Promise<string> {
   if (!text.trim()) return "";
-
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama3",
-      prompt: `You are a compliance analyst. Summarize the following evidence in exactly one sentence (maximum 150 characters).\n\nEvidence:\n${text}`,
-      stream: false,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Ollama summary failed: ${res.status} ${res.statusText}`);
-  }
-
-  const json = (await res.json()) as { response?: string };
-  return (json.response ?? "").trim().slice(0, 150);
+  const responseText = await generateText(
+    `You are a compliance analyst. Summarize the following evidence in exactly one sentence (maximum 150 characters).\n\nEvidence:\n${text}`,
+    OLLAMA_MODEL_LLM
+  );
+  return responseText.slice(0, 150);
 }
 
 /** Generate a 384-dim embedding via Ollama nomic-embed-text. */
 async function generateEmbedding(text: string): Promise<number[]> {
-  const prompt = text.trim() || "empty evidence";
-
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "nomic-embed-text",
-      prompt,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(
-      `Ollama embedding failed: ${res.status} ${res.statusText}`,
-    );
-  }
-
-  const json = (await res.json()) as { embedding?: number[] };
-  const embedding = json.embedding;
-
-  if (!Array.isArray(embedding) || embedding.length === 0) {
-    throw new Error("Ollama returned an empty or invalid embedding array.");
-  }
-
-  return embedding;
+  return getEmbedding(text, OLLAMA_MODEL_EMBEDDING);
 }
 
 /** Return a zero-vector fallback of the expected dimension. */

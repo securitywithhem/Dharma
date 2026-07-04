@@ -40,55 +40,22 @@ export const policyQueue = new Queue<ProcessPolicyJobData>(POLICY_QUEUE_NAME, {
   },
 });
 
-const OLLAMA_BASE_URL = env.OLLAMA_BASE_URL ?? "http://localhost:11434";
+import { getEmbedding, generateText } from "./ollama";
+
+const OLLAMA_MODEL_LLM = process.env.OLLAMA_MODEL_LLM || "llama3:8b";
+const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING || "nomic-embed-text";
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const prompt = text.trim() || "empty query";
-
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "nomic-embed-text",
-      prompt,
-    }),
-  });
-
-  if (!res.ok) {
-    console.warn(`Ollama embedding failed: ${res.status} ${res.statusText}. Using fallback zero-vector.`);
-    return new Array(384).fill(0.01);
-  }
-
-  const json = (await res.json()) as { embedding?: number[] };
-  const embedding = json.embedding;
-
-  if (!Array.isArray(embedding) || embedding.length === 0) {
-    console.warn("Ollama returned an empty or invalid embedding array. Using fallback zero-vector.");
-    return new Array(384).fill(0.01);
-  }
-
-  return embedding;
+  return getEmbedding(text, OLLAMA_MODEL_EMBEDDING);
 }
 
 async function generatePolicyWithOllama(prompt: string): Promise<string> {
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama3",
-      prompt,
-      stream: false,
-    }),
-  });
-
-  if (!res.ok) {
-    // If Ollama generation fails, return a mock policy to ensure the pipeline proceeds locally
-    console.warn(`Ollama generation failed: ${res.status} ${res.statusText}. Returning mock policy.`);
-    return `# Mock Policy\n\nCould not reach Ollama (llama3) at ${OLLAMA_BASE_URL}.\n\n### Required Context:\n${prompt.slice(0, 300)}...`;
+  try {
+    return await generateText(prompt, OLLAMA_MODEL_LLM);
+  } catch (err) {
+    console.warn(`Ollama generation failed: ${err instanceof Error ? err.message : String(err)}. Returning mock policy.`);
+    return `# Mock Policy\n\nCould not reach Ollama (${OLLAMA_MODEL_LLM}).\n\n### Error Details:\n${err instanceof Error ? err.message : String(err)}\n\n### Required Context:\n${prompt.slice(0, 300)}...`;
   }
-
-  const json = (await res.json()) as { response?: string };
-  return (json.response ?? "").trim();
 }
 
 async function processPolicyJob(job: Job<ProcessPolicyJobData>): Promise<string> {

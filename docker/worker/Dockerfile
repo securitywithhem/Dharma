@@ -51,4 +51,4 @@ USER worker
 # Workers don't expose ports – they only consume from Redis queues
 # No HEALTHCHECK needed here; worker health is monitored via BullMQ board
 
-CMD ["npx", "tsx", "src/workers/classification.ts"]
+CMD ["npx", "tsx", "src/workers/index.ts"]
