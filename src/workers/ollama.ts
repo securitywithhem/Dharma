@@ -56,6 +56,13 @@ export function ollamaPost(path: string, body: any, timeoutMs = 600000): Promise
   });
 }
 
+export class ClassificationRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ClassificationRetryableError";
+  }
+}
+
 /**
  * Generate 384-dimensional embedding using Ollama nomic-embed-text.
  */
@@ -65,13 +72,12 @@ export async function getEmbedding(text: string, model: string): Promise<number[
     const json = await ollamaPost("/api/embeddings", { model, prompt });
     const embedding = json.embedding;
     if (!Array.isArray(embedding) || embedding.length === 0) {
-      console.warn("Ollama returned an empty or invalid embedding array. Using fallback zero-vector.");
-      return new Array(384).fill(0.01);
+      throw new ClassificationRetryableError("Ollama returned an empty or invalid embedding array.");
     }
     return embedding.slice(0, 384);
   } catch (err) {
-    console.warn(`Ollama embedding failed: ${err instanceof Error ? err.message : String(err)}. Using fallback zero-vector.`);
-    return new Array(384).fill(0.01);
+    if (err instanceof ClassificationRetryableError) throw err;
+    throw new ClassificationRetryableError(`Ollama embedding failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

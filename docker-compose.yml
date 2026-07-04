@@ -23,16 +23,16 @@ services:
     container_name: dharma-postgres
     restart: on-failure:3
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-dharma_db}
-      POSTGRES_USER: ${POSTGRES_USER:-dharma}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dharmapass}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/01-init-postgres.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dharma} -d ${POSTGRES_DB:-dharma_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -57,7 +57,7 @@ services:
       redis-server
       --appendonly yes
       --appendfsync everysec
-      --requirepass ${REDIS_PASSWORD:-redispass}
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
     ports:
@@ -65,7 +65,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -87,8 +87,8 @@ services:
     container_name: dharma-minio
     restart: on-failure:3
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin_change_me}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_BROWSER_REDIRECT_URL: ${MINIO_CONSOLE_URL:-http://localhost:9001}
     command: server /data --console-address ":9001"
     ports:
@@ -123,9 +123,9 @@ services:
       minio:
         condition: service_healthy
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_change_me}
-      MINIO_BUCKET: ${MINIO_BUCKET:-dharma-evidence}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
     entrypoint: >
       /bin/sh -c "
         echo '⏳ Configuring MinIO client...' &&
@@ -208,17 +208,17 @@ services:
       - envs/.env.docker
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?schema=public
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redispass}@redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: "9000"
       MINIO_USE_SSL: "false"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_change_me}
-      MINIO_BUCKET: ${MINIO_BUCKET:-dharma-evidence}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
       OLLAMA_BASE_URL: http://ollama:11434
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-to-a-random-string-at-least-32-chars}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST:-}
@@ -271,14 +271,14 @@ services:
       - envs/.env.docker
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?schema=public
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redispass}@redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: "9000"
       MINIO_USE_SSL: "false"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_change_me}
-      MINIO_BUCKET: ${MINIO_BUCKET:-dharma-evidence}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
       OLLAMA_BASE_URL: http://ollama:11434
     depends_on:
       postgres:
@@ -358,8 +358,8 @@ services:
       ofelia.job-run.backup-postgres.command: >
         /bin/sh -c
         "docker exec dharma-postgres pg_dump
-        -h localhost -U ${POSTGRES_USER:-dharma}
-        ${POSTGRES_DB:-dharma_db} | gzip > /backups/pg/dharma_$(date +%Y%m%d_%H%M%S).sql.gz"
+        -h localhost -U ${POSTGRES_USER:?POSTGRES_USER is required}
+        ${POSTGRES_DB:?POSTGRES_DB is required} | gzip > /backups/pg/dharma_$(date +%Y%m%d_%H%M%S).sql.gz"
       ofelia.job-run.backup-postgres.no-overlap: "true"
       # ── Nightly MinIO backup (02:30 UTC) ──────────────────
       ofelia.job-run.backup-minio.schedule: "30 2 * * *"
@@ -389,7 +389,7 @@ services:
     profiles:
       - monitoring
     environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dharmapass}@postgres:5432/${POSTGRES_DB:-dharma_db}?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}?sslmode=disable
       PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
     ports:
       - "9187:9187"
@@ -420,7 +420,7 @@ services:
       - monitoring
     environment:
       REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispass}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - "9121:9121"
     depends_on:
@@ -500,7 +500,7 @@ services:
       - "${GRAFANA_PORT:-3001}:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-dharma-grafana}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"

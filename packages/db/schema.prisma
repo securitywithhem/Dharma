@@ -31,6 +31,9 @@ model Organization {
   // stored as encrypted JSON blob
   aiProvider   Json?
 
+  // 64-bit unique lock ID for safe pg_advisory_xact_lock calls
+  lockKeyId    BigInt               @unique @default(autoincrement())
+
   @@index([createdAt])
 }
 
@@ -157,6 +160,10 @@ model Evidence {
   collectedAt    DateTime              @default(now())
   expiresAt      DateTime?
   embedding      Unsupported("vector(384)")?
+  embeddingStatus EmbeddingStatus      @default(PENDING)
+  embeddingError  String?              @db.Text
+  embeddingAttempts Int                @default(0)
+  lastEmbeddingAttempt DateTime?
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
 
@@ -164,6 +171,7 @@ model Evidence {
   @@index([organizationId])
   @@index([type])
   @@index([connectorId])
+  @@index([embeddingStatus])
 }
 
 enum EvidenceType {
@@ -173,6 +181,12 @@ enum EvidenceType {
   LOG_EXCERPT
   CERTIFICATE
   OTHER
+}
+
+enum EmbeddingStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 model Policy {

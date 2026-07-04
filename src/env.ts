@@ -33,6 +33,7 @@ const envSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
+  OLLAMA_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(3),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 
   // ── Phase 2 Feature 3: External Audit Chain Anchoring ──────────────────

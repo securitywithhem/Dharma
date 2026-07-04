@@ -6,11 +6,13 @@ export async function seedDatabase(client: PrismaClient) {
   const organization = await client.organization.upsert({
     where: { id: "org-default" },
     update: {
-      name: "Dharma Demo Organization"
+      name: "Dharma Demo Organization",
+      lockKeyId: 1
     },
     create: {
       id: "org-default",
-      name: "Dharma Demo Organization"
+      name: "Dharma Demo Organization",
+      lockKeyId: 1
     }
   });
 

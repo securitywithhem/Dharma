@@ -3,8 +3,16 @@
 ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "aiProvider" JSONB;
 
 -- Feature 2: Automated Evidence Connectors
-CREATE TYPE IF NOT EXISTS "ConnectorProvider" AS ENUM ('GITHUB', 'AWS', 'VERCEL');
-CREATE TYPE IF NOT EXISTS "ConnectorStatus" AS ENUM ('ACTIVE', 'PAUSED', 'ERROR');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConnectorProvider') THEN
+        CREATE TYPE "ConnectorProvider" AS ENUM ('GITHUB', 'AWS', 'VERCEL');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConnectorStatus') THEN
+        CREATE TYPE "ConnectorStatus" AS ENUM ('ACTIVE', 'PAUSED', 'ERROR');
+    END IF;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS "Connector" (
     "id"             TEXT NOT NULL,

@@ -164,7 +164,7 @@ function truncateText(text: string, maxChars = 2000): string {
 // Ollama API helpers
 // ------------------------------------------------------------------
 
-import { getEmbedding, generateText } from "./ollama";
+import { getEmbedding, generateText, ClassificationRetryableError } from "./ollama";
 
 const OLLAMA_MODEL_LLM = process.env.OLLAMA_MODEL_LLM || "llama3:8b";
 const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING || "nomic-embed-text";
@@ -184,10 +184,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return getEmbedding(text, OLLAMA_MODEL_EMBEDDING);
 }
 
-/** Return a zero-vector fallback of the expected dimension. */
-function zeroVector(dim = 384): number[] {
-  return new Array<number>(dim).fill(0);
-}
+
 
 // ------------------------------------------------------------------
 // Core job processor
@@ -239,7 +236,7 @@ async function processEvidenceJob(
     console.warn("[classification] Summary generation failed, skipping:", err);
   }
 
-  // 6. Generate embedding — use zero-vector on failure
+  // 6. Generate embedding
   let embedding: number[];
   try {
     embedding = await generateEmbedding(extractedText);
@@ -248,7 +245,21 @@ async function processEvidenceJob(
     );
   } catch (err) {
     console.error("[classification] Embedding generation failed:", err);
-    embedding = zeroVector(384);
+    if (err instanceof ClassificationRetryableError) {
+      // Record failure attempt in DB and re-throw so BullMQ will retry
+      await prisma.evidence.update({
+        where: { id: evidenceId },
+        data: {
+          embeddingStatus: "FAILED",
+          embeddingError: err.message,
+          embeddingAttempts: { increment: 1 },
+          lastEmbeddingAttempt: new Date(),
+        }
+      });
+      throw err; // Let BullMQ retry
+    }
+    // Re-throw any other unknown errors
+    throw err;
   }
 
   // 7. Persist to DB via raw SQL (Prisma doesn't support vector writes natively)
@@ -256,6 +267,9 @@ async function processEvidenceJob(
     `UPDATE "Evidence"
        SET embedding = $1::vector,
            summary   = $2,
+           "embeddingStatus" = 'SUCCESS',
+           "embeddingAttempts" = "embeddingAttempts" + 1,
+           "lastEmbeddingAttempt" = NOW(),
            "updatedAt" = NOW()
      WHERE id = $3`,
     `[${embedding.join(",")}]`,
@@ -284,7 +298,7 @@ export function startClassificationWorker() {
     processEvidenceJob,
     {
       connection: redisConnection(),
-      concurrency: 3, // 2-4 concurrent jobs to avoid saturating Ollama
+      concurrency: parseInt(process.env.OLLAMA_WORKER_CONCURRENCY || "3", 10), // 2-4 concurrent jobs to avoid saturating Ollama
       limiter: {
         max: 10, // max jobs per duration
         duration: 60_000,

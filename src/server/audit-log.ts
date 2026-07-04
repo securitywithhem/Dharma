@@ -50,10 +50,18 @@ export async function createAuditLog(
   return prismaClient.$transaction(
     async (tx) => {
       const timestamp = new Date();
-      const lockKey = `audit-log:${input.organizationId}`;
+      const org = await tx.organization.findUnique({
+        where: { id: input.organizationId },
+        select: { lockKeyId: true }
+      });
 
+      if (!org) {
+        throw new Error(`Organization ${input.organizationId} not found for audit logging`);
+      }
+
+      // Acquire 64-bit transaction-level advisory lock using the deterministic lockKeyId
       await tx.$executeRaw`
-        SELECT pg_advisory_xact_lock(hashtext(${lockKey}), 0)
+        SELECT pg_advisory_xact_lock(${org.lockKeyId})
       `;
 
       const previous = await tx.auditLog.findFirst({

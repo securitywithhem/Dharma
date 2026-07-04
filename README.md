@@ -109,3 +109,13 @@ Want to see how much CPU or memory the app is using? You can start the monitorin
 docker compose --env-file envs/.env.docker --profile monitoring up -d
 ```
 Then visit [http://localhost:3001](http://localhost:3001) to see beautiful graphs of your system's health.
+
+---
+
+## 🔒 Security & Reliability
+
+Dharma is designed with defensive programming and robust security defaults:
+
+- **Strict Environment Validation:** Docker configurations do not rely on insecure defaults. A built-in validation script (`scripts/validate-docker-env.sh`) ensures that you generate and use cryptographically secure secrets before the application can even boot.
+- **Fail-Safe AI Workers:** The background processing system natively detects AI (Ollama) inference failures or outages. Instead of corrupting the vector database with empty embeddings, it safely fails the job and utilizes exponential backoff for retries.
+- **Cryptographic Audit Ledger:** Operations like mapping evidence to controls use 64-bit deterministic advisory locks bound to your Organization's ID. This prevents high-concurrency race conditions and guarantees the cryptographic integrity of the compliance ledger.
