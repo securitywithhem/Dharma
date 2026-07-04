@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createTRPCRouter, orgProcedure } from '@/server/trpc';
+import { createTRPCRouter, orgProcedure, adminProcedure } from '@/server/trpc';
 import { aggregateReportData } from '@/lib/services/reportGenerator';
 import { signPdf, uploadSignedPdf } from '@/lib/pdf/pdfSigner';
 import { TRPCError } from '@trpc/server';
@@ -111,5 +111,75 @@ export const reportRouter = createTRPCRouter({
       // @ts-ignore
       verificationStatus: report.changes?.verificationStatus || 'UNVERIFIED',
     }));
+  }),
+
+  // ── Phase 2 Feature 5: Auditor Export Package ─────────────────────────────
+
+  /**
+   * Trigger generation of a full offline auditor export ZIP.
+   */
+  exportAuditorPackage: adminProcedure
+    .input(
+      z.object({
+        frameworkIds: z.array(z.string()).default([]),
+        includeRawFiles: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { session } = ctx;
+      const { auditorPackageQueue } = await import('@/workers/auditorPackage');
+
+      const job = await auditorPackageQueue.add('export-auditor-package', {
+        organizationId: session.user.organizationId,
+        requestedBy: session.user.id,
+        frameworkIds: input.frameworkIds,
+        includeRawFiles: input.includeRawFiles,
+      });
+
+      return { jobId: job.id };
+    }),
+
+  /**
+   * Poll the status of an auditor package export job.
+   * Returns downloadUrl + expiresAt when completed.
+   */
+  getExportStatus: adminProcedure
+    .input(z.object({ jobId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const { auditorPackageQueue } = await import('@/workers/auditorPackage');
+      const { Job } = await import('bullmq');
+      const job = await Job.fromId(auditorPackageQueue, input.jobId);
+
+      if (!job) return { status: 'not_found' as const };
+      const state = await job.getState();
+
+      if (state === 'completed') {
+        return { status: 'completed' as const, ...job.returnvalue };
+      }
+      if (state === 'failed') {
+        return { status: 'failed' as const, error: job.failedReason };
+      }
+
+      return { status: 'active' as const };
+    }),
+
+  /**
+   * List previous auditor export packages for the org.
+   */
+  listExports: adminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.auditExport.findMany({
+      where: { organizationId: ctx.session.user.organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        frameworkIds: true,
+        filePath: true,
+        includeRawFiles: true,
+        createdAt: true,
+        expiresAt: true,
+        requestedBy: true,
+      },
+    });
   }),
 });

@@ -1,0 +1,144 @@
+---
+⚠️ REQUIRES LEGAL REVIEW BEFORE PUBLISHING
+This template contains placeholder legal language. Have qualified legal counsel review
+before setting isPublished: true in production.
+Source regulation: Digital Personal Data Protection Act 2023 (India)
+---
+
+# Privacy Policy
+
+**{{organizationName}}**  
+**Effective Date:** {{effectiveDate}}  
+**Version:** {{policyVersion}}  
+**Last Reviewed:** {{lastReviewedDate}}
+
+---
+
+## 1. Introduction
+
+{{organizationName}} ("we", "our", "us"), registered at {{registeredAddress}}, is committed to protecting the personal data of our users, customers, and partners in accordance with the Digital Personal Data Protection Act, 2023 ("DPDP Act") and applicable Indian data protection laws.
+
+This Privacy Policy describes how we collect, use, disclose, and protect your personal data when you interact with our services at {{serviceUrl}}.
+
+---
+
+## 2. Data Fiduciary Contact
+
+For all privacy-related queries and exercise of rights:
+
+- **Data Protection Officer:** {{dpoName}}
+- **Email:** {{dpoEmail}}
+- **Postal Address:** {{registeredAddress}}
+- **Response SLA:** We respond to all requests within **{{responseTimeDays}} working days**.
+
+---
+
+## 3. Categories of Personal Data We Process
+
+We collect and process the following categories of personal data:
+
+| Category | Examples | Legal Basis |
+|----------|----------|-------------|
+| Identity data | Name, employee ID, username | Consent / Legitimate purpose |
+| Contact data | Email address, phone number | Consent |
+| Usage data | Log files, IP addresses, browser type | Legitimate purpose |
+| Financial data | Billing address, payment references | Contract performance |
+{{#if processSensitiveData}}
+| Sensitive data | {{sensitiveDataCategories}} | Explicit consent |
+{{/if}}
+
+---
+
+## 4. Purpose of Processing
+
+We process your personal data for the following purposes:
+
+1. **Service Delivery** — To provide, maintain, and improve {{serviceName}}.
+2. **Communications** — To send service notifications, security alerts, and marketing communications (with consent where required).
+3. **Compliance** — To fulfil legal obligations under Indian law, including the DPDP Act 2023.
+4. **Security** — To detect and prevent fraud, abuse, and security incidents.
+5. **Analytics** — To understand how our services are used and improve user experience.
+
+We process personal data only for the purposes stated above ("limited purpose processing") in accordance with Section 4 of the DPDP Act.
+
+---
+
+## 5. Data Retention
+
+We retain personal data only as long as necessary:
+
+| Data Category | Retention Period | Basis |
+|---------------|-----------------|-------|
+| Account data | Duration of account + {{postAccountRetentionDays}} days | Contractual |
+| Transaction records | {{transactionRetentionYears}} years | Legal obligation |
+| Security logs | {{securityLogRetentionDays}} days | Legitimate purpose |
+| Marketing consent records | Until consent withdrawn + 3 years | Legal compliance |
+
+After the applicable retention period, data is securely deleted or anonymised.
+
+---
+
+## 6. Data Principal Rights
+
+Under the DPDP Act 2023, you have the right to:
+
+1. **Access** your personal data held by us (Section 11).
+2. **Correction** of inaccurate or outdated personal data (Section 12).
+3. **Erasure** of personal data where processing is no longer necessary (Section 12).
+4. **Grievance Redressal** through our Data Protection Officer (Section 13).
+5. **Nominate** another person to exercise rights on your behalf (Section 14).
+
+To exercise any of these rights, contact **{{dpoEmail}}** with the subject line "Data Principal Rights Request — {{organizationName}}".
+
+---
+
+## 7. Data Transfers
+
+{{#if hasInternationalTransfers}}
+We may transfer personal data outside India to: **{{transferDestinations}}**.
+
+Such transfers occur only:
+- With the prior consent of the Data Principal, OR
+- Where the Central Government has notified the destination country/territory as permissible under Section 16 of the DPDP Act.
+
+We apply appropriate safeguards including contractual protections equivalent to DPDP Act requirements.
+{{else}}
+All personal data is processed and stored within **India**. We do not transfer personal data outside the country.
+{{/if}}
+
+---
+
+## 8. Security Measures
+
+We implement the following technical and organisational measures:
+
+- Encryption of data in transit (TLS 1.2+) and at rest (AES-256)
+- Access controls based on least-privilege principles
+- Regular security assessments and penetration testing
+- Incident response procedures with notification within **{{breachNotificationHours}} hours** of discovery
+- {{additionalSecurityMeasures}}
+
+---
+
+## 9. Cookies and Tracking
+
+We use cookies and similar technologies as described in our Cookie Policy at {{cookiePolicyUrl}}.
+
+---
+
+## 10. Changes to this Policy
+
+We may update this policy from time to time. The "Last Reviewed" date above reflects the most recent revision. Significant changes will be communicated via email to registered users.
+
+---
+
+## 11. Grievance Redressal
+
+If you believe your rights under the DPDP Act have been violated:
+
+1. Contact our DPO at **{{dpoEmail}}** (SLA: {{responseTimeDays}} working days).
+2. If unresolved, file a complaint with the **Data Protection Board of India** (once established under Section 18 of the DPDP Act).
+
+---
+
+*Document generated using Dharma GRC platform. This template requires review by qualified legal counsel before publication.*

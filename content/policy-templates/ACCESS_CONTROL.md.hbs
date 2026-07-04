@@ -1,0 +1,119 @@
+---
+⚠️ REQUIRES LEGAL REVIEW BEFORE PUBLISHING
+---
+
+# Access Control Policy
+
+**{{organizationName}}**  
+**Effective Date:** {{effectiveDate}}  
+**Version:** {{policyVersion}}  
+**Policy Owner:** {{policyOwner}}
+
+---
+
+## 1. Purpose
+
+This policy defines the access control requirements for all systems, applications, and data assets of **{{organizationName}}**, ensuring that access to personal data is restricted to authorised personnel on a need-to-know basis, in compliance with the DPDP Act 2023 Section 8(2)-(4).
+
+---
+
+## 2. Scope
+
+This policy applies to all:
+- Employees, contractors, and temporary staff
+- Third-party service providers with access to {{organizationName}} systems
+- Systems containing personal data of any Data Principal
+
+---
+
+## 3. Access Control Principles
+
+**{{organizationName}}** implements the following access control principles:
+
+| Principle | Description |
+|-----------|-------------|
+| Least Privilege | Users are granted only the minimum access required for their role |
+| Need-to-Know | Access to personal data is restricted to those who require it for legitimate business purposes |
+| Separation of Duties | Critical functions are divided to prevent single-person abuse |
+| Default Deny | All access is denied by default; explicit authorisation is required |
+
+---
+
+## 4. User Account Management
+
+### 4.1 Account Provisioning
+
+- New accounts are created only upon formal written request approved by {{approvalAuthority}}.
+- Identity is verified through {{identityVerificationMethod}} before account creation.
+- Accounts are provisioned within **{{provisioningSLA}} hours** of approved request.
+
+### 4.2 Access Reviews
+
+Access rights are reviewed:
+- **Quarterly** for privileged accounts (administrators, DBA, security)
+- **{{regularReviewFrequency}}** for standard user accounts
+- **Immediately** upon role change or employment termination
+
+Access reviews are conducted by {{accessReviewOwner}} and documented in the Access Review Register.
+
+### 4.3 Account Termination
+
+Upon employment termination or contractor offboarding:
+- All system access is revoked within **{{terminationDeactivationHours}} hours**
+- Physical access badges are recovered
+- Shared credentials the individual had access to are rotated
+
+---
+
+## 5. Authentication Requirements
+
+| System Tier | Authentication Requirement |
+|-------------|---------------------------|
+| Public-facing systems | Password (min {{minPasswordLength}} chars) + MFA |
+| Internal business systems | Password (min {{minPasswordLength}} chars) |
+| Privileged / admin access | MFA required + PAM solution |
+| Remote access (VPN) | Certificate + MFA |
+
+Password standards: minimum length {{minPasswordLength}} characters, complexity requirements, no reuse of last {{passwordHistoryCount}} passwords, expiry every {{passwordExpiryDays}} days.
+
+---
+
+## 6. Privileged Access Management
+
+Privileged access (root, administrator, DBA) is managed as follows:
+
+- All privileged accounts are individually named (no shared `root` usage).
+- Privileged sessions are logged to {{privilegedSessionLog}}.
+- Just-in-time (JIT) access is preferred over standing privileges where technically feasible.
+- Privileged access is reviewed **monthly** by {{privilegedReviewOwner}}.
+
+---
+
+## 7. Third-Party Access
+
+Third-party vendors requiring access to personal data must:
+- Sign a Data Processing Agreement (DPA) referencing DPDP Act compliance.
+- Access systems only through designated secure channels (VPN / API).
+- Use named individual accounts (no shared credentials).
+- Have access limited to the duration and scope of their engagement.
+
+Third-party access is reviewed by {{thirdPartyReviewOwner}} at the end of each engagement.
+
+---
+
+## 8. Monitoring and Audit
+
+All access to systems containing personal data is logged. Logs are:
+- Retained for **{{accessLogRetentionDays}} days** (see Data Retention Policy).
+- Reviewed for anomalies {{logReviewFrequency}} by {{securityTeam}}.
+- Protected from modification (append-only, hash-chained audit trail).
+
+---
+
+## 9. Non-Compliance
+
+Violations of this policy may result in disciplinary action up to and including termination of employment or contract, and may be reported to relevant regulatory authorities.
+
+---
+
+*Document generated using Dharma GRC platform. This template requires review by qualified legal counsel before publication.*

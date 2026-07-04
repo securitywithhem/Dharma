@@ -1,0 +1,126 @@
+---
+⚠️ REQUIRES LEGAL REVIEW BEFORE PUBLISHING
+---
+
+# Incident Response Policy
+
+**{{organizationName}}**  
+**Effective Date:** {{effectiveDate}}  
+**Version:** {{policyVersion}}  
+**Policy Owner:** {{policyOwner}}
+
+---
+
+## 1. Purpose
+
+This policy defines the procedures for detecting, reporting, containing, and recovering from security incidents that affect personal data, in compliance with the DPDP Act 2023 Section 8(6) which requires notification of personal data breaches.
+
+---
+
+## 2. Incident Classification
+
+| Severity | Description | Examples | Response SLA |
+|----------|-------------|---------|--------------|
+| P1 — Critical | Large-scale personal data breach; system compromise | Ransomware, data exfiltration of > {{p1DataSubjectThreshold}} data subjects | Containment within **{{p1ContainmentHours}} hours** |
+| P2 — High | Limited personal data exposure; malware infection | Phishing attack with credential compromise | Containment within **{{p2ContainmentHours}} hours** |
+| P3 — Medium | Suspected breach under investigation; policy violation | Unauthorised access attempt | Response within **{{p3ResponseHours}} hours** |
+| P4 — Low | Minor security event with no data exposure | Failed login attempt, vulnerability scan | Response within **{{p4ResponseHours}} hours** |
+
+---
+
+## 3. Incident Response Team
+
+| Role | Responsibility | Contact |
+|------|---------------|---------|
+| Incident Commander | Overall incident management | {{incidentCommanderContact}} |
+| Technical Lead | Technical containment and investigation | {{technicalLeadContact}} |
+| Legal / DPO | DPDP compliance, regulatory notification | {{dpoContact}} |
+| Communications | Internal/external communications | {{communicationsContact}} |
+| Executive Sponsor | Resource authorisation, executive decisions | {{executiveSponsorContact}} |
+
+---
+
+## 4. Incident Response Phases
+
+### 4.1 Detection and Reporting
+
+All employees, contractors, and third parties must report suspected security incidents to **{{incidentReportEmail}}** or call **{{incidentHotline}}** within **{{employeeReportingSLAHours}} hours** of discovery.
+
+Detection sources include:
+- SIEM alerts from {{siemPlatform}}
+- Security monitoring dashboards
+- User reports to helpdesk
+- Vendor or third-party notifications
+
+### 4.2 Triage and Classification
+
+Upon receipt of an incident report, the Incident Commander:
+1. Assigns severity classification (P1–P4).
+2. Activates the Incident Response Team at the appropriate level.
+3. Opens an Incident Record in {{incidentTrackingSystem}}.
+
+### 4.3 Containment
+
+Immediate containment actions (as applicable to severity):
+- Isolate affected systems from the network.
+- Revoke compromised credentials.
+- Block malicious IP addresses / domains.
+- Preserve forensic evidence before remediation.
+
+### 4.4 Investigation and Eradication
+
+The Technical Lead conducts a root cause analysis to:
+- Determine the attack vector and scope of data affected.
+- Identify all systems, data categories, and Data Principals affected.
+- Eradicate malware, close vulnerabilities, and restore from clean backups.
+
+### 4.5 Recovery
+
+Systems are restored to production only after:
+- Confirmation that the threat actor's access has been removed.
+- Validation that restored data is clean.
+- Approval from the Incident Commander.
+
+### 4.6 Post-Incident Review
+
+A Post-Incident Review (PIR) is conducted within **{{pirDeadlineDays}} days** of incident closure, documenting:
+- Root cause and timeline
+- Corrective actions taken
+- Lessons learned and policy updates required
+
+---
+
+## 5. DPDP Act Notification Requirements
+
+Under Section 8(6) of the DPDP Act 2023, **{{organizationName}}** must notify:
+
+1. **Data Protection Board of India** — within **{{boardNotificationHours}} hours** of becoming aware of a personal data breach that is likely to result in harm to Data Principals.
+2. **Affected Data Principals** — within **{{principalNotificationHours}} hours** of becoming aware, unless exempted by the Board.
+
+Notifications shall include:
+- Nature of the personal data breach.
+- Categories and approximate number of Data Principals affected.
+- Categories and approximate number of personal data records affected.
+- Likely consequences of the breach.
+- Measures taken or proposed to be taken to address the breach.
+
+The DPO ({{dpoContact}}) is responsible for regulatory notifications.
+
+---
+
+## 6. Evidence Preservation
+
+All incident evidence (logs, forensic images, communications) shall be preserved for a minimum of **{{incidentEvidenceRetentionYears}} years** and protected from alteration.
+
+---
+
+## 7. Testing
+
+Incident response procedures are tested:
+- **Tabletop exercise** — {{tabletopFrequency}}
+- **Simulation exercise** — annually
+- Results are documented and used to update this policy.
+
+---
+
+*Document generated using Dharma GRC platform. This template requires review by qualified legal counsel before publication.*

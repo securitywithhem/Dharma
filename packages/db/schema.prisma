@@ -15,13 +15,21 @@ model Organization {
   name        String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
-  users       User[]
-  frameworks  Framework[]
-  evidences   Evidence[]
-  policies    Policy[]
-  auditLogs   AuditLog[]
-  auditorKeys AuditorAccess[]
-  invites     OrganizationInvite[]
+  users        User[]
+  frameworks   Framework[]
+  evidences    Evidence[]
+  policies     Policy[]
+  auditLogs    AuditLog[]
+  auditorKeys  AuditorAccess[]
+  invites      OrganizationInvite[]
+  chainAnchors ChainAnchor[]
+  connectors   Connector[]
+  auditExports AuditExport[]
+
+  // Phase 2 Feature 1: per-org AI provider config
+  // mode: 'local-ollama' | 'local-small' | 'remote-opt-in'
+  // stored as encrypted JSON blob
+  aiProvider   Json?
 
   @@index([createdAt])
 }
@@ -139,6 +147,9 @@ model Evidence {
   control        Control               @relation(fields: [controlId], references: [id], onDelete: Cascade)
   organizationId String
   organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Phase 2 Feature 2: link back to the connector that auto-created this row
+  connectorId    String?
+  connector      Connector?            @relation(fields: [connectorId], references: [id], onDelete: SetNull)
   fileName       String
   filePath       String
   type           EvidenceType
@@ -152,6 +163,7 @@ model Evidence {
   @@index([controlId])
   @@index([organizationId])
   @@index([type])
+  @@index([connectorId])
 }
 
 enum EvidenceType {
@@ -245,5 +257,97 @@ model OrganizationInvite {
   createdAt      DateTime     @default(now())
 
   @@unique([organizationId, email])
+  @@index([expiresAt])
+}
+
+// ============================================================
+// Phase 2 Feature 3: External Audit Chain Anchors
+// ============================================================
+
+model ChainAnchor {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rootHash       String
+  recordCount    Int
+  fromLogId      String
+  toLogId        String
+  anchoredAt     DateTime     @default(now())
+  storageKey     String       // path in ANCHOR_STORAGE_BUCKET
+  publicProof    String?      // OpenTimestamps .ots receipt path, or null
+
+  @@index([organizationId])
+  @@index([anchoredAt])
+}
+
+// ============================================================
+// Phase 2 Feature 2: Automated Evidence Connectors
+// ============================================================
+
+model Connector {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       ConnectorProvider
+  displayName    String
+  credentials    String          // AES-256-GCM encrypted at rest
+  config         Json            // e.g. { repos: ["org/repo"] } or { regions: ["ap-south-1"] }
+  status         ConnectorStatus @default(ACTIVE)
+  lastRunAt      DateTime?
+  lastRunStatus  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  evidence       Evidence[]      // evidence rows sourced from this connector
+
+  @@unique([organizationId, provider, displayName])
+  @@index([organizationId])
+}
+
+enum ConnectorProvider {
+  GITHUB
+  AWS
+  VERCEL
+}
+
+enum ConnectorStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+// ============================================================
+// Phase 2 Feature 4: Policy Templates
+// ============================================================
+
+model PolicyTemplate {
+  id           String     @id @default(cuid())
+  policyType   PolicyType
+  name         String
+  version      String
+  bodyTemplate String     @db.Text   // Handlebars source with {{placeholders}}
+  variables    Json                  // [{ key, label, type, required, defaultValue? }]
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  @@unique([policyType, name, version])
+  @@index([policyType])
+}
+
+// ============================================================
+// Phase 2 Feature 5: Auditor Export Packages
+// ============================================================
+
+model AuditExport {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy    String       // userId who triggered export
+  frameworkIds   Json         // string[]
+  filePath       String       // MinIO object key
+  includeRawFiles Boolean     @default(false)
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime     // presigned URL expiry (24h after creation)
+
+  @@index([organizationId])
   @@index([expiresAt])
 }

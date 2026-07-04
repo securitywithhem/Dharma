@@ -33,7 +33,35 @@ const envSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000")
+  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+
+  // ── Phase 2 Feature 3: External Audit Chain Anchoring ──────────────────
+  // In production, point these at a real S3 bucket with Object Lock (WORM).
+  // In dev, falls back to the local MinIO instance with a dev-only warning.
+  ANCHOR_STORAGE_ENDPOINT: z.string().default("localhost"),
+  ANCHOR_STORAGE_PORT: z.coerce.number().int().positive().default(9000),
+  ANCHOR_STORAGE_USE_SSL: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
+  ANCHOR_STORAGE_ACCESS_KEY: z.string().default("minioadmin"),
+  ANCHOR_STORAGE_SECRET_KEY: z.string().default("minioadmin_change_me"),
+  ANCHOR_STORAGE_BUCKET: z.string().default("dharma-anchor"),
+  ANCHOR_STORAGE_OBJECT_LOCK_MODE: z.string().default("COMPLIANCE"),
+  ANCHOR_STORAGE_RETENTION_DAYS: z.coerce.number().int().positive().default(2555),
+  PUBLIC_ANCHOR_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
+  ANCHOR_INTERVAL_CRON: z.string().default("0 */6 * * *"),
+
+  // ── Phase 2 Feature 2: Connector Credential Encryption ─────────────────
+  // Must be exactly 32 characters (256 bits). Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))"
+  CONNECTOR_ENCRYPTION_KEY: z.string().min(32).default("change-me-32-char-key-for-connectors"),
+  CONNECTOR_SYNC_CRON: z.string().default("0 */12 * * *"),
 });
 
 export const env = envSchema.parse(process.env);

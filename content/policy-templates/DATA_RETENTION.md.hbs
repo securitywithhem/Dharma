@@ -1,0 +1,91 @@
+---
+⚠️ REQUIRES LEGAL REVIEW BEFORE PUBLISHING
+---
+
+# Data Retention Policy
+
+**{{organizationName}}**  
+**Effective Date:** {{effectiveDate}}  
+**Version:** {{policyVersion}}  
+**Policy Owner:** {{policyOwner}}
+
+---
+
+## 1. Purpose
+
+This policy establishes the data retention periods and secure disposal procedures for all personal data processed by **{{organizationName}}**, in compliance with the Digital Personal Data Protection Act, 2023 ("DPDP Act") — specifically Sections 4(1)(e) and 8(7) which require data to be retained only as long as necessary for the stated purpose.
+
+---
+
+## 2. Scope
+
+This policy applies to all personal data collected, processed, or stored by {{organizationName}}, its employees, contractors, and third-party processors acting on our behalf.
+
+---
+
+## 3. Retention Schedule
+
+| Data Category | System / Location | Retention Period | Legal Basis | Responsible Owner |
+|---------------|------------------|-----------------|-------------|-------------------|
+| Customer account data | {{crmSystem}} | Account active + {{postAccountDays}} days | Contract | {{dataOwner}} |
+| Employee personal data | {{hrSystem}} | Employment + {{postEmploymentYears}} years | Legal obligation | HR Manager |
+| Payroll records | {{payrollSystem}} | {{payrollRetentionYears}} years | Income Tax Act / PF Act | Finance |
+| Financial transaction records | {{accountingSystem}} | {{financialRetentionYears}} years | Companies Act 2013 | CFO |
+| Security / access logs | {{siemSystem}} | {{securityLogDays}} days | Legitimate purpose | InfoSec |
+| Support tickets | {{supportSystem}} | Ticket close + {{supportRetentionDays}} days | Legitimate purpose | Support |
+| Marketing consent records | {{marketingSystem}} | Consent withdrawal + {{consentRetentionYears}} years | DPDP compliance | Marketing |
+| Website analytics (anonymised) | {{analyticsSystem}} | {{analyticsRetentionMonths}} months | Legitimate purpose | Product |
+
+---
+
+## 4. Retention Triggers
+
+Data retention periods are measured from the following trigger events:
+
+- **Customer data**: From the date of account closure or last transaction.
+- **Employee data**: From the date of employment termination.
+- **Correspondence**: From the date of last communication.
+- **Consent records**: From the date consent was withdrawn or the relationship ended.
+
+---
+
+## 5. Secure Disposal Procedures
+
+Upon expiry of the retention period, personal data shall be disposed of using the following methods:
+
+| Medium | Disposal Method |
+|--------|----------------|
+| Digital files (disk) | Cryptographic erasure or NIST 800-88 compliant wiping |
+| Database records | Secure DELETE with log purge; or pseudonymisation |
+| Physical documents | Cross-cut shredding (DIN 66399 Level P-4 or higher) |
+| Backup media | Degaussing or physical destruction |
+| Cloud storage | Provider-certified deletion with confirmation |
+
+Disposal is recorded in the **Data Disposal Register** maintained by {{dataOwner}}.
+
+---
+
+## 6. Exceptions and Legal Hold
+
+Data subject to a **legal hold** (litigation, regulatory inquiry, audit) shall be excluded from routine disposal until the hold is lifted. Legal holds are issued by {{legalContact}} and documented in the Legal Hold Register.
+
+---
+
+## 7. Third-Party Processors
+
+All data processors engaged by {{organizationName}} are contractually required to maintain equivalent retention periods and disposal standards. Processor compliance is reviewed {{processorReviewFrequency}}.
+
+---
+
+## 8. Policy Review
+
+This policy is reviewed **annually** or upon significant changes to:
+- Applicable law or regulation (including DPDP Act subordinate rules)
+- Business processes involving personal data
+- Data systems and storage infrastructure
+
+**Next scheduled review:** {{nextReviewDate}}
+
+---
+
+*Document generated using Dharma GRC platform. This template requires review by qualified legal counsel before publication.*

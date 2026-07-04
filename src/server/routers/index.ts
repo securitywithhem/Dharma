@@ -9,6 +9,7 @@ import { settingsRouter } from "@/server/routers/settings";
 import { reportRouter } from "@/server/routers/report";
 import { dashboardRouter } from "@/server/routers/dashboard";
 import { onboardingRouter } from "@/server/routers/onboarding";
+import { connectorRouter } from "@/server/routers/connector";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -20,7 +21,9 @@ export const appRouter = createTRPCRouter({
   settings: settingsRouter,
   report: reportRouter,
   dashboard: dashboardRouter,
-  onboarding: onboardingRouter
+  onboarding: onboardingRouter,
+  connector: connectorRouter,
 });
 
 export type AppRouter = typeof appRouter;
+
