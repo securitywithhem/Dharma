@@ -10,6 +10,21 @@ datasource db {
   extensions = [pgvector(map: "vector")]
 }
 
+model Plan {
+  id               String   @id @default(cuid())
+  name             String   @unique // "free", "pro", "enterprise"
+  displayName      String   // "Free", "Pro", "Enterprise"
+  stripePriceId    String?  // null for free tier
+  price            Float    @default(0) // monthly price in USD
+  limits           Json     // { users: 5, frameworks: 3, storageMb: 100 }
+  features         Json?    // { apiAccess: false, sso: false, ...}
+  isPublic         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  organizations    Organization[]
+  
+  @@index([name])
+}
+
 model Organization {
   id          String               @id @default(cuid())
   name        String
@@ -31,10 +46,25 @@ model Organization {
   // stored as encrypted JSON blob
   aiProvider   Json?
 
+  // Billing and Subscription (Phase 3)
+  planId               String?
+  plan                 Plan?           @relation(fields: [planId], references: [id])
+  stripeCustomerId     String?         @unique
+  stripeSubscriptionId String?         @unique
+  subscriptionStatus   SubscriptionStatus? @default(ACTIVE)
+  subscriptionEndsAt   DateTime?
+
   // 64-bit unique lock ID for safe pg_advisory_xact_lock calls
   lockKeyId    BigInt               @unique @default(autoincrement())
 
   @@index([createdAt])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
 }
 
 model User {
@@ -155,6 +185,7 @@ model Evidence {
   connector      Connector?            @relation(fields: [connectorId], references: [id], onDelete: SetNull)
   fileName       String
   filePath       String
+  fileSizeBytes  Int                   @default(0)
   type           EvidenceType
   summary        String?               @db.Text
   collectedAt    DateTime              @default(now())

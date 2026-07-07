@@ -204,6 +204,10 @@ export const frameworkRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const { EntitlementService } = await import('@/server/services/entitlement');
+      const entitlementService = new EntitlementService(ctx.prisma);
+      await entitlementService.checkUsageLimit(ctx.session.user.organizationId, 'frameworks', 1);
+
       // Check for duplicate
       const existing = await ctx.prisma.framework.findUnique({
         where: {

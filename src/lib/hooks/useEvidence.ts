@@ -46,6 +46,7 @@ export function useEvidence() {
           fileName: file.name,
           contentType: file.type,
           controlId,
+          fileSizeBytes: file.size,
         });
 
         // Step 2: Upload file directly to MinIO
@@ -67,6 +68,7 @@ export function useEvidence() {
           fileName: file.name,
           filePath,
           type,
+          fileSizeBytes: file.size,
         });
 
         return evidence;
