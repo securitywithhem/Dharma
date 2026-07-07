@@ -12,6 +12,8 @@ import { onboardingRouter } from "@/server/routers/onboarding";
 import { connectorRouter } from "@/server/routers/connector";
 import { billingRouter } from "@/server/routers/billing";
 import { entitlementRouter } from "@/server/routers/entitlement";
+import { marketplaceRouter } from "@/server/routers/marketplace";
+import { importRouter } from "@/server/routers/import";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -27,6 +29,8 @@ export const appRouter = createTRPCRouter({
   connector: connectorRouter,
   billing: billingRouter,
   entitlement: entitlementRouter,
+  marketplace: marketplaceRouter,
+  import: importRouter,
 });
 
 export type AppRouter = typeof appRouter;

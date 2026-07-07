@@ -9,6 +9,7 @@ import { DomainGapHeatmap } from '@/components/dashboard/DomainGapHeatmap';
 import { RecentActivityFeed } from '@/components/dashboard/RecentActivityFeed';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ExportReportCard } from '@/components/report/ExportReportCard';
+import { ImportedFrameworksCard } from '@/components/dashboard/ImportedFrameworksCard';
 import { api } from '@/hooks/trpc';
 
 export default function DashboardPage() {
@@ -96,7 +97,10 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <QuickActionsCard />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <QuickActionsCard />
+          <ImportedFrameworksCard />
+        </div>
       </motion.div>
 
       {/* Framework Progress Cards */}
