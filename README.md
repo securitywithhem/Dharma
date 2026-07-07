@@ -1,121 +1,244 @@
 # Dharma – Self-Hosted Compliance Platform
 
-**Welcome to Dharma!** If you are new here, don't worry—this guide is written so anyone can understand exactly what this project is and how it works.
+Dharma is an enterprise-grade, self-hosted compliance management platform designed to automate security certifications (such as SOC 2, ISO 27001, and the DPDP Act 2023) completely on-premise or within your private cloud. By leveraging local Artificial Intelligence (AI) and vector search, Dharma enables organizations to map evidence, generate compliance policies, and manage multi-tenant compliance audits without leaking sensitive company data to public AI APIs or cloud SaaS vendors.
 
 ---
 
-## 🤔 ELI5: What is this project?
-Imagine you run a company, and you need to prove to your clients and the government that you keep their data safe. To do this, you have to follow big rulebooks (called compliance frameworks) like **SOC 2**, **ISO 27001**, or the **DPDP Act**.
+## 🎯 Problem Statement & Core Value Proposition
 
-Proving you follow the rules usually means reading hundreds of pages, taking screenshots of your computer settings, and paying expensive consultants. **Dharma is a software that does this for you automatically.** 
-You upload your evidence (like a screenshot or a log file), and Dharma uses Artificial Intelligence (AI) to read it, understand it, and check off the exact rules you satisfied—all without sending your secret company data to the public cloud.
+### The Problem
+For modern businesses—particularly startups, MSMEs, and security-conscious enterprises—achieving and maintaining compliance certifications is a broken, costly, and risky process:
+1. **Data Sovereignty & Privacy Risks:** Modern compliance automation platforms rely heavily on public cloud AI APIs (like OpenAI or Google Cloud). Uploading sensitive company data—such as network diagrams, employee handbooks, database logs, and firewall configurations—violates privacy guidelines and presents data leakage risks.
+2. **Exorbitant SaaS & Consulting Costs:** Existing compliance platforms charge thousands of dollars annually, locked behind rigid tiers. Small-to-medium enterprises are forced to pay for external consultants just to navigate these tools.
+3. **Manual Verification Bottlenecks:** Collecting evidence and manually matching files to hundreds of control points is time-consuming and prone to human error.
+4. **Audit Log Vulnerability:** Standard relational databases are vulnerable to internal manipulation. A rogue administrator or attacker can alter compliance logs to hide breaches or gaps, ruining audit integrity.
 
----
-
-## 🎯 What problem does it solve?
-
-1. **Keeping Data Secret (Data Sovereignty):** Usually, AI tools require you to send your data to servers owned by OpenAI or Google. Dharma runs the AI *locally* on your own computer or private server. Your data never leaves your building.
-2. **Saving Time (Automated Mapping):** Instead of manually reading a rulebook to figure out where a piece of evidence fits, Dharma's AI reads the evidence and instantly recommends the rules it satisfies.
-3. **Saving Money (Zero Cloud Costs):** Because you run Dharma yourself, you don't pay monthly subscriptions to expensive compliance software, and you don't pay per-word for AI processing.
-4. **Writing Policies:** Need a privacy policy? Dharma reads the actual law (like the DPDP Act) and writes a custom policy for your company using its local AI.
-5. **Tamper-Proof Logs:** If someone tries to cheat the system and delete a log, Dharma's database uses a blockchain-like chain. If one piece is altered, the chain breaks, and everyone knows it was tampered with.
-
----
-
-## 🚶 App Flow: How do you use it?
-
-Here is the typical journey of a user using Dharma:
-
-1. **Sign In:** You log into the app using a secure, passwordless magic link sent to your email.
-2. **Pick a Rulebook (Framework):** You select which rules you want to comply with (e.g., ISO 27001).
-3. **Upload Evidence:** You upload a file (e.g., a PDF of your employee handbook or a screenshot of your firewall settings).
-4. **AI Magic:** In the background, Dharma extracts the text from your file, asks the local AI to understand it, and matches it against the rulebook.
-5. **Review & Approve:** You see a recommendation: *"This firewall screenshot satisfies Control 4.1: Network Security."* You click "Approve".
-6. **Generate Reports:** When an external auditor asks for proof, you generate a secure, temporary link. The auditor logs in, views your evidence, and gives you your certification!
+### What is Dharma?
+Dharma solves these problems by providing an open-source, self-hosted compliance platform that runs **entirely local AI models**. 
+* **Zero-Cloud AI:** All document understanding, text extraction, and control mapping are performed offline via a local Ollama instance running open-source models.
+* **Tamper-Evident Ledger:** Evidence chains are cryptographically linked using a blockchain-like hashing mechanism. If any record is modified, the signature chain breaks immediately.
+* **SaaS Billing & Entitlements Built-In:** Designed to support multi-tenant workspaces, offering subscription tiers (Free, Pro, Enterprise) integrated with Stripe, self-service portals, and automated resource gating.
+* **Integrated Marketplace:** Allows users to discover, publish, review, and import compliance frameworks and controls instantly.
 
 ---
 
-## 🏗️ Architecture: How is it built?
+## 🏗️ Detailed Architecture & System Design
 
-Dharma is made up of several moving parts that talk to each other:
-- **Next.js (The Brain & Face):** This displays the website you click on and handles the logic.
-- **Postgres + pgvector (The Memory):** A database that remembers your settings, your logs, and mathematically stores "meanings" of text (embeddings) so the AI can search through them.
-- **MinIO (The Filing Cabinet):** A place to securely store the actual files and PDFs you upload.
-- **BullMQ + Redis (The Worker):** When you ask the AI to read a 50-page PDF, this handles the heavy lifting in the background so your website doesn't freeze.
-- **Ollama (The AI Engine):** The local AI that reads text and writes policies, running completely offline.
+Dharma is built on a robust, decoupled multi-container architecture. Below is the system design diagram mapping the core services, network flows, and datastores.
+
+### System Components Diagram
+```mermaid
+graph TD
+    User([User Web Browser]) -->|HTTPS| Caddy[Caddy Reverse Proxy]
+    Caddy -->|Route Traffic| NextJS[Next.js App Server]
+    
+    subgraph Core Application Layer
+        NextJS -->|Authentication| NextAuth[NextAuth.js]
+        NextJS -->|Type-Safe API| tRPC[tRPC Router & Controllers]
+        NextJS -->|Local Caching| Redis[(Redis Cache / BullMQ)]
+        NextJS -->|Queued Jobs| Worker[Background Worker Process]
+    end
+    
+    subgraph Data & Storage Layer
+        tRPC -->|ORM Client| Prisma[Prisma ORM]
+        Prisma -->|Read/Write| Postgres[(PostgreSQL + pgvector)]
+        tRPC -->|Object Storage S3| MinIO[(MinIO Object Store)]
+        Worker -->|Object Storage S3| MinIO
+        Worker -->|ORM Client| Prisma
+    end
+
+    subgraph Offline Artificial Intelligence Engine
+        Worker -->|Inference/Embeddings| Ollama[Ollama Local AI]
+        Ollama -->|Vector Calculations| Postgres
+    end
+
+    subgraph Auxiliary Services
+        Backup[Backup Scheduler] -.->|Periodic Backups| Postgres
+        Backup -.->|Periodic Backups| MinIO
+    end
+```
+
+### Component Details
+1. **Next.js (Web Server & UI):** Houses both the React frontend and the Node.js API routes. Frontend styling is built using Tailwind CSS and Radix UI primitives. Type safety is maintained end-to-end via tRPC.
+2. **PostgreSQL & pgvector:** The main database. `pgvector` stores high-dimensional embeddings generated by local AI models, enabling semantic search and matching of evidence files to control descriptions.
+3. **MinIO Object Store:** An S3-compatible local object storage server that hosts uploaded PDF policies, screenshots, and system configuration backups.
+4. **BullMQ & Redis:** Handles asynchronous background processing (e.g., parsing large PDFs, calling the local LLM, indexing files, and generating backup tarballs).
+5. **Ollama:** Serves local LLMs (e.g., Llama 3) and embedding models (e.g., Nomic Embed Text) completely offline, utilizing host CPU/GPU resources.
+6. **Caddy:** Serves as the lightweight edge reverse proxy handling TLS termination and routing.
+7. **Backup Scheduler:** A separate service executing cron-like schedules that backups PostgreSQL data and MinIO files, archiving them securely on a mount.
 
 ---
 
-## 🛠️ Step-by-Step Setup Guide
+## 🔒 Multi-Tenancy, Billing, & Entitlement Gating
 
-Follow these steps to run Dharma on your own machine. 
+Dharma implements a secure, isolated multi-tenant design that supports organic scaling and self-service administration:
 
-### Prerequisites
-*   [Git](https://git-scm.com/) installed
-*   [Docker & Docker Compose](https://www.docker.com/) installed and running
+```mermaid
+sequenceDiagram
+    participant User as Organization Admin
+    participant App as Next.js & Entitlement Middleware
+    participant Stripe as Stripe API / Webhooks
+    participant DB as Postgres Database
+
+    User->>App: Attempts to Create 4th Framework
+    App->>DB: Query Current Active Framework Count
+    DB-->>App: Return Count (3 Frameworks Active)
+    App->>App: Evaluate Limits for current Plan (Free = 3 Max)
+    App-->>User: Block Creation (Entitlement Error: Upgrade Required)
+    User->>App: Clicks "Upgrade to Pro"
+    App->>Stripe: Generate Checkout Session
+    Stripe-->>User: Redirect to Hosted Stripe Checkout Page
+    User->>Stripe: Completes Payment & Subscribes
+    Stripe->>App: Send Webhook (customer.subscription.created)
+    App->>DB: Update Org Subscription Data (stripeSubscriptionId, plan=PRO)
+    App-->>User: Redirect to App (Features Unlocked!)
+    User->>App: Attempts to Create 4th Framework (Success)
+```
+
+### 1. Entitlements Gating System
+All write actions and high-resource features are protected by an entitlement middleware. When a user requests a creation (e.g., adding an auditor, importing a framework, uploading evidence), the app queries the active limits associated with the Organization's subscription plan.
+
+* **Free Plan:** Limited to 5 Users, 3 Frameworks, and 100 MB Evidence storage. No advanced AI Advisor or SSO capability.
+* **Pro Plan:** Up to 20 Users, 10 Frameworks, 1 GB Storage. Access to standard AI Advice.
+* **Enterprise Plan:** Unlimited Users, Frameworks, and Storage. Includes SSO, priority support, and advanced AI mapping.
+
+These limits are not hardcoded in the application layers. They are defined in the `Plan` model inside the database (limits JSON) and looked up dynamically via `EntitlementService.checkUsageLimit`.
+
+---
+
+## 🛒 Marketplace & Framework Import Workflow
+
+The Marketplace is the catalog system that allows compliance teams to publish, share, rate, and pull templates directly into their isolated tenant configurations.
+
+```mermaid
+graph LR
+    subgraph Global Marketplace Catalog
+        A[Compliance Expert] -->|Publish Item| B(MarketplaceItem)
+        B -->|Admin Approval| C(Approved Listing)
+    end
+    
+    subgraph Tenant Organization Workspace
+        C -->|User One-Click Import| D[ImportedItem Mapping]
+        D -->|Copy Schema| E[Tenant Framework Instance]
+        E -->|Gen Controls| F[Controls]
+        E -->|Gen Templates| G[Evidence Templates]
+    end
+```
+
+### How the Import Engine Works
+1. **Validation & Entitlement Check:** Before importing, the system verifies that the organization's plan supports adding another framework and checks for prior imports to avoid duplicate instances.
+2. **Schema Copying:** An isolated transaction copies the `MarketplaceItem`'s structure (including its controls, mapping relationships, and evidence requirements) into a tenant-specific `Framework` record linked directly to the importing Organization's ID.
+3. **Tracking & Updates:** An `ImportedItem` record links the newly created workspace framework to the global marketplace listing. If a compliance expert updates a framework (e.g., ISO 27001 publishes a new control version), the admin settings panel alerts the tenant, offering a clean merge-update option.
+4. **Unimport (Soft Rollback):** Tenants can safely unimport frameworks. This deletes all copied controls and metadata while preserving user-uploaded files on MinIO.
+
+---
+
+## 🚶 App Flow: The User Journey
+
+Here is the operational workflow of a compliance manager using Dharma:
+
+```mermaid
+stateDiagram-v2
+    [*] --> SignIn: Magic Link / api/test-auth
+    SignIn --> Onboarding: Workspace Creation
+    Onboarding --> Marketplace: Browse Frameworks
+    Marketplace --> Import: Select SOC2 & Click Import
+    Import --> Dashboard: View Control Dashboard
+    Dashboard --> EvidenceUpload: Upload Firewall Screenshot
+    EvidenceUpload --> AIProcessing: AI Extracts & Maps Semantics
+    AIProcessing --> Review: Approve AI's Control Matching Recommendation
+    Review --> CryptographicLedger: Transaction Written & Hashed
+    CryptographicLedger --> AuditorView: Generate Temporary Access Link
+    AuditorView --> [*]
+```
+
+### Operational Steps
+1. **Authentication:** The user logs in via email Magic Link. In local testing environments, developers use `/api/test-auth` to automatically bypass email configuration, instantiate an admin account, and establish mock database schemas.
+2. **Discover & Import:** The user browses the Marketplace, selects a compliance target (e.g., SOC 2 Type II), reviews author ratings, and clicks **Import**.
+3. **Policy Design & Mapping:** The manager uses the AI Advisor to draft security policies locally. Policies are uploaded to MinIO.
+4. **Asynchronous Processing:** BullMQ registers the upload, triggers the worker, parses text, requests Ollama embeddings, and records matching weights.
+5. **Approval & Ledger Commit:** The manager reviews the matching proposal (e.g., "Policy 1.2 meets Control CC1.1"). Clicking **Approve** locks the record into the cryptographically chained database.
+6. **Audit Execution:** The company grants access to an external auditor via a secure, read-only interface. The auditor verifies evidence hashes directly against the DB registry.
+
+---
+
+## 🛠️ Complete Local Setup Guide
+
+Follow these steps to run Dharma on your local machine using Docker.
+
+### System Prerequisites
+Ensure you have the following installed:
+*   [Git](https://git-scm.com/)
+*   [Docker & Docker Compose](https://www.docker.com/) (Ensure the daemon is running)
 *   [Node.js](https://nodejs.org/) (Version >= 18.18.0)
 
-### 1. Clone the Code
-Download the code to your computer:
+### 1. Repository Setup
+Clone the codebase and navigate to the directory:
 ```bash
 git clone https://github.com/securitywithhem/Dharma.git
 cd Dharma
 ```
 
-### 2. Configure Environment Variables
-We store configuration (like passwords and ports) in a folder called `envs/`.
-*(Note: If you are setting this up for the first time and the files don't exist yet, you can copy them from an example file, but they are already organized in the `envs/` folder in this repo!)*
+### 2. Environment Variables Configuration
+Config files for various setups are stored in `envs/`. The primary development config is at `envs/.env.development`.
+For Docker setup, check the values inside `envs/.env.docker`.
 
-### 3. Spin Up the Services (Docker)
-The easiest way to run everything is using Docker, which starts the database, AI, and website all at once:
+### 3. Spin Up Containers
+Use our standard npm wrapper script to initialize and build the Docker multi-container environment:
 ```bash
-# Our package.json script automatically points to the envs/.env.docker file!
+# Create backups directory to avoid mount failures
+mkdir -p backups
+
+# Boot all database, storage, Redis, and Ollama services
 npm run docker:up
 ```
+*Note: This command spins up PostgreSQL, Redis, MinIO, Ollama, and a Next.js worker node. Ollama will automatically download models upon initialization.*
 
-### 4. Initialize and Seed the Database
-We need to setup the initial rulebooks and tables in the database:
+### 4. Database Setup & Seeding
+Apply database migrations and populate the platform with default plans and templates:
 ```bash
-docker exec dharma-nextjs npm run seed:all
+# Sync database schema changes
+npx dotenv-cli -e envs/.env.development -- npx prisma db push --schema packages/db/schema.prisma --accept-data-loss
+
+# Seed all core configurations (plans, frameworks, evidence templates)
+npm run seed:all
 ```
-*(This sets up the cryptographic log chain and inserts the default compliance controls).*
 
-### 5. Access the Web App & Sign In
-Open your web browser (like Google Chrome) and go to:
-*   **Application Link:** [http://localhost:3000](http://localhost:3000)
+### 5. Accessing & Authenticating the App
+The application server will listen locally at:
+*   **Web Portal:** [http://localhost:3000](http://localhost:3000)
 
-**How to Sign In (Local Testing):**
-1. Enter an email (e.g., `admin@dharma.local`) on the sign-in screen and click **Sign In**.
-2. Look at your terminal logs to find the "magic link":
-   ```bash
-   npm run docker:logs
-   ```
-3. Copy the link that looks like `http://localhost:3000/api/auth/callback/email?...`, paste it into your browser, and you are logged in!
+#### Quick Development Login
+To bypass SMTP setup during local testing, open your browser and navigate directly to:
+👉 **[http://localhost:3000/api/test-auth](http://localhost:3000/api/test-auth)**
+
+This logs you in as an administrative user with pre-configured templates and mock workspaces ready for evaluation.
 
 ---
 
-## 🗄️ Backup & Restore
+## 🗄️ Backup, Monitoring & Disaster Recovery
 
-Because you host this yourself, you are in charge of backups! Dharma makes this easy:
-- **Automated Backups:** Every night at 2:00 AM, the system automatically saves your database and your files to a local folder.
-- **Manual Backups:** You can force a backup right now by running:
-  ```bash
-  docker exec dharma-backup-scheduler /scripts/backup-all.sh
-  ```
+Dharma provides built-in tools for maintaining self-hosted data durability.
 
-## 📊 Monitoring (Advanced)
-Want to see how much CPU or memory the app is using? You can start the monitoring dashboard:
+### Automated Cron Backups
+A dedicated scheduler container performs daily tar archives of PostgreSQL dumps and MinIO storage paths. Backups are saved inside the `/backups` directory in the root of the workspace.
+
+You can trigger a backup instantly by running:
+```bash
+docker exec dharma-backup-scheduler /scripts/backup-all.sh
+```
+
+### System Performance Monitoring
+To enable system health dashboards (Prometheus, Grafana, and Cadvisor profiles):
 ```bash
 docker compose --env-file envs/.env.docker --profile monitoring up -d
 ```
-Then visit [http://localhost:3001](http://localhost:3001) to see beautiful graphs of your system's health.
+You can access performance metric visualizations at `http://localhost:3001`.
 
 ---
 
-## 🔒 Security & Reliability
+## 🛡️ Reliability & Security Implementations
 
-Dharma is designed with defensive programming and robust security defaults:
-
-- **Strict Environment Validation:** Docker configurations do not rely on insecure defaults. A built-in validation script (`scripts/validate-docker-env.sh`) ensures that you generate and use cryptographically secure secrets before the application can even boot.
-- **Fail-Safe AI Workers:** The background processing system natively detects AI (Ollama) inference failures or outages. Instead of corrupting the vector database with empty embeddings, it safely fails the job and utilizes exponential backoff for retries.
-- **Cryptographic Audit Ledger:** Operations like mapping evidence to controls use 64-bit deterministic advisory locks bound to your Organization's ID. This prevents high-concurrency race conditions and guarantees the cryptographic integrity of the compliance ledger.
+* **Cryptographic Signatures:** Every evidence upload record generates a SHA-256 hash incorporating the file payload, timestamps, and the previous ledger hash.
+* **Deterministic Locking:** Database writes bound to auditing procedures run under PostgreSQL advisory locks, neutralizing race conditions during high-volume evidence submissions.
+* **Failure Resilient Workers:** BullMQ workers monitor local Ollama availability. If Ollama times out during inference due to CPU load, jobs are automatically retried using exponential backoff instead of failing silently.
