@@ -40,6 +40,7 @@ model Organization {
   chainAnchors ChainAnchor[]
   connectors   Connector[]
   auditExports AuditExport[]
+  importedItems ImportedItem[]
 
   // Phase 2 Feature 1: per-org AI provider config
   // mode: 'local-ollama' | 'local-small' | 'remote-opt-in'
@@ -81,6 +82,8 @@ model User {
   accounts       Account[]
   sessions       Session[]
   auditLogs      AuditLog[]
+  marketplaceItems MarketplaceItem[] @relation("MarketplaceItemAuthor")
+  marketplaceReviews MarketplaceReview[] @relation("MarketplaceReviews")
 
   @@index([organizationId])
   @@index([email])
@@ -90,6 +93,7 @@ enum Role {
   ADMIN
   COMPLIANCE_MANAGER
   VIEWER
+  PUBLISHER
 }
 
 model Account {
@@ -137,9 +141,11 @@ model Framework {
   description    String?      @db.Text
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  controls       Control[]
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  controls            Control[]
+  marketplaceSourceId String?
+  importedItemId      String?
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -395,4 +401,104 @@ model AuditExport {
 
   @@index([organizationId])
   @@index([expiresAt])
+}
+
+// ============================================================
+// Phase 3c: Marketplace
+// ============================================================
+
+enum ItemType {
+  FRAMEWORK
+  TEMPLATE
+  CONNECTOR
+}
+
+model MarketplaceItem {
+  id              String   @id @default(cuid())
+  type            ItemType
+  name            String
+  slug            String   @unique
+  description     String   @db.Text
+  shortDescription String? 
+  authorId        String   
+  author          User     @relation("MarketplaceItemAuthor", fields: [authorId], references: [id])
+  
+  price           Float    @default(0)
+  currency        String   @default("USD")
+  
+  metadata        Json
+  category        String
+  tags            String[]
+  logo            String?
+  coverImage      String?
+  
+  version         String   @default("1.0.0")
+  isPublic        Boolean  @default(false)
+  isOfficial      Boolean  @default(false)
+  ratings         Float    @default(0)
+  reviewCount     Int      @default(0)
+  downloads       Int      @default(0)
+  
+  reviews         MarketplaceReview[]
+  importedItems   ImportedItem[]
+  revisions       MarketplaceItemRevision[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  publishedAt     DateTime?
+  
+  @@index([authorId, isPublic, createdAt])
+  @@index([category, isPublic])
+}
+
+model MarketplaceReview {
+  id              String   @id @default(cuid())
+  marketplaceItemId String
+  item            MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
+  reviewerId      String
+  reviewer        User     @relation("MarketplaceReviews", fields: [reviewerId], references: [id])
+  
+  rating          Int
+  title           String
+  content         String   @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([marketplaceItemId, reviewerId])
+  @@index([marketplaceItemId, rating])
+}
+
+model MarketplaceItemRevision {
+  id              String   @id @default(cuid())
+  marketplaceItemId String
+  item            MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
+  
+  version         String
+  metadata        Json
+  changeNotes     String   @db.Text
+  
+  createdAt       DateTime @default(now())
+}
+
+model ImportedItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  marketplaceItemId String?
+  sourceItem     MarketplaceItem? @relation(fields: [marketplaceItemId], references: [id], onDelete: SetNull)
+  
+  itemType            ItemType
+  itemName            String
+  itemVersion         String
+  
+  importedFrameworkId String?
+  sourceMetadata      Json?
+  customizations      Json?
+  
+  importedAt          DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@unique([organizationId, marketplaceItemId])
+  @@index([organizationId, importedAt])
 }

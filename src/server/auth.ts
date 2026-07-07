@@ -118,7 +118,7 @@ export const authOptions: NextAuthOptions = {
           return;
         }
 
-        console.info(`[auth] Magic link generated for ${identifier}`);
+        console.info(`[auth] Magic link generated for ${identifier}: ${url}`);
       }
     })
   ],

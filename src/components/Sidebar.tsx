@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileCheck2, FileText, LayoutDashboard, LogOut, Settings2, Shield } from "lucide-react";
+import { FileCheck2, FileText, LayoutDashboard, LogOut, Settings2, Shield, Store } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -29,6 +29,11 @@ const navigation = [
     href: "/dashboard/evidence" as Route,
     label: "Evidence",
     icon: FileCheck2
+  },
+  {
+    href: "/dashboard/marketplace" as Route,
+    label: "Marketplace",
+    icon: Store
   },
   {
     href: "/dashboard/settings" as Route,
