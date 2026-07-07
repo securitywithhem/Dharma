@@ -65,7 +65,8 @@ describe('evidence router', () => {
     const result = await caller.evidence.getUploadUrl({
       fileName: 'screenshot.png',
       contentType: 'image/png',
-      controlId
+      controlId,
+      fileSizeBytes: 1024,
     });
     expect(result.uploadUrl).toContain('http');
     expect(result.filePath).toBeDefined();
@@ -86,6 +87,7 @@ describe('evidence router', () => {
       controlId: control.id,
       fileName: 'screenshot.png',
       filePath: 'abc123-screenshot.png',
+      fileSizeBytes: 1024,
       type: EvidenceType.SCREENSHOT,
     });
 

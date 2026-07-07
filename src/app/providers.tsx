@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TRPCReactProvider } from "@/hooks/trpc";
+import { StripeProvider } from "@/components/billing/StripeProvider";
 
 export function Providers({
   children,
@@ -16,7 +17,9 @@ export function Providers({
   return (
     <SessionProvider session={session}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <TRPCReactProvider>
+          <StripeProvider>{children}</StripeProvider>
+        </TRPCReactProvider>
         <Toaster richColors position="bottom-right" />
       </ThemeProvider>
     </SessionProvider>

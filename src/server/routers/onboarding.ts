@@ -180,6 +180,10 @@ export const onboardingRouter = createTRPCRouter({
       const { teamMembers } = input;
       const { prisma, session } = ctx;
       const organizationId = session.user.organizationId;
+      
+      const { EntitlementService } = await import('@/server/services/entitlement');
+      const entitlementService = new EntitlementService(prisma);
+      await entitlementService.checkUsageLimit(organizationId, 'users', teamMembers.length);
 
       // Verify user is ADMIN
       if (session.user.role !== 'ADMIN') {

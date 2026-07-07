@@ -135,6 +135,7 @@ export function EvidenceUploadForm({
         fileName: file.name,
         contentType: file.type || "application/octet-stream",
         controlId,
+        fileSizeBytes: file.size,
       });
 
       // Step 2: PUT directly to MinIO with progress tracking
@@ -180,6 +181,7 @@ export function EvidenceUploadForm({
         fileName: file.name,
         filePath,
         type: evidenceType,
+        fileSizeBytes: file.size,
       });
 
       // Step 4: invalidate evidence list cache

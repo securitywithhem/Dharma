@@ -78,7 +78,7 @@ export async function createTRPCContext(options: { headers: Headers }) {
 
 export type TRPCContext = Awaited<ReturnType<typeof createInnerTRPCContext>>;
 
-const t = initTRPC.context<TRPCContext>().create({
+export const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
     return {

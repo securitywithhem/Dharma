@@ -63,10 +63,16 @@ export const evidenceRouter = createTRPCRouter({
         fileName: z.string().min(1).max(255),
         contentType: z.string().min(1).max(127),
         controlId: z.string().min(1),
+        fileSizeBytes: z.number().int().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await ensureBucket();
+      
+      const { EntitlementService } = await import('@/server/services/entitlement');
+      const entitlementService = new EntitlementService(ctx.prisma);
+      // incrementAmount expects MB, fileSizeBytes is in bytes
+      await entitlementService.checkUsageLimit(ctx.session.user.organizationId, 'storageMb', input.fileSizeBytes / (1024 * 1024));
 
       // Verify control belongs to the organisation
       const control = await ctx.prisma.control.findFirst({
@@ -111,6 +117,7 @@ export const evidenceRouter = createTRPCRouter({
         controlId: z.string().min(1),
         fileName: z.string().min(1).max(255),
         filePath: z.string().min(1).max(1024),
+        fileSizeBytes: z.number().int().min(1),
         type: evidenceTypeSchema,
         summary: z.string().max(5000).optional(),
         expiresAt: z.coerce.date().optional(),
@@ -139,6 +146,7 @@ export const evidenceRouter = createTRPCRouter({
           organizationId: ctx.session.user.organizationId,
           fileName: input.fileName,
           filePath: input.filePath,
+          fileSizeBytes: input.fileSizeBytes,
           type: input.type,
           summary: input.summary,
           expiresAt: input.expiresAt,

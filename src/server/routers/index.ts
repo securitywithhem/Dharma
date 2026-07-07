@@ -10,20 +10,23 @@ import { reportRouter } from "@/server/routers/report";
 import { dashboardRouter } from "@/server/routers/dashboard";
 import { onboardingRouter } from "@/server/routers/onboarding";
 import { connectorRouter } from "@/server/routers/connector";
+import { billingRouter } from "@/server/routers/billing";
+import { entitlementRouter } from "@/server/routers/entitlement";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
-  control: controlRouter,
+  policy: policyRouter,
+  dashboard: dashboardRouter,
+  report: reportRouter,
   evidence: evidenceRouter,
+  control: controlRouter,
   framework: frameworkRouter,
   health: healthRouter,
-  policy: policyRouter,
   settings: settingsRouter,
-  report: reportRouter,
-  dashboard: dashboardRouter,
   onboarding: onboardingRouter,
   connector: connectorRouter,
+  billing: billingRouter,
+  entitlement: entitlementRouter,
 });
 
 export type AppRouter = typeof appRouter;
-
