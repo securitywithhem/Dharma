@@ -286,6 +286,45 @@ export const evidenceRouter = createTRPCRouter({
     }),
 
   /**
+   * "Undo" for the auto-collection success toast: deletes an auto-collected
+   * evidence row (source === "auto") without touching its EvidenceMapping —
+   * the schedule keeps running, only this one collected row is removed.
+   * Scoped to source === "auto" so it can't be used as a generic delete
+   * bypass for manually-uploaded evidence (use evidence.delete for that).
+   */
+  deleteAuto: managerProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const evidence = await ctx.prisma.evidence.findFirst({
+        where: {
+          id: input.id,
+          organizationId: ctx.session.user.organizationId,
+          source: "auto",
+        },
+      });
+
+      if (!evidence) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Auto-collected evidence not found.",
+        });
+      }
+
+      await ctx.prisma.evidence.delete({ where: { id: input.id } });
+
+      await createAuditLog(ctx.prisma, {
+        organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
+        action: "EVIDENCE_AUTO_UNDONE",
+        entity: "Evidence",
+        entityId: input.id,
+        changes: { fileName: evidence.fileName, evidenceMappingId: evidence.evidenceMappingId },
+      });
+
+      return { success: true };
+    }),
+
+  /**
    * Update the optional AI-generated summary for an evidence record.
    */
   updateSummary: managerProcedure

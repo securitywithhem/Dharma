@@ -10,6 +10,8 @@ import { reportRouter } from "@/server/routers/report";
 import { dashboardRouter } from "@/server/routers/dashboard";
 import { onboardingRouter } from "@/server/routers/onboarding";
 import { connectorRouter } from "@/server/routers/connector";
+import { evidenceMappingRouter } from "@/server/routers/evidenceMapping";
+import { webhookRouter } from "@/server/routers/webhook";
 import { billingRouter } from "@/server/routers/billing";
 import { entitlementRouter } from "@/server/routers/entitlement";
 import { marketplaceRouter } from "@/server/routers/marketplace";
@@ -27,6 +29,8 @@ export const appRouter = createTRPCRouter({
   settings: settingsRouter,
   onboarding: onboardingRouter,
   connector: connectorRouter,
+  evidenceMapping: evidenceMappingRouter,
+  webhook: webhookRouter,
   billing: billingRouter,
   entitlement: entitlementRouter,
   marketplace: marketplaceRouter,
