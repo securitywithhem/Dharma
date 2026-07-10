@@ -190,6 +190,12 @@ model Evidence {
   // Phase 2 Feature 2: link back to the connector that auto-created this row
   connectorId    String?
   connector      Connector?            @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  // Phase 4 Part 2: link back to the EvidenceMapping rule that auto-collected this row.
+  // Not present in the original Part 1 schema — added here per the Implementation
+  // Plan's fallback instruction, since no BackendSchema.md exists in the repo to
+  // confirm it was already covered.
+  evidenceMappingId String?
+  evidenceMapping   EvidenceMapping?    @relation(fields: [evidenceMappingId], references: [id], onDelete: SetNull)
   fileName       String
   filePath       String
   fileSizeBytes  Int                   @default(0)
@@ -210,6 +216,7 @@ model Evidence {
   @@index([organizationId])
   @@index([type])
   @@index([connectorId])
+  @@index([evidenceMappingId])
   @@index([embeddingStatus])
 }
 
@@ -377,15 +384,19 @@ enum ConnectorStatus {
 }
 
 model EvidenceMapping {
-  id              String    @id @default(cuid())
+  id              String     @id @default(cuid())
   connectorId     String
-  connector       Connector @relation(fields: [connectorId], references: [id])
+  connector       Connector  @relation(fields: [connectorId], references: [id], onDelete: Cascade)
   controlId       String
-  control         Control   @relation(fields: [controlId], references: [id])
+  control         Control    @relation(fields: [controlId], references: [id], onDelete: Cascade)
   evidenceType    String
   schedule        String?
   lastCollectedAt DateTime?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime   @default(now())
+  evidence        Evidence[]
+
+  @@index([connectorId])
+  @@index([controlId])
 }
 
 // ============================================================

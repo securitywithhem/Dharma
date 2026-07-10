@@ -13,6 +13,7 @@ import { startPolicyWorker } from "./policy";
 import { startAnchorWorker } from "./anchor";
 import { startConnectorWorker } from "./connectors/index";
 import { startAuditorPackageWorker } from "./auditorPackage";
+import { startConnectorEvidenceWorker } from "@/server/queue/workers/connectorEvidenceWorker";
 
 console.log("🚀 Starting Dharma background workers...");
 
@@ -21,6 +22,7 @@ const policyWorker = startPolicyWorker();
 const anchorWorker = startAnchorWorker();
 const connectorWorker = startConnectorWorker();
 const auditorPackageWorker = startAuditorPackageWorker();
+const connectorEvidenceWorker = startConnectorEvidenceWorker();
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received — draining workers...");
@@ -30,6 +32,7 @@ process.on("SIGTERM", async () => {
     anchorWorker.close(),
     connectorWorker.close(),
     auditorPackageWorker.close(),
+    connectorEvidenceWorker.close(),
   ]);
   process.exit(0);
 });

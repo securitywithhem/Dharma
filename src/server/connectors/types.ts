@@ -6,6 +6,13 @@ export interface EvidenceItem {
   summary?: string;
   collectedAt: Date;
   metadata?: any;
+  /**
+   * Pass/fail outcome of the underlying check, used to derive Control status
+   * (see controlStatusPolicy.ts). "unknown" means the adapter collected the
+   * evidence but doesn't yet compute a pass/fail verdict for it — treat as
+   * "needs manual review", never as an automatic pass or fail.
+   */
+  status: "pass" | "fail" | "unknown";
 }
 
 export interface ConnectorAdapter {

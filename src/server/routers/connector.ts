@@ -5,6 +5,7 @@ import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc"
 import { createAuditLog } from "@/server/audit-log";
 import { encryptConnectorConfig, decryptConnectorConfig } from "@/server/lib/crypto/connectorVault";
 import { getConnectorAdapter } from "@/server/connectors/registry";
+import { removeRepeatableJob } from "@/server/queue/connectorQueue";
 
 const ConfigSchema = z.record(z.any());
 
@@ -248,6 +249,15 @@ export const connectorRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Connector not found" });
       }
 
+      // EvidenceMapping rows cascade-delete at the DB level when the
+      // connector is deleted, but their BullMQ repeatable jobs don't —
+      // clean those up first so we don't leak orphaned schedules.
+      const mappings = await ctx.prisma.evidenceMapping.findMany({
+        where: { connectorId: input.id },
+        select: { id: true },
+      });
+      await Promise.all(mappings.map((m) => removeRepeatableJob(m.id)));
+
       await ctx.prisma.connector.delete({ where: { id: input.id } });
 
       await createAuditLog(ctx.prisma, {
@@ -256,7 +266,7 @@ export const connectorRouter = createTRPCRouter({
         action: "CONNECTOR_DELETED",
         entity: "Connector",
         entityId: input.id,
-        changes: { type: connector.type, name: connector.name },
+        changes: { type: connector.type, name: connector.name, evidenceMappingsRemoved: mappings.length },
       });
 
       return { deleted: true };

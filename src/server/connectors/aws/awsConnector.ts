@@ -116,6 +116,7 @@ export class AWSConnector implements ConnectorAdapter {
               summary: status?.IsLogging ? 'CloudTrail logging enabled' : 'CloudTrail logging disabled',
               collectedAt,
               metadata: { trail, status },
+              status: status?.IsLogging ? 'pass' : 'fail',
             });
           }
           return items;
@@ -125,6 +126,11 @@ export class AWSConnector implements ConnectorAdapter {
           const recorderStatus = await configService.send(
             new DescribeConfigurationRecorderStatusCommand({}),
           );
+          // NOTE: this does not yet actually check IAM MFA enforcement — it only
+          // snapshots the AWS Config recorder status. No real pass/fail signal is
+          // computed here, so status is "unknown" rather than a fabricated verdict.
+          // A real check (e.g. IAM GetAccountSummary / list users without MFA) is
+          // out of scope for Part 2 and should be tracked as a follow-up.
           return [
             {
               id: `config-recorder-${collectedAt.getTime()}`,
@@ -133,6 +139,7 @@ export class AWSConnector implements ConnectorAdapter {
               summary: 'AWS Config recorder status snapshot',
               collectedAt,
               metadata: { recorderStatus },
+              status: 'unknown',
             },
           ];
         }
