@@ -3,11 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Users, CreditCard, Shield } from "lucide-react";
+import { Settings, Users, CreditCard, Shield, Cloud, Webhook } from "lucide-react";
 
 const settingsTabs = [
   { href: "/dashboard/settings/general", label: "General", icon: <Settings className="w-4 h-4" /> },
   { href: "/dashboard/settings/team", label: "Team", icon: <Users className="w-4 h-4" /> },
+  { href: "/dashboard/settings/connectors", label: "Connectors", icon: <Cloud className="w-4 h-4" /> },
+  { href: "/dashboard/settings/webhooks", label: "Webhooks", icon: <Webhook className="w-4 h-4" /> },
   { href: "/dashboard/settings/billing", label: "Billing", icon: <CreditCard className="w-4 h-4" /> },
   { href: "/dashboard/settings/security", label: "Security", icon: <Shield className="w-4 h-4" /> },
 ];

@@ -39,6 +39,7 @@ model Organization {
   invites      OrganizationInvite[]
   chainAnchors ChainAnchor[]
   connectors   Connector[]
+  webhooks     Webhook[]
   auditExports AuditExport[]
   importedItems ImportedItem[]
 
@@ -397,6 +398,43 @@ model EvidenceMapping {
 
   @@index([connectorId])
   @@index([controlId])
+}
+
+// ============================================================
+// Phase 4 Part 3: Outgoing Webhook Dispatcher
+// ============================================================
+
+model Webhook {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  url            String
+  // AES-256-GCM encrypted via src/server/lib/crypto/secretVault.ts — same
+  // envelope format as connectorVault's config blob. Never returned to the
+  // client after creation; webhook.list only exposes a redacted preview.
+  secret         String
+  events         String[]
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deliveries     WebhookDelivery[]
+
+  @@index([organizationId])
+}
+
+model WebhookDelivery {
+  id           String   @id @default(cuid())
+  webhookId    String
+  webhook      Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event        String
+  payload      Json
+  responseCode Int?
+  success      Boolean  @default(false)
+  attempt      Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  @@index([webhookId])
+  @@index([createdAt])
 }
 
 // ============================================================

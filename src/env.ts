@@ -63,6 +63,12 @@ const envSchema = z.object({
   //   node -e "console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))"
   CONNECTOR_ENCRYPTION_KEY: z.string().min(32).default("change-me-32-char-key-for-connectors"),
   CONNECTOR_SYNC_CRON: z.string().default("0 */12 * * *"),
+
+  // ── Phase 4 Part 3: Webhook Secret Encryption ───────────────────────────
+  // Must be a distinct key from CONNECTOR_ENCRYPTION_KEY so a compromise of
+  // one secret class doesn't also expose the other. Same 64-hex-char format.
+  WEBHOOK_ENCRYPTION_KEY: z.string().min(32).default("change-me-32-char-key-for-webhooks"),
+  WEBHOOK_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
 });
 
 export const env = envSchema.parse(process.env);

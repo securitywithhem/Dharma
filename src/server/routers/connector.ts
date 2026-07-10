@@ -6,6 +6,7 @@ import { createAuditLog } from "@/server/audit-log";
 import { encryptConnectorConfig, decryptConnectorConfig } from "@/server/lib/crypto/connectorVault";
 import { getConnectorAdapter } from "@/server/connectors/registry";
 import { removeRepeatableJob } from "@/server/queue/connectorQueue";
+import { checkRateLimit } from "@/server/lib/rateLimit";
 
 const ConfigSchema = z.record(z.any());
 
@@ -70,7 +71,8 @@ export const connectorRouter = createTRPCRouter({
       type: z.nativeEnum(ConnectorType),
       config: ConfigSchema,
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      checkRateLimit(`${ctx.session.user.organizationId}:connector.precheckConnection`, 10, 60_000);
       try {
         const adapter = getConnectorAdapter(input.type);
         const success = await adapter.testConnection(input.config);
@@ -89,6 +91,8 @@ export const connectorRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
+      checkRateLimit(`${organizationId}:connector.testConnection`, 10, 60_000);
+
       const connector = await ctx.prisma.connector.findFirst({
         where: { id: input.id, organizationId },
       });

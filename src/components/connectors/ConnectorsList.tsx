@@ -14,6 +14,9 @@ import { useConnectors } from '@/lib/hooks/useConnectors';
 import { EvidenceMappingBoard } from './EvidenceMappingBoard';
 
 const SUPPORTED_TYPES = ['AWS', 'AZURE', 'GCP', 'GITHUB', 'OKTA', 'JIRA'] as const;
+// Types with a live ConnectorAdapter registered (src/server/connectors/registry.ts).
+// Everything else in SUPPORTED_TYPES still renders as a "Coming soon" card.
+const ENABLED_TYPES = new Set(['AWS', 'GITHUB', 'OKTA', 'JIRA']);
 
 const STATUS_STYLES: Record<string, { dot: string; label: string; pulse?: boolean }> = {
   CONNECTED: { dot: 'bg-emerald-500', label: 'Connected' },
@@ -60,7 +63,7 @@ export function ConnectorsList() {
 
   const configured = connectors ?? [];
   const configuredTypes = new Set(configured.map((c) => c.type));
-  const comingSoonTypes = SUPPORTED_TYPES.filter((t) => t !== 'AWS' && !configuredTypes.has(t));
+  const comingSoonTypes = SUPPORTED_TYPES.filter((t) => !ENABLED_TYPES.has(t) && !configuredTypes.has(t));
 
   return (
     <div className="space-y-4">

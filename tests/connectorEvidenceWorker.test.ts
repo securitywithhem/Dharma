@@ -62,6 +62,7 @@ jest.mock("@/server/audit-log", () => ({
 
 jest.mock("@/server/connectors/notify", () => ({
   notifyEvidenceUpdated: jest.fn().mockResolvedValue(undefined),
+  notifyControlFailed: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Prevent the real BullMQ Queue (and its Redis connection) from being
@@ -74,6 +75,7 @@ jest.mock("@/server/queue/connectorQueue", () => ({
 import { processConnectorEvidenceJob } from "@/server/queue/workers/connectorEvidenceWorker";
 import { getConnectorAdapter } from "@/server/connectors/registry";
 import { createAuditLog } from "@/server/audit-log";
+import { notifyEvidenceUpdated, notifyControlFailed } from "@/server/connectors/notify";
 
 function baseMapping(overrides: Partial<any> = {}) {
   const { connector: connectorOverride, control: controlOverride, ...rest } = overrides;
@@ -164,9 +166,16 @@ describe("processConnectorEvidenceJob", () => {
       where: { id: "connector-1" },
       data: { lastSyncAt: expect.any(Date), status: ConnectorStatus.CONNECTED, lastError: null },
     });
+    expect(notifyEvidenceUpdated).toHaveBeenCalledWith(
+      mockPrisma,
+      "org-1",
+      "control-1",
+      expect.objectContaining({ id: "evidence-1", evidenceType: "aws_cloudtrail_enabled", status: "pass" }),
+    );
+    expect(notifyControlFailed).not.toHaveBeenCalled();
   });
 
-  it("downgrades control status to IN_PROGRESS when any collected item fails", async () => {
+  it("downgrades control status to IN_PROGRESS when any collected item fails, and fires notifyControlFailed once", async () => {
     const mapping = baseMapping({ control: { status: ControlStatus.COMPLIANT } });
     mockPrisma.evidenceMapping.findUnique.mockResolvedValue(mapping);
     mockPrisma.evidence.create.mockResolvedValue({ id: "evidence-1" });
@@ -182,6 +191,27 @@ describe("processConnectorEvidenceJob", () => {
       where: { id: "control-1" },
       data: { status: ControlStatus.IN_PROGRESS },
     });
+    expect(notifyControlFailed).toHaveBeenCalledWith(mockPrisma, "org-1", "control-1");
+    expect(notifyControlFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT re-fire notifyControlFailed when a control is already failing and fails again", async () => {
+    // Control is already IN_PROGRESS (our stand-in for "failing") — a repeat
+    // failing run must not re-fire control.failed, since nextStatus equals
+    // the current status and the worker's status-transition block is skipped.
+    const mapping = baseMapping({ control: { status: ControlStatus.IN_PROGRESS } });
+    mockPrisma.evidenceMapping.findUnique.mockResolvedValue(mapping);
+    mockPrisma.evidence.create.mockResolvedValue({ id: "evidence-1" });
+
+    const collectEvidence = jest.fn().mockResolvedValue([
+      { id: "x", type: "aws_cloudtrail_enabled", fileName: "a.json", collectedAt: new Date(), status: "fail" },
+    ]);
+    (getConnectorAdapter as jest.Mock).mockReturnValue({ collectEvidence });
+
+    await processConnectorEvidenceJob(fakeJob({ evidenceMappingId: "mapping-1" }));
+
+    expect(mockPrisma.control.update).not.toHaveBeenCalled();
+    expect(notifyControlFailed).not.toHaveBeenCalled();
   });
 
   it("sets Connector.status=ERROR and rethrows without crashing on adapter failure", async () => {

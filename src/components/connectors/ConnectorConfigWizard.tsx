@@ -25,29 +25,82 @@ interface ConnectorConfigWizardProps {
   onClose: () => void;
 }
 
-const CONNECTOR_TYPES = [
-  { type: 'AWS' as const, label: 'AWS', enabled: true },
-  { type: 'AZURE' as const, label: 'Azure', enabled: false },
-  { type: 'GCP' as const, label: 'GCP', enabled: false },
-  { type: 'GITHUB' as const, label: 'GitHub', enabled: false },
-  { type: 'OKTA' as const, label: 'Okta', enabled: false },
-  { type: 'JIRA' as const, label: 'Jira', enabled: false },
+type ConnectorTypeKey = 'AWS' | 'AZURE' | 'GCP' | 'GITHUB' | 'OKTA' | 'JIRA';
+
+const CONNECTOR_TYPES: { type: ConnectorTypeKey; label: string; enabled: boolean }[] = [
+  { type: 'AWS', label: 'AWS', enabled: true },
+  { type: 'AZURE', label: 'Azure', enabled: false },
+  { type: 'GCP', label: 'GCP', enabled: false },
+  { type: 'GITHUB', label: 'GitHub', enabled: true },
+  { type: 'OKTA', label: 'Okta', enabled: true },
+  { type: 'JIRA', label: 'Jira', enabled: true },
 ];
+
+interface ConfigField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  secret?: boolean;
+}
+
+// Each connector type's step-2 form is generated from this table rather than
+// a bespoke component per type — same wizard shell for every connector,
+// per the Part 3 UI spec ("reusing the exact same wizard shell").
+const CONNECTOR_FIELDS: Record<ConnectorTypeKey, ConfigField[]> = {
+  AWS: [
+    { key: 'roleArn', label: 'Role ARN', placeholder: 'arn:aws:iam::123456789012:role/DharmaReadOnly' },
+    { key: 'externalId', label: 'External ID' },
+    { key: 'region', label: 'Region', placeholder: 'us-east-1' },
+  ],
+  AZURE: [],
+  GCP: [],
+  GITHUB: [
+    { key: 'org', label: 'GitHub organization', placeholder: 'dharma-org' },
+    { key: 'installationToken', label: 'Installation token (read-only)', secret: true },
+  ],
+  OKTA: [
+    { key: 'oktaDomain', label: 'Okta domain', placeholder: 'dharma.okta.com' },
+    { key: 'apiToken', label: 'API token', secret: true },
+  ],
+  JIRA: [
+    { key: 'siteUrl', label: 'Site URL', placeholder: 'https://dharma.atlassian.net' },
+    { key: 'email', label: 'Email' },
+    { key: 'apiToken', label: 'API token', secret: true },
+    { key: 'projectKey', label: 'Project key', placeholder: 'COMP' },
+  ],
+};
+
+const DEFAULT_NAMES: Record<ConnectorTypeKey, string> = {
+  AWS: 'AWS Production',
+  AZURE: 'Azure',
+  GCP: 'GCP',
+  GITHUB: 'GitHub Organization',
+  OKTA: 'Okta',
+  JIRA: 'Jira',
+};
 
 export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
   const [step, setStep] = useState(1);
-  const [name, setName] = useState('AWS Production');
-  const [roleArn, setRoleArn] = useState('');
-  const [externalId, setExternalId] = useState('');
-  const [region, setRegion] = useState('us-east-1');
+  const [selectedType, setSelectedType] = useState<ConnectorTypeKey>('AWS');
+  const [name, setName] = useState(DEFAULT_NAMES.AWS);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [evidenceTypes, setEvidenceTypes] = useState<string[]>([]);
   const [isTesting, setIsTesting] = useState(false);
 
   const { createMutation } = useConnectors();
   const evidenceTypesQuery = api.connector.listAvailableEvidenceTypes.useQuery(
-    { type: 'AWS' },
+    { type: selectedType as any },
     { enabled: false },
   );
+
+  const fields = CONNECTOR_FIELDS[selectedType];
+
+  const selectType = (type: ConnectorTypeKey) => {
+    setSelectedType(type);
+    setName(DEFAULT_NAMES[type]);
+    setFieldValues({});
+    setStep(2);
+  };
 
   const handleCopyPolicy = async () => {
     await navigator.clipboard.writeText(awsIamPolicyTemplate);
@@ -55,17 +108,18 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
   };
 
   const handleTestAndCreate = async () => {
-    if (!roleArn || !externalId) {
-      toast.error('Role ARN and External ID are required');
+    const missing = fields.filter((f) => !fieldValues[f.key]?.trim());
+    if (missing.length > 0) {
+      toast.error(`${missing.map((f) => f.label).join(', ')} ${missing.length === 1 ? 'is' : 'are'} required`);
       return;
     }
 
     setIsTesting(true);
     try {
       await createMutation.mutateAsync({
-        type: 'AWS',
+        type: selectedType,
         name,
-        config: { roleArn, externalId, region },
+        config: { ...fieldValues },
       });
 
       const { data } = await evidenceTypesQuery.refetch();
@@ -80,7 +134,7 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
   };
 
   const handleFinish = () => {
-    toast.success('AWS connector added');
+    toast.success(`${DEFAULT_NAMES[selectedType]} connector added`);
     onClose();
   };
 
@@ -107,7 +161,7 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
                 <button
                   key={c.type}
                   disabled={!c.enabled}
-                  onClick={() => setStep(2)}
+                  onClick={() => selectType(c.type)}
                   className="flex flex-col items-center gap-2 p-4 rounded-lg border border-stone-200 dark:border-stone-800 hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Cloud className="w-6 h-6" />
@@ -130,49 +184,44 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
               exit={{ opacity: 0, x: -10 }}
               className="space-y-4"
             >
-              <div>
-                <Label>1. Create a read-only IAM role using this policy</Label>
-                <div className="relative mt-1">
-                  <pre className="text-xs bg-stone-950 text-stone-100 rounded-lg p-3 overflow-x-auto max-h-40">
-                    {awsIamPolicyTemplate}
-                  </pre>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1 right-1"
-                    onClick={handleCopyPolicy}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
+              {selectedType === 'AWS' && (
+                <div>
+                  <Label>1. Create a read-only IAM role using this policy</Label>
+                  <div className="relative mt-1">
+                    <pre className="text-xs bg-stone-950 text-stone-100 rounded-lg p-3 overflow-x-auto max-h-40">
+                      {awsIamPolicyTemplate}
+                    </pre>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-1 right-1"
+                      onClick={handleCopyPolicy}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="name">Connector name</Label>
                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
-                <div>
-                  <Label htmlFor="roleArn">Role ARN</Label>
-                  <Input
-                    id="roleArn"
-                    placeholder="arn:aws:iam::123456789012:role/DharmaReadOnly"
-                    value={roleArn}
-                    onChange={(e) => setRoleArn(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="externalId">External ID</Label>
-                  <Input
-                    id="externalId"
-                    value={externalId}
-                    onChange={(e) => setExternalId(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="region">Region</Label>
-                  <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} />
-                </div>
+                {fields.map((field) => (
+                  <div key={field.key}>
+                    <Label htmlFor={field.key}>{field.label}</Label>
+                    <Input
+                      id={field.key}
+                      type={field.secret ? 'password' : 'text'}
+                      placeholder={field.placeholder}
+                      value={fieldValues[field.key] ?? ''}
+                      onChange={(e) =>
+                        setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="flex gap-3 justify-end pt-2">

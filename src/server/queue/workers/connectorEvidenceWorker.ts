@@ -9,13 +9,14 @@
 
 import { createHash } from "node:crypto";
 import { Worker, type Job } from "bullmq";
-import { ConnectorStatus, EvidenceType, PrismaClient } from "@prisma/client";
+import { ConnectorStatus, ControlStatus, EvidenceType, PrismaClient } from "@prisma/client";
 import { env } from "@/env";
 import { createAuditLog } from "@/server/audit-log";
 import { decryptConnectorConfig } from "@/server/lib/crypto/connectorVault";
 import { getConnectorAdapter } from "@/server/connectors/registry";
 import { deriveControlStatus } from "@/server/connectors/controlStatusPolicy";
-import { notifyEvidenceUpdated } from "@/server/connectors/notify";
+import { notifyEvidenceUpdated, notifyControlFailed } from "@/server/connectors/notify";
+import type { EvidenceItem } from "@/server/connectors/types";
 import {
   CONNECTOR_EVIDENCE_QUEUE_NAME,
   type ConnectorEvidenceJobData,
@@ -134,7 +135,7 @@ export async function processConnectorEvidenceJob(
       const config = decryptConnectorConfig(connector.config as string);
       const items = await adapter.collectEvidence(mapping.evidenceType, config);
 
-      const createdEvidenceIds: string[] = [];
+      const createdEvidence: { id: string; item: EvidenceItem }[] = [];
       for (const item of items) {
         const evidence = await prisma.evidence.create({
           data: {
@@ -151,7 +152,7 @@ export async function processConnectorEvidenceJob(
             source: "auto",
           },
         });
-        createdEvidenceIds.push(evidence.id);
+        createdEvidence.push({ id: evidence.id, item });
       }
 
       const nextStatus = deriveControlStatus(items, control.status);
@@ -169,6 +170,16 @@ export async function processConnectorEvidenceJob(
           entityId: control.id,
           changes: { from: control.status, to: nextStatus, evidenceMappingId: mapping.id },
         });
+
+        // deriveControlStatus only ever returns IN_PROGRESS (our stand-in for
+        // "failing" — see controlStatusPolicy.ts) when at least one item
+        // failed. This block only runs on an actual status transition (see
+        // the `nextStatus !== control.status` guard above), so a control
+        // that's already IN_PROGRESS from a prior failing run never re-fires
+        // this event on subsequent failing runs.
+        if (nextStatus === ControlStatus.IN_PROGRESS) {
+          await notifyControlFailed(prisma, organizationId, control.id);
+        }
       }
 
       await prisma.evidenceMapping.update({
@@ -191,16 +202,21 @@ export async function processConnectorEvidenceJob(
           connectorId: connector.id,
           controlId: control.id,
           evidenceType: mapping.evidenceType,
-          evidenceCreated: createdEvidenceIds.length,
+          evidenceCreated: createdEvidence.length,
           manual: !!manual,
         },
       });
 
-      for (const evidenceId of createdEvidenceIds) {
-        await notifyEvidenceUpdated(organizationId, control.id, evidenceId);
+      for (const { id, item } of createdEvidence) {
+        await notifyEvidenceUpdated(prisma, organizationId, control.id, {
+          id,
+          evidenceType: item.type,
+          status: item.status,
+          collectedAt: item.collectedAt,
+        });
       }
 
-      return { status: "collected", evidenceCreated: createdEvidenceIds.length };
+      return { status: "collected", evidenceCreated: createdEvidence.length };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
 
