@@ -163,6 +163,7 @@ model Control {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   evidence    Evidence[]
+  evidenceMappings EvidenceMapping[]
 
   // pgvector embedding for semantic similarity search against Evidence embeddings
   embedding   Unsupported("vector(384)")?
@@ -203,6 +204,7 @@ model Evidence {
   lastEmbeddingAttempt DateTime?
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
+  source         String                @default("manual")
 
   @@index([controlId])
   @@index([organizationId])
@@ -336,34 +338,54 @@ model ChainAnchor {
 // ============================================================
 
 model Connector {
-  id             String          @id @default(cuid())
-  organizationId String
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  provider       ConnectorProvider
-  displayName    String
-  credentials    String          // AES-256-GCM encrypted at rest
-  config         Json            // e.g. { repos: ["org/repo"] } or { regions: ["ap-south-1"] }
-  status         ConnectorStatus @default(ACTIVE)
-  lastRunAt      DateTime?
-  lastRunStatus  String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  evidence       Evidence[]      // evidence rows sourced from this connector
+  id               String            @id @default(cuid())
+  organizationId   String
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type             ConnectorType
+  name             String
+  // Legacy secret storage (Phase 2 GitHub/Vercel/AWS-key connectors), encrypted via
+  // src/lib/crypto/credentials.ts. New (Phase 4 Part 1) connectors store everything,
+  // including secrets, in `config` via src/server/lib/crypto/connectorVault.ts instead.
+  credentials      String?
+  config           Json              // AES-256 encrypted JSON blob
+  status           ConnectorStatus   @default(DISCONNECTED)
+  lastSyncAt       DateTime?
+  lastError        String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  evidenceMappings EvidenceMapping[]
+  evidence         Evidence[]
 
-  @@unique([organizationId, provider, displayName])
   @@index([organizationId])
 }
 
-enum ConnectorProvider {
-  GITHUB
+enum ConnectorType {
   AWS
+  AZURE
+  GCP
+  GITHUB
+  OKTA
+  JIRA
   VERCEL
 }
 
 enum ConnectorStatus {
-  ACTIVE
-  PAUSED
+  CONNECTED
+  DISCONNECTED
   ERROR
+  TESTING
+}
+
+model EvidenceMapping {
+  id              String    @id @default(cuid())
+  connectorId     String
+  connector       Connector @relation(fields: [connectorId], references: [id])
+  controlId       String
+  control         Control   @relation(fields: [controlId], references: [id])
+  evidenceType    String
+  schedule        String?
+  lastCollectedAt DateTime?
+  createdAt       DateTime  @default(now())
 }
 
 // ============================================================

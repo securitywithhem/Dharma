@@ -162,9 +162,9 @@ export async function runVercelConnector(
   await prisma.connector.update({
     where: { id: connector.id },
     data: {
-      lastRunAt: new Date(),
-      lastRunStatus: `${allResults.length} checks completed across ${projectIds.length} project(s)`,
-      status: ConnectorStatus.ACTIVE,
+      lastSyncAt: new Date(),
+      lastError: null,
+      status: ConnectorStatus.CONNECTED,
     },
   });
 

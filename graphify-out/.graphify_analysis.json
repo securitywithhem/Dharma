@@ -1,0 +1,1617 @@
+{
+  "communities": {
+    "0": [
+      "src_app_audit_portal_layout",
+      "src_app_audit_portal_layout_auditorlayout",
+      "src_app_audit_portal_page",
+      "src_app_audit_portal_page_auditorportalpage",
+      "src_app_auth_callback_page",
+      "src_app_auth_callback_page_authcallbackpage",
+      "src_app_auth_error_page",
+      "src_app_auth_error_page_autherrorcopy",
+      "src_app_auth_error_page_autherrorpage",
+      "src_app_auth_signin_page",
+      "src_app_auth_signin_page_signinpage",
+      "src_app_dashboard_admin_marketplace_id_page",
+      "src_app_dashboard_admin_marketplace_id_page_adminreviewitempage",
+      "src_app_dashboard_admin_marketplace_page",
+      "src_app_dashboard_admin_marketplace_page_adminmarketplacepage",
+      "src_app_dashboard_auditlogviewer",
+      "src_app_dashboard_auditlogviewer_action_config",
+      "src_app_dashboard_auditlogviewer_auditlogentry",
+      "src_app_dashboard_auditlogviewer_auditlogrow",
+      "src_app_dashboard_auditlogviewer_getactionconfig",
+      "src_app_dashboard_controls_id_page",
+      "src_app_dashboard_controls_id_page_controldetailpage",
+      "src_app_dashboard_error",
+      "src_app_dashboard_error_dashboarderror",
+      "src_app_dashboard_evidence_id_aisuggestionspanel",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_aisuggestionspanel",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_aisuggestionspanelprops",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_emptystate",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_errorstate",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_matchcolour",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_pendingstate",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_recommendation",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_recommendationcard",
+      "src_app_dashboard_evidence_id_aisuggestionspanel_recommendationcardprops",
+      "src_app_dashboard_evidence_id_page",
+      "src_app_dashboard_evidence_id_page_evidencedetailpage",
+      "src_app_dashboard_evidence_page",
+      "src_app_dashboard_evidence_page_evidencepage",
+      "src_app_dashboard_evidence_page_statcard",
+      "src_app_dashboard_frameworks_id_page",
+      "src_app_dashboard_frameworks_id_page_frameworkdetailpage",
+      "src_app_dashboard_frameworks_id_page_frameworkdetailpageprops",
+      "src_app_dashboard_frameworks_id_page_getprogressstatus",
+      "src_app_dashboard_frameworks_page",
+      "src_app_dashboard_frameworks_page_frameworkspage",
+      "src_app_dashboard_marketplace_id_page",
+      "src_app_dashboard_marketplace_id_page_marketplacedetailpage",
+      "src_app_dashboard_page",
+      "src_app_dashboard_page_dashboardpage",
+      "src_app_dashboard_policies_page",
+      "src_app_dashboard_policies_page_policiespage",
+      "src_app_dashboard_publisher_items_page",
+      "src_app_dashboard_publisher_items_page_publisheritemspage",
+      "src_app_dashboard_publisher_publish_page",
+      "src_app_dashboard_publisher_publish_page_publishitempage",
+      "src_app_dashboard_settings_general_page",
+      "src_app_dashboard_settings_general_page_settingspage",
+      "src_app_dashboard_settings_imported_items_page",
+      "src_app_dashboard_settings_imported_items_page_importeditemspage",
+      "src_app_docs_page",
+      "src_app_docs_page_docsection",
+      "src_app_docs_page_docspage",
+      "src_app_error",
+      "src_app_error_globalerror",
+      "src_app_page",
+      "src_app_page_features",
+      "src_app_page_landingpage",
+      "src_components_billing_billinghistory",
+      "src_components_billing_billingoverview",
+      "src_components_billing_billingoverview_billingoverview",
+      "src_components_billing_billingoverview_formatfeaturename",
+      "src_components_connectors_connectorslist",
+      "src_components_connectors_connectorslist_status_styles",
+      "src_components_connectors_connectorslist_statusdot",
+      "src_components_connectors_connectorslist_supported_types",
+      "src_components_dashboard_domaingapheatmap",
+      "src_components_dashboard_domaingapheatmap_domain",
+      "src_components_dashboard_domaingapheatmap_domaingapheatmap",
+      "src_components_dashboard_domaingapheatmap_domaingapheatmapprops",
+      "src_components_dashboard_frameworkprogresscards",
+      "src_components_dashboard_frameworkprogresscards_framework",
+      "src_components_dashboard_frameworkprogresscards_frameworkprogresscards",
+      "src_components_dashboard_frameworkprogresscards_frameworkprogresscardsprops",
+      "src_components_dashboard_importedframeworkscard",
+      "src_components_dashboard_importedframeworkscard_importedframeworkscard",
+      "src_components_dashboard_quickactionscard",
+      "src_components_dashboard_quickactionscard_quick_actions",
+      "src_components_dashboard_quickactionscard_quickaction",
+      "src_components_dashboard_quickactionscard_quickactionscard",
+      "src_components_dashboard_recentactivityfeed",
+      "src_components_dashboard_recentactivityfeed_activityitem",
+      "src_components_dashboard_recentactivityfeed_recentactivityfeed",
+      "src_components_dashboard_recentactivityfeed_recentactivityfeedprops",
+      "src_components_marketplace_reviewsection",
+      "src_components_marketplace_reviewsection_reviewsection",
+      "src_components_marketplace_reviewsection_reviewsectionprops",
+      "src_components_onboarding_completionstep",
+      "src_components_onboarding_frameworkselectionstep",
+      "src_components_onboarding_frameworkselectionstep_frameworkselectionstepprops",
+      "src_components_onboarding_quickstartstep",
+      "src_components_onboarding_quickstartstep_quickstartstepprops",
+      "src_components_onboarding_teamsetupstep",
+      "src_components_onboarding_teamsetupstep_teammember",
+      "src_components_onboarding_teamsetupstep_teamsetupstepprops",
+      "src_components_report_exportreportcard",
+      "src_components_report_exportreportcard_exportreportcard",
+      "src_components_ui_badge",
+      "src_components_ui_badge_badge",
+      "src_components_ui_badge_badgeprops",
+      "src_components_ui_badge_badgevariants",
+      "src_components_ui_button",
+      "src_components_ui_button_button",
+      "src_components_ui_button_buttonprops",
+      "src_components_ui_card",
+      "src_components_ui_card_card",
+      "src_components_ui_card_cardcontent",
+      "src_components_ui_card_carddescription",
+      "src_components_ui_card_cardfooter",
+      "src_components_ui_card_cardheader",
+      "src_components_ui_card_cardtitle",
+      "src_components_ui_separator",
+      "src_components_ui_separator_separator",
+      "src_hooks_trpc",
+      "src_hooks_trpc_trpcreactprovider",
+      "src_lib_trpc",
+      "src_lib_trpc_api",
+      "src_lib_trpc_getbaseurl",
+      "src_lib_trpc_routerinputs",
+      "src_lib_trpc_routeroutputs"
+    ],
+    "1": [
+      "src_lib_ai_inferenceprovider",
+      "src_lib_ai_inferenceprovider_inferenceprovider",
+      "src_lib_ai_inferenceprovider_inferenceprovider_chatjson",
+      "src_lib_ai_inferenceprovider_inferenceprovider_embed",
+      "src_lib_ai_inferenceprovider_inferenceprovider_summarize",
+      "src_lib_ai_ollamaprovider",
+      "src_lib_ai_ollamaprovider_ollamaprovider",
+      "src_lib_ai_ollamaprovider_ollamaprovider_chatjson",
+      "src_lib_ai_ollamaprovider_ollamaprovider_constructor",
+      "src_lib_ai_ollamaprovider_ollamaprovider_embed",
+      "src_lib_ai_ollamaprovider_ollamaprovider_summarize",
+      "src_lib_ai_openaicompatibleprovider",
+      "src_lib_ai_openaicompatibleprovider_openaicompatibleprovider",
+      "src_lib_ai_openaicompatibleprovider_openaicompatibleprovider_chat",
+      "src_lib_ai_openaicompatibleprovider_openaicompatibleprovider_chatjson",
+      "src_lib_ai_openaicompatibleprovider_openaicompatibleprovider_constructor",
+      "src_lib_ai_openaicompatibleprovider_openaicompatibleprovider_embed",
+      "src_lib_ai_openaicompatibleprovider_openaicompatibleprovider_summarize",
+      "src_lib_ai_resolveprovider",
+      "src_lib_ai_resolveprovider_aiproviderconfig",
+      "src_lib_ai_resolveprovider_localsmallmode",
+      "src_lib_ai_resolveprovider_ollamamode",
+      "src_lib_ai_resolveprovider_providercache",
+      "src_lib_ai_resolveprovider_remoteoptinmode",
+      "src_lib_ai_resolveprovider_resolveinferenceprovider",
+      "src_workers_classification",
+      "src_workers_classification_detectfiletype",
+      "src_workers_classification_downloadfile",
+      "src_workers_classification_extractimagetext",
+      "src_workers_classification_extractpdftext",
+      "src_workers_classification_generateembedding",
+      "src_workers_classification_generatesummary",
+      "src_workers_classification_processevidencejob",
+      "src_workers_classification_processevidencejobdata",
+      "src_workers_classification_redisconnection",
+      "src_workers_classification_sleep",
+      "src_workers_classification_startclassificationworker",
+      "src_workers_classification_truncatetext",
+      "src_workers_classification_withretry",
+      "src_workers_index",
+      "src_workers_index_anchorworker",
+      "src_workers_index_auditorpackageworker",
+      "src_workers_index_classificationworker",
+      "src_workers_index_connectorworker",
+      "src_workers_index_policyworker",
+      "src_workers_ollama",
+      "src_workers_ollama_classificationretryableerror",
+      "src_workers_ollama_classificationretryableerror_constructor",
+      "src_workers_ollama_generatetext",
+      "src_workers_ollama_getembedding",
+      "src_workers_ollama_ollamapost",
+      "src_workers_policy",
+      "src_workers_policy_policyfinding",
+      "src_workers_policy_policyqueue",
+      "src_workers_policy_processlegacygenerationjob",
+      "src_workers_policy_processpolicyjobdata",
+      "src_workers_policy_processreviewjob",
+      "src_workers_policy_redisconnection",
+      "src_workers_policy_startpolicyworker"
+    ],
+    "2": [
+      "src_app_dashboard_layout",
+      "src_app_dashboard_layout_dashboardshell",
+      "src_app_layout",
+      "src_app_layout_metadata",
+      "src_app_layout_mono",
+      "src_app_layout_rootlayout",
+      "src_app_layout_sans",
+      "src_app_providers",
+      "src_app_providers_providers",
+      "src_components_billing_stripeprovider",
+      "src_components_billing_stripeprovider_stripepromise",
+      "src_components_billing_stripeprovider_stripeprovider",
+      "src_components_billing_upgradebanner",
+      "src_components_billing_upgradebanner_upgradebanner",
+      "src_components_billing_upgradebannerheader",
+      "src_components_billing_upgradebannerheader_upgradebannerheader",
+      "src_components_layouts_dashboardlayout",
+      "src_components_layouts_dashboardlayout_dashboardlayout",
+      "src_components_sidebar",
+      "src_components_sidebar_navigation",
+      "src_components_sidebar_sidebar",
+      "src_components_themetoggle",
+      "src_components_themetoggle_themetoggle",
+      "src_components_topnav",
+      "src_components_topnav_topnav",
+      "src_components_ui_button_buttonvariants",
+      "src_lib_hooks_useentitlements",
+      "src_lib_hooks_useentitlements_useentitlements",
+      "src_pages_api_auth_nextauth",
+      "src_server_auth",
+      "src_server_auth_authcapabilities",
+      "src_server_auth_authoptions",
+      "src_server_auth_buildmagiclinkhtml",
+      "src_server_auth_createdharmaadapter",
+      "src_server_auth_deriveorganizationname",
+      "src_server_auth_getrolefromtoken",
+      "src_server_rbac",
+      "src_server_rbac_hasmanagementaccess",
+      "src_server_rbac_isadminrole",
+      "src_server_rbac_managementroles",
+      "tests_auth_test"
+    ],
+    "3": [
+      "jest_config",
+      "jest_config_config",
+      "jest_config_createjestconfig",
+      "jest_config_jestconfig",
+      "ref_dom",
+      "ref_dom_iterable",
+      "ref_es2022",
+      "ref_jest",
+      "ref_next_env_d_ts",
+      "ref_next_types_ts",
+      "ref_node",
+      "ref_node_modules",
+      "ref_src",
+      "ref_ts",
+      "ref_tsx",
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_baseurl",
+      "tsconfig_compileroptions_esmoduleinterop",
+      "tsconfig_compileroptions_incremental",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_plugins",
+      "tsconfig_compileroptions_resolvejsonmodule",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_strict",
+      "tsconfig_compileroptions_target",
+      "tsconfig_compileroptions_types",
+      "tsconfig_exclude",
+      "tsconfig_include",
+      "tsconfig_paths"
+    ],
+    "4": [
+      "package",
+      "package_description",
+      "package_engines",
+      "package_engines_node",
+      "package_name",
+      "package_prisma",
+      "package_prisma_seed",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_db_deploy",
+      "package_scripts_db_generate",
+      "package_scripts_db_migrate",
+      "package_scripts_db_push",
+      "package_scripts_db_seed",
+      "package_scripts_dev",
+      "package_scripts_docker_down",
+      "package_scripts_docker_logs",
+      "package_scripts_docker_reset",
+      "package_scripts_docker_up",
+      "package_scripts_lint",
+      "package_scripts_postinstall",
+      "package_scripts_seed_all",
+      "package_scripts_seed_frameworks",
+      "package_scripts_seed_plans",
+      "package_scripts_seed_templates",
+      "package_scripts_start",
+      "package_scripts_test",
+      "package_scripts_test_e2e",
+      "package_scripts_test_watch",
+      "package_scripts_type_check",
+      "package_version"
+    ],
+    "5": [
+      "src_app_dashboard_evidence_evidencetable",
+      "src_app_dashboard_evidence_evidencetable_deleteconfirmdialog",
+      "src_app_dashboard_evidence_evidencetable_evidencetableprops",
+      "src_app_dashboard_evidence_evidencetable_formatbytes",
+      "src_app_dashboard_evidence_evidencetable_type_config",
+      "src_app_dashboard_frameworks_id_controldetailmodal_controldetailmodal",
+      "src_app_dashboard_frameworks_id_controltable",
+      "src_app_dashboard_frameworks_id_controltable_controlrow",
+      "src_app_dashboard_frameworks_id_controltable_controltable",
+      "src_app_dashboard_frameworks_id_controltable_controltableprops",
+      "src_app_dashboard_frameworks_id_controltable_status_config",
+      "src_app_dashboard_settings_billing_page",
+      "src_app_dashboard_settings_billing_page_billingpage",
+      "src_components_billing_billinghistory_billinghistory",
+      "src_components_billing_billingusage",
+      "src_components_billing_billingusage_billingusage",
+      "src_components_billing_planscomparison",
+      "src_components_billing_planscomparison_formatfeaturename",
+      "src_components_billing_planscomparison_planscomparison",
+      "src_components_ui_skeleton",
+      "src_components_ui_skeleton_skeleton",
+      "src_components_ui_table",
+      "src_components_ui_table_table",
+      "src_components_ui_table_tablebody",
+      "src_components_ui_table_tablecaption",
+      "src_components_ui_table_tablecell",
+      "src_components_ui_table_tablefooter",
+      "src_components_ui_table_tablehead",
+      "src_components_ui_table_tableheader",
+      "src_components_ui_table_tablerow"
+    ],
+    "6": [
+      "src_lib_redis",
+      "src_lib_redis_globalforredis",
+      "src_server_db",
+      "src_server_db_createprismaclient",
+      "src_server_routers_import",
+      "src_server_routers_import_importrouter",
+      "src_server_routers_marketplace",
+      "src_server_routers_marketplace_marketplacerouter",
+      "src_server_services_import",
+      "src_server_services_import_importframeworkinput",
+      "src_server_services_import_importservice",
+      "src_server_services_import_importservice_checkforupdate",
+      "src_server_services_import_importservice_getimporteditems",
+      "src_server_services_import_importservice_importframework",
+      "src_server_services_import_importservice_unimportframework",
+      "src_server_services_import_importservice_validateimport",
+      "src_server_services_marketplace",
+      "src_server_services_marketplace_marketplaceservice",
+      "src_server_services_marketplace_marketplaceservice_addreview",
+      "src_server_services_marketplace_marketplaceservice_getitem",
+      "src_server_services_marketplace_marketplaceservice_getpublicitems",
+      "src_server_services_marketplace_marketplaceservice_importitem",
+      "src_server_services_marketplace_marketplaceservice_publishitem",
+      "src_server_shutdown",
+      "src_server_shutdown_setupgracefulshutdown",
+      "src_server_trpc_protectedprocedure",
+      "tests_import_router_test",
+      "tests_import_service_test",
+      "tests_marketplace_router_test",
+      "tests_marketplace_service_test"
+    ],
+    "7": [
+      "src_app_api_trpc_trpc_route",
+      "src_app_api_trpc_trpc_route_handler",
+      "src_server_routers_index_approuter",
+      "src_server_trpc",
+      "src_server_trpc_createcontextoptions",
+      "src_server_trpc_createinnertrpccontext",
+      "src_server_trpc_createtrpccontext",
+      "src_server_trpc_enforceadminrole",
+      "src_server_trpc_enforceauthenticateduser",
+      "src_server_trpc_enforcemanagementrole",
+      "src_server_trpc_enforceorganizationcontext",
+      "src_server_trpc_preventauditormutations",
+      "src_server_trpc_prismalike",
+      "src_server_trpc_timingmiddleware",
+      "src_server_trpc_trpccontext",
+      "tests_dashboard_query_test",
+      "tests_evidence_router_test",
+      "tests_evidence_router_test_createcaller",
+      "tests_evidence_router_test_prisma",
+      "tests_evidence_test",
+      "tests_evidence_test_createcaller",
+      "tests_evidence_test_mockfetch",
+      "tests_evidence_test_prisma",
+      "tests_framework_test",
+      "tests_framework_test_createcaller",
+      "tests_framework_test_prisma",
+      "tests_trpc_test",
+      "tests_trpc_test_createmockprisma"
+    ],
+    "8": [
+      "src_app_dashboard_auditlogviewer_auditlogviewer",
+      "src_app_dashboard_evidence_evidencetable_evidencetable",
+      "src_app_dashboard_frameworks_frameworkcard",
+      "src_app_dashboard_frameworks_frameworkcard_frameworkcard",
+      "src_app_dashboard_frameworks_frameworkcard_frameworkcardprops",
+      "src_app_dashboard_frameworks_frameworkcard_getprogressstatus",
+      "src_app_dashboard_frameworks_frameworkcard_statpill",
+      "src_app_dashboard_frameworks_id_domainbreakdown",
+      "src_app_dashboard_frameworks_id_domainbreakdown_domainbreakdown",
+      "src_app_dashboard_frameworks_id_domainbreakdown_domainbreakdownitem",
+      "src_app_dashboard_frameworks_id_domainbreakdown_domainbreakdownprops",
+      "src_app_dashboard_frameworks_id_domainbreakdown_getbarcolour",
+      "src_app_dashboard_frameworks_id_domainbreakdown_gettextcolour",
+      "src_components_billing_usagebar",
+      "src_components_billing_usagebar_usagebar",
+      "src_components_billing_usagebar_usagebarprops",
+      "src_components_evidence_uploaddropzone",
+      "src_components_evidence_uploaddropzone_uploaddropzone",
+      "src_components_evidence_uploaddropzone_uploaddropzoneprops",
+      "src_components_ui_progress",
+      "src_components_ui_progress_progress",
+      "src_components_ui_progress_progressprops",
+      "src_components_ui_textarea",
+      "src_components_ui_textarea_textarea",
+      "src_components_ui_textarea_textareaprops",
+      "src_lib_utils",
+      "src_lib_utils_cn",
+      "src_lib_utils_formatbytes"
+    ],
+    "9": [
+      "package_dependencies_react",
+      "react",
+      "src_app_dashboard_evidence_evidenceuploadform",
+      "src_app_dashboard_evidence_evidenceuploadform_evidence_types",
+      "src_app_dashboard_evidence_evidenceuploadform_evidenceuploadform",
+      "src_app_dashboard_evidence_evidenceuploadform_evidenceuploadformprops",
+      "src_app_dashboard_evidence_evidenceuploadform_uploadstate",
+      "src_app_dashboard_frameworks_id_controldetailmodal",
+      "src_app_dashboard_frameworks_id_controldetailmodal_controldetailmodalprops",
+      "src_app_dashboard_frameworks_id_controldetailmodal_status_badge",
+      "src_app_dashboard_frameworks_id_controldetailmodal_status_options",
+      "src_components_ui_dialog_dialog",
+      "src_components_ui_form_useformfield",
+      "src_components_ui_select",
+      "src_components_ui_select_select",
+      "src_components_ui_select_selectcontent",
+      "src_components_ui_select_selectcontentprops",
+      "src_components_ui_select_selectcontext",
+      "src_components_ui_select_selectcontextvalue",
+      "src_components_ui_select_selectitem",
+      "src_components_ui_select_selectitemprops",
+      "src_components_ui_select_selectprops",
+      "src_components_ui_select_selectseparator",
+      "src_components_ui_select_selecttrigger",
+      "src_components_ui_select_selecttriggerprops",
+      "src_components_ui_select_selectvalue",
+      "src_components_ui_select_selectvalueprops"
+    ],
+    "10": [
+      "src_app_dashboard_frameworks_addframeworkmodal",
+      "src_app_dashboard_frameworks_addframeworkmodal_addframeworkmodal",
+      "src_app_dashboard_frameworks_addframeworkmodal_addframeworkmodalprops",
+      "src_app_dashboard_frameworks_addframeworkmodal_predefined_frameworks",
+      "src_components_marketplace_importmodal",
+      "src_components_marketplace_importmodal_importmodal",
+      "src_components_marketplace_importmodal_importmodalprops",
+      "src_components_ui_dialog",
+      "src_components_ui_dialog_dialogcontent",
+      "src_components_ui_dialog_dialogcontentprops",
+      "src_components_ui_dialog_dialogcontext",
+      "src_components_ui_dialog_dialogcontextvalue",
+      "src_components_ui_dialog_dialogfooter",
+      "src_components_ui_dialog_dialogheader",
+      "src_components_ui_dialog_dialogoverlay",
+      "src_components_ui_dialog_dialogoverlayprops",
+      "src_components_ui_dialog_dialogprops",
+      "src_components_ui_dialog_dialogtitle",
+      "src_components_ui_dialog_dialogtrigger",
+      "src_components_ui_dialog_dialogtriggerprops",
+      "src_components_ui_dialog_usedialog",
+      "src_components_ui_input",
+      "src_components_ui_input_input",
+      "src_components_ui_input_inputprops"
+    ],
+    "11": [
+      "src_lib_crypto_credentials",
+      "src_lib_crypto_credentials_decryptcredential",
+      "src_lib_crypto_credentials_encryptcredential",
+      "src_lib_crypto_credentials_getkey",
+      "src_workers_connectors_aws",
+      "src_workers_connectors_aws_awsconfig",
+      "src_workers_connectors_aws_checkresult",
+      "src_workers_connectors_aws_runawsconnector",
+      "src_workers_connectors_github",
+      "src_workers_connectors_github_checkresult",
+      "src_workers_connectors_github_githubconfig",
+      "src_workers_connectors_github_resulthash",
+      "src_workers_connectors_github_rungithubconnector",
+      "src_workers_connectors_index",
+      "src_workers_connectors_index_connectorjobdata",
+      "src_workers_connectors_index_connectorqueue",
+      "src_workers_connectors_index_processconnectorjob",
+      "src_workers_connectors_index_redisconnection",
+      "src_workers_connectors_index_startconnectorworker",
+      "src_workers_connectors_vercel",
+      "src_workers_connectors_vercel_checkresult",
+      "src_workers_connectors_vercel_runvercelconnector",
+      "src_workers_connectors_vercel_vercelconfig",
+      "src_workers_connectors_vercel_vercelfetch"
+    ],
+    "12": [
+      "src_server_routers_control",
+      "src_server_routers_control_controlrouter",
+      "src_server_routers_dashboard",
+      "src_server_routers_dashboard_controlwithevidence",
+      "src_server_routers_dashboard_dashboardrouter",
+      "src_server_routers_dashboard_dashboardstats",
+      "src_server_routers_entitlement",
+      "src_server_routers_entitlement_entitlementrouter",
+      "src_server_routers_framework",
+      "src_server_routers_framework_computeprogress",
+      "src_server_routers_framework_frameworkjsoncontrol",
+      "src_server_routers_framework_frameworkjsondata",
+      "src_server_routers_framework_frameworkjsondomain",
+      "src_server_routers_framework_frameworkrouter",
+      "src_server_routers_framework_getpredefinedframeworks",
+      "src_server_routers_framework_loadframeworkjson",
+      "src_server_routers_index",
+      "src_server_routers_policy",
+      "src_server_routers_policy_policyrouter",
+      "src_server_trpc_managerprocedure",
+      "src_server_trpc_orgprocedure",
+      "src_workers_policy_reviewpolicyjobdata",
+      "src_workers_policy_reviewpolicyqueue"
+    ],
+    "13": [
+      "src_lib_pdf_pdfsigner",
+      "src_lib_pdf_pdfsigner_signpdf",
+      "src_lib_pdf_pdfsigner_uploadsignedpdf",
+      "src_lib_pdf_pdfsigner_verifypdfsignature",
+      "src_server_minio",
+      "src_server_minio_buildstoragekey",
+      "src_server_minio_createminioclient",
+      "src_server_minio_deleteobject",
+      "src_server_minio_generatepresigneddownloadurl",
+      "src_server_minio_generatepresigneduploadurl",
+      "src_server_minio_getobjectmetadata",
+      "src_server_minio_initializeminiobucket",
+      "src_server_minio_withretry",
+      "src_server_routers_evidence",
+      "src_server_routers_evidence_ensurebucket",
+      "src_server_routers_evidence_evidencerouter",
+      "src_server_routers_evidence_evidencetypeschema",
+      "src_workers_classification_evidencequeue",
+      "tests_pdfsigner_test"
+    ],
+    "14": [
+      "src_app_api_test_auth_route",
+      "src_app_api_test_auth_route_get",
+      "src_env",
+      "src_env_appenv",
+      "src_env_env",
+      "src_env_envschema",
+      "src_lib_services_chainanchor",
+      "src_lib_services_chainanchor_anchormanifest",
+      "src_lib_services_chainanchor_anchorroothash",
+      "src_lib_services_chainanchor_computeroothash",
+      "src_lib_services_chainanchor_roothashresult",
+      "src_lib_services_chainanchor_submittoopentimestamps",
+      "src_lib_services_chainanchor_verifyagainststoredanchor",
+      "src_server_anchorminio",
+      "src_server_anchorminio_createanchorclient",
+      "src_server_anchorminio_getanchorobject",
+      "src_server_anchorminio_initanchorbucket",
+      "src_server_anchorminio_putanchorobject"
+    ],
+    "15": [
+      "src_components_evidence_evidenceuploadmodal",
+      "src_components_evidence_evidenceuploadmodal_evidenceuploadmodalprops",
+      "src_components_evidence_evidenceuploadmodal_uploadformschema",
+      "src_components_evidence_evidenceuploadmodal_uploadformvalues",
+      "src_components_onboarding_organizationsetupstep",
+      "src_components_onboarding_organizationsetupstep_organizationsetupstepprops",
+      "src_components_ui_form",
+      "src_components_ui_form_formcontrol",
+      "src_components_ui_form_formdescription",
+      "src_components_ui_form_formfield",
+      "src_components_ui_form_formfieldcontext",
+      "src_components_ui_form_formfieldcontextvalue",
+      "src_components_ui_form_formitem",
+      "src_components_ui_form_formitemcontext",
+      "src_components_ui_form_formitemcontextvalue",
+      "src_components_ui_form_formlabel",
+      "src_components_ui_form_formmessage"
+    ],
+    "16": [
+      "src_server_connectors_aws_awsconnector",
+      "src_server_connectors_aws_awsconnector_assumeconnectorrole",
+      "src_server_connectors_aws_awsconnector_awsconnector",
+      "src_server_connectors_aws_awsconnector_awsconnector_collectevidence",
+      "src_server_connectors_aws_awsconnector_awsconnector_listavailableevidencetypes",
+      "src_server_connectors_aws_awsconnector_awsconnector_testconnection",
+      "src_server_connectors_aws_awsconnector_awsconnectorconfig",
+      "src_server_connectors_aws_awsconnector_credentialstoclientconfig",
+      "src_server_connectors_aws_awsconnector_sanitizeawserror",
+      "src_server_connectors_registry",
+      "src_server_connectors_registry_connectorregistry",
+      "src_server_connectors_types",
+      "src_server_connectors_types_connectoradapter",
+      "src_server_connectors_types_connectoradapter_collectevidence",
+      "src_server_connectors_types_connectoradapter_listavailableevidencetypes",
+      "src_server_connectors_types_connectoradapter_testconnection",
+      "src_server_connectors_types_evidenceitem"
+    ],
+    "17": [
+      "aws_sdk_client_rds",
+      "framer_motion",
+      "hookform_resolvers",
+      "package_dependencies",
+      "package_dependencies_aws_sdk_client_rds",
+      "package_dependencies_aws_sdk_client_sts",
+      "package_dependencies_framer_motion",
+      "package_dependencies_hookform_resolvers",
+      "package_dependencies_react_hook_form",
+      "package_dependencies_superjson",
+      "package_dependencies_trpc_server",
+      "package_dependencies_uuid",
+      "react_hook_form",
+      "superjson",
+      "trpc_server",
+      "uuid"
+    ],
+    "18": [
+      "packages_db_seed",
+      "packages_db_seed_main",
+      "packages_db_seed_prisma",
+      "packages_db_seed_seeddatabase",
+      "src_server_audit_log",
+      "src_server_audit_log_auditwriter",
+      "src_server_audit_log_computeaudithash",
+      "src_server_audit_log_createauditlog",
+      "src_server_audit_log_hashableauditentry",
+      "src_server_audit_log_sortobjectkeys",
+      "src_server_audit_log_verifyauditchain",
+      "tests_audit_test",
+      "tests_audit_test_clearlogs",
+      "tests_audit_test_prisma",
+      "tests_audit_test_sleep",
+      "tests_db_test"
+    ],
+    "19": [
+      "src_app_onboarding_page",
+      "src_app_onboarding_page_onboardingpage",
+      "src_components_onboarding_completionstep_completionstep",
+      "src_components_onboarding_frameworkselectionstep_frameworkselectionstep",
+      "src_components_onboarding_organizationsetupstep_organizationsetupstep",
+      "src_components_onboarding_quickstartstep_quickstartstep",
+      "src_components_onboarding_teamsetupstep_teamsetupstep",
+      "src_lib_types_onboarding",
+      "src_lib_types_onboarding_availableframeworks",
+      "src_lib_types_onboarding_frameworkkey",
+      "src_lib_types_onboarding_frameworkselectioninput",
+      "src_lib_types_onboarding_onboardingstep",
+      "src_lib_types_onboarding_organizationsetupinput",
+      "src_lib_types_onboarding_organizationsetupschema",
+      "src_lib_types_onboarding_teamsetupinput",
+      "src_lib_types_onboarding_teamsetupschema"
+    ],
+    "20": [
+      "src_app_dashboard_settings_connectors_page",
+      "src_app_dashboard_settings_connectors_page_connectorssettingspage",
+      "src_components_connectors_connectorconfigwizard",
+      "src_components_connectors_connectorconfigwizard_connector_types",
+      "src_components_connectors_connectorconfigwizard_connectorconfigwizard",
+      "src_components_connectors_connectorconfigwizard_connectorconfigwizardprops",
+      "src_components_connectors_connectorslist_connectorslist",
+      "src_components_ui_checkbox",
+      "src_components_ui_checkbox_checkbox",
+      "src_components_ui_label",
+      "src_components_ui_label_label",
+      "src_components_ui_label_labelvariants",
+      "src_lib_hooks_useconnectors",
+      "src_lib_hooks_useconnectors_useconnectors",
+      "src_server_connectors_aws_iampolicytemplate"
+    ],
+    "21": [
+      "src_server_middleware_entitlement",
+      "src_server_middleware_entitlement_createentitlementmiddleware",
+      "src_server_middleware_entitlement_createfeaturegatingmiddleware",
+      "src_server_services_entitlement",
+      "src_server_services_entitlement_entitlementservice",
+      "src_server_services_entitlement_entitlementservice_checkfeature",
+      "src_server_services_entitlement_entitlementservice_checkusagelimit",
+      "src_server_services_entitlement_entitlementservice_constructor",
+      "src_server_services_entitlement_entitlementservice_getentitlements",
+      "src_server_services_entitlement_entitlementservice_getusage",
+      "src_server_services_entitlement_free_tier_features",
+      "src_server_services_entitlement_free_tier_limits",
+      "src_server_services_entitlement_resourcetype",
+      "src_server_trpc_t"
+    ],
+    "22": [
+      "src_app_api_status_route",
+      "src_app_api_status_route_checkminio",
+      "src_app_api_status_route_checkollama",
+      "src_app_api_status_route_checkpostgres",
+      "src_app_api_status_route_checkredis",
+      "src_app_api_status_route_get",
+      "src_app_api_status_route_servicecheck",
+      "src_app_api_status_route_withtimeout",
+      "src_lib_logger",
+      "src_lib_logger_createlogger",
+      "src_lib_logger_logfn",
+      "src_lib_logger_logger",
+      "src_lib_logger_makeconsolelogger"
+    ],
+    "23": [
+      "scripts_test_minio",
+      "scripts_test_minio_testminio",
+      "src_app_api_health_route",
+      "src_app_api_health_route_get",
+      "src_lib_storage_minioclient",
+      "src_lib_storage_minioclient_deletefile",
+      "src_lib_storage_minioclient_generatepresigneddownloadurl",
+      "src_lib_storage_minioclient_generatepresigneduploadurl",
+      "src_lib_storage_minioclient_initializebucket",
+      "src_lib_storage_minioclient_minioclient",
+      "src_lib_storage_minioclient_uploadfile",
+      "tests_evidence_upload_test"
+    ],
+    "24": [
+      "src_app_api_webhooks_stripe_route",
+      "src_app_api_webhooks_stripe_route_post",
+      "src_app_api_webhooks_stripe_route_webhooksecret",
+      "src_lib_stripe",
+      "src_lib_stripe_cancelsubscription",
+      "src_lib_stripe_createcheckoutsession",
+      "src_lib_stripe_stripe",
+      "src_lib_stripe_updatesubscription",
+      "src_server_routers_billing",
+      "src_server_routers_billing_billingrouter"
+    ],
+    "25": [
+      "src_app_audit_auth_route",
+      "src_app_audit_auth_route_get",
+      "src_lib_ai_resolveprovider_invalidateprovidercache",
+      "src_server_auditor_access",
+      "src_server_auditor_access_generateauditorexchangecode",
+      "src_server_auditor_access_generateauditorsessiontoken",
+      "src_server_auditor_access_hashauditortoken",
+      "src_server_routers_settings",
+      "src_server_routers_settings_settingsrouter",
+      "src_server_trpc_adminprocedure"
+    ],
+    "26": [
+      "src_app_dashboard_marketplace_page",
+      "src_app_dashboard_marketplace_page_marketplacepage",
+      "src_components_marketplace_marketplacegrid",
+      "src_components_marketplace_marketplacegrid_marketplacegrid",
+      "src_components_marketplace_marketplacegrid_marketplacegridprops",
+      "src_components_marketplace_marketplacegrid_marketplaceitem",
+      "src_components_marketplace_marketplacesidebar",
+      "src_components_marketplace_marketplacesidebar_marketplacesidebar",
+      "src_components_marketplace_marketplacesidebar_marketplacesidebarprops",
+      "tests_marketplace_ui_test"
+    ],
+    "27": [
+      "src_lib_pdf_reportdocument",
+      "src_lib_pdf_reportdocument_reportdocument",
+      "src_lib_pdf_reportdocument_reportdocumentprops",
+      "src_lib_pdf_reportdocument_styles",
+      "src_lib_services_reportgenerator",
+      "src_lib_services_reportgenerator_aggregatereportdata",
+      "src_lib_services_reportgenerator_reportdata",
+      "src_server_routers_report",
+      "src_server_routers_report_reportrouter",
+      "tests_reportgenerator_test"
+    ],
+    "28": [
+      "dotenv_cli",
+      "jest_environment_jsdom",
+      "package_devdependencies",
+      "package_devdependencies_dotenv_cli",
+      "package_devdependencies_jest_environment_jsdom",
+      "package_devdependencies_testing_library_jest_dom",
+      "package_devdependencies_typescript",
+      "testing_library_jest_dom",
+      "typescript"
+    ],
+    "29": [
+      "scripts_seed_frameworks",
+      "scripts_seed_frameworks_controldata",
+      "scripts_seed_frameworks_domaindata",
+      "scripts_seed_frameworks_framework_files",
+      "scripts_seed_frameworks_frameworkdata",
+      "scripts_seed_frameworks_loadframeworkdata",
+      "scripts_seed_frameworks_main",
+      "scripts_seed_frameworks_prisma",
+      "scripts_seed_frameworks_seedframeworkfororg"
+    ],
+    "30": [
+      "src_server_connectors_registry_getconnectoradapter",
+      "src_server_lib_crypto_connectorvault",
+      "src_server_lib_crypto_connectorvault_decryptconnectorconfig",
+      "src_server_lib_crypto_connectorvault_encryptconnectorconfig",
+      "src_server_lib_crypto_connectorvault_getencryptionkey",
+      "src_server_routers_connector",
+      "src_server_routers_connector_configschema",
+      "src_server_routers_connector_connectorrouter",
+      "tests_connectorvault_test"
+    ],
+    "31": [
+      "src_workers_auditorpackage",
+      "src_workers_auditorpackage_archiver",
+      "src_workers_auditorpackage_auditorpackagejobdata",
+      "src_workers_auditorpackage_auditorpackagequeue",
+      "src_workers_auditorpackage_eschtml",
+      "src_workers_auditorpackage_generateindexhtml",
+      "src_workers_auditorpackage_processauditorpackagejob",
+      "src_workers_auditorpackage_redisconnection",
+      "src_workers_auditorpackage_startauditorpackageworker"
+    ],
+    "32": [
+      "scripts_docker_entrypoint",
+      "scripts_docker_entrypoint_main",
+      "scripts_docker_entrypoint_run_migrations",
+      "scripts_docker_entrypoint_run_seed",
+      "scripts_docker_entrypoint_sh__entry",
+      "scripts_docker_entrypoint_wait_for_ollama",
+      "scripts_docker_entrypoint_wait_for_postgres",
+      "scripts_docker_entrypoint_wait_for_redis"
+    ],
+    "33": [
+      "src_components_evidence_evidencelist",
+      "src_components_evidence_evidencelist_evidencelist",
+      "src_components_evidence_evidencelist_evidencelistprops",
+      "src_components_evidence_evidenceuploadmodal_evidenceuploadmodal",
+      "src_components_ui_dialog_dialogdescription",
+      "src_lib_hooks_useevidence",
+      "src_lib_hooks_useevidence_useevidence",
+      "tests_evidence_components_test"
+    ],
+    "34": [
+      "src_lib_types_evidence",
+      "src_lib_types_evidence_createevidenceinput",
+      "src_lib_types_evidence_createevidenceinputschema",
+      "src_lib_types_evidence_evidencetypeenum",
+      "src_lib_types_evidence_getuploadurlinput",
+      "src_lib_types_evidence_getuploadurlinputschema",
+      "src_lib_types_evidence_listevidenceinput",
+      "src_lib_types_evidence_listevidenceinputschema"
+    ],
+    "35": [
+      "src_server_routers_audit",
+      "src_server_routers_audit_auditrouter",
+      "src_workers_anchor",
+      "src_workers_anchor_anchorjobdata",
+      "src_workers_anchor_anchorqueue",
+      "src_workers_anchor_processanchorjob",
+      "src_workers_anchor_redisconnection",
+      "src_workers_anchor_startanchorworker"
+    ],
+    "36": [
+      "package_dependencies_prisma_client",
+      "prisma_client",
+      "prisma_seed_control_embeddings",
+      "prisma_seed_control_embeddings_getembedding",
+      "prisma_seed_control_embeddings_main",
+      "prisma_seed_control_embeddings_ollamaembedresponse",
+      "prisma_seed_control_embeddings_vectortosql"
+    ],
+    "37": [
+      "src_server_routers_health",
+      "src_server_routers_health_checkminio",
+      "src_server_routers_health_checkollama",
+      "src_server_routers_health_checkpostgres",
+      "src_server_routers_health_checkredis",
+      "src_server_routers_health_healthrouter",
+      "src_server_trpc_publicprocedure"
+    ],
+    "38": [
+      "src_lib_types_onboarding_frameworkselectionschema",
+      "src_server_routers_onboarding",
+      "src_server_routers_onboarding_onboardingrouter",
+      "src_server_routers_onboarding_rationale_228",
+      "tests_onboarding_router_test",
+      "tests_onboarding_router_test_mockprisma"
+    ],
+    "39": [
+      "src_types_next_auth_d",
+      "src_types_next_auth_d_jwt",
+      "src_types_next_auth_d_next_auth",
+      "src_types_next_auth_d_next_auth_jwt",
+      "src_types_next_auth_d_session",
+      "src_types_next_auth_d_user"
+    ],
+    "40": [
+      "middleware",
+      "middleware_config",
+      "middleware_isratelimited",
+      "middleware_middleware",
+      "middleware_ratelimitmap"
+    ],
+    "41": [
+      "prisma_seed_regulation",
+      "prisma_seed_regulation_chunktext",
+      "prisma_seed_regulation_generateembedding",
+      "prisma_seed_regulation_main",
+      "prisma_seed_regulation_prisma"
+    ],
+    "42": [
+      "prisma_seed_templates",
+      "prisma_seed_templates_prisma",
+      "prisma_seed_templates_seedtemplates",
+      "prisma_seed_templates_templates"
+    ],
+    "43": [
+      "src_app_dashboard_policies_new_page",
+      "src_app_dashboard_policies_new_page_newpolicypage",
+      "src_app_dashboard_policies_new_page_step",
+      "src_app_dashboard_policies_new_page_templatevariable"
+    ],
+    "44": [
+      "src_components_dashboard_overallreadinessscore",
+      "src_components_dashboard_overallreadinessscore_overallreadinessscore",
+      "src_components_dashboard_overallreadinessscore_overallreadinessscoreprops",
+      "tests_dashboard_components_test"
+    ],
+    "45": [
+      "handlebars",
+      "package_dependencies_handlebars",
+      "src_server_routers_policy_rendertemplate"
+    ],
+    "46": [
+      "packages_db_seed_plans",
+      "packages_db_seed_plans_main",
+      "packages_db_seed_plans_prisma"
+    ],
+    "47": [
+      "scripts_backup_all",
+      "scripts_backup_all_log",
+      "scripts_backup_all_sh__entry"
+    ],
+    "48": [
+      "scripts_backup_pg",
+      "scripts_backup_pg_pgpassword",
+      "scripts_backup_pg_sh__entry"
+    ],
+    "49": [
+      "scripts_init_ollama",
+      "scripts_init_ollama_pull_model",
+      "scripts_init_ollama_sh__entry"
+    ],
+    "50": [
+      "scripts_restore_pg",
+      "scripts_restore_pg_pgpassword",
+      "scripts_restore_pg_sh__entry"
+    ],
+    "51": [
+      "scripts_validate_docker_env",
+      "scripts_validate_docker_env_check_secret",
+      "scripts_validate_docker_env_sh__entry"
+    ],
+    "52": [
+      "src_app_dashboard_settings_layout",
+      "src_app_dashboard_settings_layout_settingslayout",
+      "src_app_dashboard_settings_layout_settingstabs"
+    ],
+    "53": [
+      "archiver",
+      "package_dependencies_archiver"
+    ],
+    "54": [
+      "aws_sdk_client_cloudtrail",
+      "package_dependencies_aws_sdk_client_cloudtrail"
+    ],
+    "55": [
+      "aws_sdk_client_config_service",
+      "package_dependencies_aws_sdk_client_config_service"
+    ],
+    "56": [
+      "aws_sdk_client_s3",
+      "package_dependencies_aws_sdk_client_s3"
+    ],
+    "57": [
+      "bullmq",
+      "package_dependencies_bullmq"
+    ],
+    "58": [
+      "class_variance_authority",
+      "package_dependencies_class_variance_authority"
+    ],
+    "59": [
+      "clsx",
+      "package_dependencies_clsx"
+    ],
+    "60": [
+      "crypto_js",
+      "package_dependencies_crypto_js"
+    ],
+    "61": [
+      "date_fns",
+      "package_dependencies_date_fns"
+    ],
+    "62": [
+      "eslint",
+      "package_devdependencies_eslint"
+    ],
+    "63": [
+      "eslint_config_next",
+      "package_devdependencies_eslint_config_next"
+    ],
+    "64": [
+      "identity_obj_proxy",
+      "package_devdependencies_identity_obj_proxy"
+    ],
+    "65": [
+      "ioredis",
+      "package_dependencies_ioredis"
+    ],
+    "66": [
+      "jest",
+      "package_devdependencies_jest"
+    ],
+    "67": [
+      "lucide_react",
+      "package_dependencies_lucide_react"
+    ],
+    "68": [
+      "minio",
+      "package_dependencies_minio"
+    ],
+    "69": [
+      "next",
+      "package_dependencies_next"
+    ],
+    "70": [
+      "next_auth",
+      "package_dependencies_next_auth"
+    ],
+    "71": [
+      "next_auth_prisma_adapter",
+      "package_dependencies_next_auth_prisma_adapter"
+    ],
+    "72": [
+      "next_config",
+      "next_config_nextconfig"
+    ],
+    "73": [
+      "next_env_d",
+      "next_env_d_rationale_5"
+    ],
+    "74": [
+      "next_themes",
+      "package_dependencies_next_themes"
+    ],
+    "75": [
+      "node_forge",
+      "package_dependencies_node_forge"
+    ],
+    "76": [
+      "nodemailer",
+      "package_dependencies_nodemailer"
+    ],
+    "77": [
+      "octokit_rest",
+      "package_dependencies_octokit_rest"
+    ],
+    "78": [
+      "package_dependencies_pdf_parse",
+      "pdf_parse"
+    ],
+    "79": [
+      "package_dependencies_pdfkit",
+      "pdfkit"
+    ],
+    "80": [
+      "package_dependencies_radix_ui_react_checkbox",
+      "radix_ui_react_checkbox"
+    ],
+    "81": [
+      "package_dependencies_radix_ui_react_label",
+      "radix_ui_react_label"
+    ],
+    "82": [
+      "package_dependencies_radix_ui_react_slot",
+      "radix_ui_react_slot"
+    ],
+    "83": [
+      "package_dependencies_react_dom",
+      "react_dom"
+    ],
+    "84": [
+      "package_dependencies_react_dropzone",
+      "react_dropzone"
+    ],
+    "85": [
+      "package_dependencies_react_pdf_renderer",
+      "react_pdf_renderer"
+    ],
+    "86": [
+      "package_dependencies_recharts",
+      "recharts"
+    ],
+    "87": [
+      "package_dependencies_sonner",
+      "sonner"
+    ],
+    "88": [
+      "package_dependencies_stripe",
+      "stripe"
+    ],
+    "89": [
+      "package_dependencies_stripe_react_stripe_js",
+      "stripe_react_stripe_js"
+    ],
+    "90": [
+      "package_dependencies_stripe_stripe_js",
+      "stripe_stripe_js"
+    ],
+    "91": [
+      "package_dependencies_tailwind_merge",
+      "tailwind_merge"
+    ],
+    "92": [
+      "package_dependencies_tanstack_react_query",
+      "tanstack_react_query"
+    ],
+    "93": [
+      "package_dependencies_tesseract_js",
+      "tesseract_js"
+    ],
+    "94": [
+      "package_dependencies_tiptap_markdown",
+      "tiptap_markdown"
+    ],
+    "95": [
+      "package_dependencies_tiptap_react",
+      "tiptap_react"
+    ],
+    "96": [
+      "package_dependencies_tiptap_starter_kit",
+      "tiptap_starter_kit"
+    ],
+    "97": [
+      "package_dependencies_trpc_client",
+      "trpc_client"
+    ],
+    "98": [
+      "package_dependencies_trpc_react_query",
+      "trpc_react_query"
+    ],
+    "99": [
+      "package_dependencies_types_pdf_parse",
+      "types_pdf_parse"
+    ],
+    "100": [
+      "package_dependencies_zod",
+      "zod"
+    ],
+    "101": [
+      "package_dependencies_zustand",
+      "zustand"
+    ],
+    "102": [
+      "package_devdependencies_playwright_test",
+      "playwright_test"
+    ],
+    "103": [
+      "package_devdependencies_postcss",
+      "postcss"
+    ],
+    "104": [
+      "package_devdependencies_prisma",
+      "prisma"
+    ],
+    "105": [
+      "package_devdependencies_tailwindcss",
+      "tailwindcss"
+    ],
+    "106": [
+      "package_devdependencies_tailwindcss_animate",
+      "tailwindcss_animate"
+    ],
+    "107": [
+      "autoprefixer",
+      "package_devdependencies_autoprefixer"
+    ],
+    "108": [
+      "package_devdependencies_testing_library_react",
+      "testing_library_react"
+    ],
+    "109": [
+      "package_devdependencies_testing_library_user_event",
+      "testing_library_user_event"
+    ],
+    "110": [
+      "package_devdependencies_ts_jest",
+      "ts_jest"
+    ],
+    "111": [
+      "package_devdependencies_ts_node",
+      "ts_node"
+    ],
+    "112": [
+      "package_devdependencies_tsx",
+      "tsx"
+    ],
+    "113": [
+      "package_devdependencies_types_archiver",
+      "types_archiver"
+    ],
+    "114": [
+      "package_devdependencies_types_crypto_js",
+      "types_crypto_js"
+    ],
+    "115": [
+      "package_devdependencies_types_handlebars",
+      "types_handlebars"
+    ],
+    "116": [
+      "package_devdependencies_types_jest",
+      "types_jest"
+    ],
+    "117": [
+      "package_devdependencies_types_node",
+      "types_node"
+    ],
+    "118": [
+      "package_devdependencies_types_node_forge",
+      "types_node_forge"
+    ],
+    "119": [
+      "package_devdependencies_types_nodemailer",
+      "types_nodemailer"
+    ],
+    "120": [
+      "package_devdependencies_types_pdfkit",
+      "types_pdfkit"
+    ],
+    "121": [
+      "package_devdependencies_types_react",
+      "types_react"
+    ],
+    "122": [
+      "package_devdependencies_types_react_dom",
+      "types_react_dom"
+    ],
+    "123": [
+      "package_devdependencies_types_react_dropzone",
+      "types_react_dropzone"
+    ],
+    "124": [
+      "package_devdependencies_types_uuid",
+      "types_uuid"
+    ],
+    "125": [
+      "scripts_backup_minio",
+      "scripts_backup_minio_sh__entry"
+    ],
+    "126": [
+      "scripts_check_ollama_models",
+      "scripts_check_ollama_models_sh__entry"
+    ],
+    "127": [
+      "scripts_init_minio",
+      "scripts_init_minio_sh__entry"
+    ],
+    "128": [
+      "scripts_restore_minio",
+      "scripts_restore_minio_sh__entry"
+    ],
+    "129": [
+      "src_app_dashboard_loading",
+      "src_app_dashboard_loading_dashboardloading"
+    ],
+    "130": [
+      "src_app_dashboard_settings_page",
+      "src_app_dashboard_settings_page_settingsredirect"
+    ],
+    "131": [
+      "src_app_onboarding_layout",
+      "src_app_onboarding_layout_onboardinglayout"
+    ],
+    "132": [
+      "src_server_queue_connectorqueue",
+      "src_server_queue_connectorqueue_connectorevidencequeue"
+    ],
+    "133": [
+      "tailwind_config",
+      "tailwind_config_config"
+    ],
+    "134": [
+      "jest_setup"
+    ],
+    "135": [
+      "playwright_config"
+    ],
+    "136": [
+      "postcss_config"
+    ],
+    "137": [
+      "tests_e2e_auditor_spec"
+    ],
+    "138": [
+      "tests_e2e_auth_spec"
+    ],
+    "139": [
+      "tests_e2e_evidence_spec"
+    ],
+    "140": [
+      "tests_e2e_policy_spec"
+    ],
+    "141": [
+      "tests_e2e_report_export_e2e"
+    ],
+    "142": [
+      "tests_upload_flow_e2e"
+    ]
+  },
+  "cohesion": {
+    "0": 0.05450581395348837,
+    "1": 0.061952074810052604,
+    "2": 0.07195121951219512,
+    "3": 0.05555555555555555,
+    "4": 0.0625,
+    "5": 0.1425287356321839,
+    "6": 0.1103448275862069,
+    "7": 0.10846560846560846,
+    "8": 0.12962962962962962,
+    "9": 0.1111111111111111,
+    "10": 0.12318840579710146,
+    "11": 0.15579710144927536,
+    "12": 0.13438735177865613,
+    "13": 0.19298245614035087,
+    "14": 0.19607843137254902,
+    "15": 0.20588235294117646,
+    "16": 0.20588235294117646,
+    "17": 0.13333333333333333,
+    "18": 0.21666666666666667,
+    "19": 0.13333333333333333,
+    "20": 0.19047619047619047,
+    "21": 0.23076923076923078,
+    "22": 0.2564102564102564,
+    "23": 0.2727272727272727,
+    "24": 0.3111111111111111,
+    "25": 0.3333333333333333,
+    "26": 0.3111111111111111,
+    "27": 0.3333333333333333,
+    "28": 0.2222222222222222,
+    "29": 0.2777777777777778,
+    "30": 0.3888888888888889,
+    "31": 0.3611111111111111,
+    "32": 0.4642857142857143,
+    "33": 0.35714285714285715,
+    "34": 0.25,
+    "35": 0.39285714285714285,
+    "36": 0.38095238095238093,
+    "37": 0.2857142857142857,
+    "38": 0.4,
+    "39": 0.3333333333333333,
+    "40": 0.5,
+    "41": 0.6,
+    "42": 0.5,
+    "43": 0.5,
+    "44": 0.6666666666666666,
+    "45": 0.6666666666666666,
+    "46": 0.6666666666666666,
+    "47": 1.0,
+    "48": 0.6666666666666666,
+    "49": 1.0,
+    "50": 0.6666666666666666,
+    "51": 1.0,
+    "52": 0.6666666666666666,
+    "53": 1.0,
+    "54": 1.0,
+    "55": 1.0,
+    "56": 1.0,
+    "57": 1.0,
+    "58": 1.0,
+    "59": 1.0,
+    "60": 1.0,
+    "61": 1.0,
+    "62": 1.0,
+    "63": 1.0,
+    "64": 1.0,
+    "65": 1.0,
+    "66": 1.0,
+    "67": 1.0,
+    "68": 1.0,
+    "69": 1.0,
+    "70": 1.0,
+    "71": 1.0,
+    "72": 1.0,
+    "73": 1.0,
+    "74": 1.0,
+    "75": 1.0,
+    "76": 1.0,
+    "77": 1.0,
+    "78": 1.0,
+    "79": 1.0,
+    "80": 1.0,
+    "81": 1.0,
+    "82": 1.0,
+    "83": 1.0,
+    "84": 1.0,
+    "85": 1.0,
+    "86": 1.0,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 1.0,
+    "90": 1.0,
+    "91": 1.0,
+    "92": 1.0,
+    "93": 1.0,
+    "94": 1.0,
+    "95": 1.0,
+    "96": 1.0,
+    "97": 1.0,
+    "98": 1.0,
+    "99": 1.0,
+    "100": 1.0,
+    "101": 1.0,
+    "102": 1.0,
+    "103": 1.0,
+    "104": 1.0,
+    "105": 1.0,
+    "106": 1.0,
+    "107": 1.0,
+    "108": 1.0,
+    "109": 1.0,
+    "110": 1.0,
+    "111": 1.0,
+    "112": 1.0,
+    "113": 1.0,
+    "114": 1.0,
+    "115": 1.0,
+    "116": 1.0,
+    "117": 1.0,
+    "118": 1.0,
+    "119": 1.0,
+    "120": 1.0,
+    "121": 1.0,
+    "122": 1.0,
+    "123": 1.0,
+    "124": 1.0,
+    "125": 1.0,
+    "126": 1.0,
+    "127": 1.0,
+    "128": 1.0,
+    "129": 1.0,
+    "130": 1.0,
+    "131": 1.0,
+    "132": 1.0,
+    "133": 1.0,
+    "134": 1.0,
+    "135": 1.0,
+    "136": 1.0,
+    "137": 1.0,
+    "138": 1.0,
+    "139": 1.0,
+    "140": 1.0,
+    "141": 1.0,
+    "142": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_lib_utils_cn",
+      "label": "cn()",
+      "degree": 46
+    },
+    {
+      "id": "src_components_ui_button_button",
+      "label": "Button",
+      "degree": 45
+    },
+    {
+      "id": "src_components_ui_card_card",
+      "label": "Card",
+      "degree": 40
+    },
+    {
+      "id": "src_lib_trpc_api",
+      "label": "api",
+      "degree": 39
+    },
+    {
+      "id": "src_components_ui_card_cardcontent",
+      "label": "CardContent",
+      "degree": 38
+    },
+    {
+      "id": "src_components_ui_card_cardheader",
+      "label": "CardHeader",
+      "degree": 37
+    },
+    {
+      "id": "src_components_ui_badge_badge",
+      "label": "Badge()",
+      "degree": 36
+    },
+    {
+      "id": "src_components_ui_card_cardtitle",
+      "label": "CardTitle",
+      "degree": 36
+    },
+    {
+      "id": "src_components_ui_card_carddescription",
+      "label": "CardDescription",
+      "degree": 26
+    },
+    {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 23
+    }
+  ],
+  "surprises": [
+    {
+      "source": "useDialog()",
+      "target": "react",
+      "source_files": [
+        "src/components/ui/dialog.tsx",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `useDialog()` unexpectedly reaches hub `react`"
+    },
+    {
+      "source": "createCaller()",
+      "target": "appRouter",
+      "source_files": [
+        "tests/evidence-router.test.ts",
+        "src/server/routers/index.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `createCaller()` unexpectedly reaches hub `appRouter`"
+    },
+    {
+      "source": "createCaller()",
+      "target": "appRouter",
+      "source_files": [
+        "tests/evidence.test.ts",
+        "src/server/routers/index.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `createCaller()` unexpectedly reaches hub `appRouter`"
+    },
+    {
+      "source": "createCaller()",
+      "target": "appRouter",
+      "source_files": [
+        "tests/framework.test.ts",
+        "src/server/routers/index.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `createCaller()` unexpectedly reaches hub `appRouter`"
+    },
+    {
+      "source": "main()",
+      "target": "@prisma/client",
+      "source_files": [
+        "prisma/seed-regulation.ts",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `dependencies` connect `dependencies` to `scripts`, `ControlDetailModal.tsx`, `@prisma/client`, `handlebars`, `archiver`, `@aws-sdk/client-cloudtrail`, `@aws-sdk/client-config-service`, `@aws-sdk/client-s3`, `bullmq`, `class-variance-authority`, `clsx`, `crypto-js`, `date-fns`, `ioredis`, `lucide-react`, `minio`, `next`, `next-auth`, `@next-auth/prisma-adapter`, `next-themes`, `node-forge`, `nodemailer`, `@octokit/rest`, `pdf-parse`, `pdfkit`, `@radix-ui/react-checkbox`, `@radix-ui/react-label`, `@radix-ui/react-slot`, `react-dom`, `react-dropzone`, `@react-pdf/renderer`, `recharts`, `sonner`, `stripe`, `@stripe/react-stripe-js`, `@stripe/stripe-js`, `tailwind-merge`, `@tanstack/react-query`, `tesseract.js`, `tiptap-markdown`, `@tiptap/react`, `@tiptap/starter-kit`, `@trpc/client`, `@trpc/react-query`, `@types/pdf-parse`, `zod`, `zustand`?",
+      "why": "High betweenness centrality (0.317) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `react` connect `ControlDetailModal.tsx` to `dependencies`, `dialog.tsx`, `EvidenceList.tsx`?",
+      "why": "High betweenness centrality (0.158) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `devDependencies` connect `devDependencies` to `scripts`, `eslint`, `eslint-config-next`, `identity-obj-proxy`, `jest`, `@playwright/test`, `postcss`, `prisma`, `tailwindcss`, `tailwindcss-animate`, `autoprefixer`, `@testing-library/react`, `@testing-library/user-event`, `ts-jest`, `ts-node`, `tsx`, `@types/archiver`, `@types/crypto-js`, `@types/handlebars`, `@types/jest`, `@types/node`, `@types/node-forge`, `@types/nodemailer`, `@types/pdfkit`, `@types/react`, `@types/react-dom`, `@types/react-dropzone`, `@types/uuid`?",
+      "why": "High betweenness centrality (0.127) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `config`, `rateLimitMap`, `config` to the rest of the system?",
+      "why": "332 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `button.tsx` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.05450581395348837 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `classification.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.061952074810052604 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `auth.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07195121951219512 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

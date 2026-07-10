@@ -11,7 +11,7 @@
  */
 
 import { Worker, Queue, type Job } from "bullmq";
-import { PrismaClient, ConnectorProvider, ConnectorStatus } from "@prisma/client";
+import { PrismaClient, ConnectorType, ConnectorStatus } from "@prisma/client";
 import { env } from "@/env";
 import { runGitHubConnector } from "./github";
 import { runAWSConnector } from "./aws";
@@ -81,7 +81,7 @@ async function processConnectorJob(
     where: {
       ...(connectorId ? { id: connectorId } : {}),
       ...(organizationId ? { organizationId } : {}),
-      status: { not: ConnectorStatus.PAUSED },
+      status: { not: ConnectorStatus.DISCONNECTED },
     },
   });
 
@@ -115,18 +115,25 @@ async function processConnectorJob(
     }
 
     try {
-      switch (connector.provider) {
-        case ConnectorProvider.GITHUB:
-          await runGitHubConnector(prisma, connector, defaultControlId);
+      // Legacy Phase 2 sync runners still use the separate `credentials` column
+      // (see src/lib/crypto/credentials.ts) rather than the Part 1 `config` vault.
+      if (!connector.credentials) {
+        throw new Error(`Connector ${connector.id} has no legacy credentials configured`);
+      }
+      const legacyConnector = { ...connector, credentials: connector.credentials };
+
+      switch (connector.type) {
+        case ConnectorType.GITHUB:
+          await runGitHubConnector(prisma, legacyConnector, defaultControlId);
           break;
-        case ConnectorProvider.AWS:
-          await runAWSConnector(prisma, connector, defaultControlId);
+        case ConnectorType.AWS:
+          await runAWSConnector(prisma, legacyConnector, defaultControlId);
           break;
-        case ConnectorProvider.VERCEL:
-          await runVercelConnector(prisma, connector, defaultControlId);
+        case ConnectorType.VERCEL:
+          await runVercelConnector(prisma, legacyConnector, defaultControlId);
           break;
         default:
-          console.warn(`[connector-sync] Unknown provider: ${connector.provider}`);
+          console.warn(`[connector-sync] Unsupported legacy sync provider: ${connector.type}`);
       }
       processed++;
     } catch (err) {
@@ -139,8 +146,8 @@ async function processConnectorJob(
         where: { id: connector.id },
         data: {
           status: ConnectorStatus.ERROR,
-          lastRunAt: new Date(),
-          lastRunStatus: err instanceof Error ? err.message : String(err),
+          lastSyncAt: new Date(),
+          lastError: err instanceof Error ? err.message : String(err),
         },
       });
     }
