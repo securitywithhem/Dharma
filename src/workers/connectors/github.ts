@@ -57,7 +57,7 @@ export async function runGitHubConnector(
   if (repos.length === 0) {
     await prisma.connector.update({
       where: { id: connector.id },
-      data: { lastRunAt: new Date(), lastRunStatus: "No repos configured", status: ConnectorStatus.ACTIVE },
+      data: { lastSyncAt: new Date(), lastError: "No repos configured", status: ConnectorStatus.CONNECTED },
     });
     return;
   }
@@ -194,9 +194,9 @@ export async function runGitHubConnector(
   await prisma.connector.update({
     where: { id: connector.id },
     data: {
-      lastRunAt: new Date(),
-      lastRunStatus: `${allResults.length} checks completed`,
-      status: ConnectorStatus.ACTIVE,
+      lastSyncAt: new Date(),
+      lastError: null,
+      status: ConnectorStatus.CONNECTED,
     },
   });
 

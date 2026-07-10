@@ -34,9 +34,11 @@
     "seed": "tsx packages/db/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudtrail": "^3.1084.0",
+    "@aws-sdk/client-config-service": "^3.1084.0",
     "@aws-sdk/client-rds": "^3.1079.0",
     "@aws-sdk/client-s3": "^3.1079.0",
-    "@aws-sdk/client-sts": "^3.1079.0",
+    "@aws-sdk/client-sts": "^3.1084.0",
     "@hookform/resolvers": "^5.4.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@octokit/rest": "^22.0.1",

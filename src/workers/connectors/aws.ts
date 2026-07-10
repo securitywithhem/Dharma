@@ -193,9 +193,9 @@ export async function runAWSConnector(
   await prisma.connector.update({
     where: { id: connector.id },
     data: {
-      lastRunAt: new Date(),
-      lastRunStatus: `${allResults.length} checks completed across ${regions.length} region(s)`,
-      status: ConnectorStatus.ACTIVE,
+      lastSyncAt: new Date(),
+      lastError: null,
+      status: ConnectorStatus.CONNECTED,
     },
   });
 
