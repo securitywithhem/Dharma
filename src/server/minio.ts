@@ -156,6 +156,24 @@ export async function generatePresignedDownloadUrl(
 // ------------------------------------------------------------------
 
 /**
+ * Upload raw content (e.g. a scan log) directly to the evidence bucket.
+ * Unlike `generatePresignedUploadUrl`, this writes server-side — used by
+ * background workers that already hold the data in memory.
+ */
+export async function putObject(
+  objectName: string,
+  content: string | Buffer,
+  contentType = "application/octet-stream",
+): Promise<void> {
+  const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content, "utf-8");
+  await withRetry(() =>
+    minioClient.putObject(BUCKET_NAME, objectName, buffer, buffer.length, {
+      "Content-Type": contentType,
+    }),
+  );
+}
+
+/**
  * Delete an object from the evidence bucket.
  */
 export async function deleteObject(objectName: string): Promise<void> {

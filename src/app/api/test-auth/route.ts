@@ -23,16 +23,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: {
-      email,
-      name: "Test Admin User",
-      role: Role.ADMIN,
-      organizationId: org!.id,
-    },
-  });
+  // Playwright's fullyParallel mode can run multiple spec files concurrently,
+  // each hitting this same login backdoor for the same email — upsert isn't
+  // atomic against a true concurrent race (two requests can both see "no
+  // row exists" and both attempt to INSERT), so the loser fails with a
+  // P2002 unique-constraint error on `email`. Falling back to a plain read
+  // in that case is safe here: whichever request won the race already
+  // created the row we want.
+  let user;
+  try {
+    user = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        name: "Test Admin User",
+        role: Role.ADMIN,
+        organizationId: org!.id,
+      },
+    });
+  } catch (e) {
+    user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  }
 
   // Ensure at least one framework and control exists for evidence tests
   let framework = await prisma.framework.findFirst({

@@ -2,12 +2,13 @@ import { TRPCError } from "@trpc/server";
 import { prisma } from "@/server/db";
 import { PrismaClient } from "@prisma/client";
 
-export type ResourceType = "users" | "frameworks" | "storageMb";
+export type ResourceType = "users" | "frameworks" | "storageMb" | "pentests";
 
 export const FREE_TIER_LIMITS = {
   users: 5,
   frameworks: 3,
   storageMb: 100, // 100 MB
+  pentests: 20, // total PenTest requests (Phase 5 Part 1) — MVP cap, not time-windowed
 };
 
 export const FREE_TIER_FEATURES = {
@@ -48,6 +49,7 @@ export class EntitlementService {
         users: limits.users ?? FREE_TIER_LIMITS.users,
         frameworks: limits.frameworks ?? FREE_TIER_LIMITS.frameworks,
         storageMb: limits.storageMb ?? FREE_TIER_LIMITS.storageMb,
+        pentests: limits.pentests ?? FREE_TIER_LIMITS.pentests,
       },
       features: {
         apiAccess: features.apiAccess ?? FREE_TIER_FEATURES.apiAccess,
@@ -79,6 +81,11 @@ export class EntitlementService {
         });
         const totalBytes = result._sum.fileSizeBytes || 0;
         return totalBytes / (1024 * 1024); // Convert bytes to MB
+
+      case "pentests":
+        return this.prisma.penTest.count({
+          where: { organizationId },
+        });
 
       default:
         return 0;
