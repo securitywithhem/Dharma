@@ -10,7 +10,7 @@
     "dev": "dotenv -e envs/.env.development -- next dev",
     "build": "dotenv -e envs/.env.production -- prisma generate --schema packages/db/schema.prisma && dotenv -e envs/.env.production -- next build",
     "start": "dotenv -e envs/.env.production -- next start",
-    "postinstall": "prisma generate --schema packages/db/schema.prisma",
+    "postinstall": "prisma generate --schema packages/db/schema.prisma && node scripts/fix-readdir-glob-exports.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "dotenv -e envs/.env.test -- jest --runInBand",
@@ -56,6 +56,7 @@
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "@types/pdf-parse": "^1.1.5",
+    "ae-cvss-calculator": "^1.0.13",
     "archiver": "^8.0.0",
     "bullmq": "^5.79.1",
     "class-variance-authority": "^0.7.0",
@@ -90,6 +91,7 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.45.1",
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",

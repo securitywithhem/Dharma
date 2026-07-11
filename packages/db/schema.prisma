@@ -42,6 +42,9 @@ model Organization {
   webhooks     Webhook[]
   auditExports AuditExport[]
   importedItems ImportedItem[]
+  penTests      PenTest[]
+  vulnerabilities Vulnerability[]
+  assets        Asset[]
 
   // Phase 2 Feature 1: per-org AI provider config
   // mode: 'local-ollama' | 'local-small' | 'remote-opt-in'
@@ -85,6 +88,7 @@ model User {
   auditLogs      AuditLog[]
   marketplaceItems MarketplaceItem[] @relation("MarketplaceItemAuthor")
   marketplaceReviews MarketplaceReview[] @relation("MarketplaceReviews")
+  penTestsRequested PenTest[]
 
   @@index([organizationId])
   @@index([email])
@@ -165,6 +169,7 @@ model Control {
   updatedAt   DateTime      @updatedAt
   evidence    Evidence[]
   evidenceMappings EvidenceMapping[]
+  vulnerabilities Vulnerability[]
 
   // pgvector embedding for semantic similarity search against Evidence embeddings
   embedding   Unsupported("vector(384)")?
@@ -569,7 +574,118 @@ model ImportedItem {
   
   importedAt          DateTime @default(now())
   updatedAt           DateTime @updatedAt
-  
+
   @@unique([organizationId, marketplaceItemId])
   @@index([organizationId, importedAt])
+}
+
+// ============================================================
+// Phase 5 Part 1: Penetration Testing & Vulnerability Scanning
+// (obsidian-vaults/Dharma-Project/{PRD,TRD,BackendSchema}.md)
+// ============================================================
+
+model PenTest {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  target         String        // domain or IP, org-admin-confirmed as owned
+  type           PenTestType
+  status         PenTestStatus @default(QUEUED)
+  result         Json?         // raw scan output / error detail
+
+  // MinIO object path for the raw scanner stdout (pentest-logs/{orgId}/{id}.jsonl),
+  // kept separate from `result` for audit/debug access to the untruncated log.
+  containerLogUrl String?
+
+  // Cron expression for recurring scans (PRD "scheduled cadence" requirement).
+  // When set, a BullMQ repeatable job re-creates a fresh PenTest row on each fire
+  // rather than re-running this row, so history of each run is preserved.
+  scheduleCron   String?
+
+  requestedById  String
+  requestedBy    User          @relation(fields: [requestedById], references: [id])
+
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime      @default(now())
+
+  vulnerabilities Vulnerability[]
+
+  @@index([organizationId, createdAt])
+}
+
+enum PenTestType {
+  EXTERNAL_NETWORK
+  WEB_APP
+}
+
+enum PenTestStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Vulnerability {
+  id             String   @id @default(cuid())
+  penTestId      String?
+  penTest        PenTest? @relation(fields: [penTestId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  controlId      String?
+  control        Control? @relation(fields: [controlId], references: [id], onDelete: SetNull)
+  assetId        String?
+  asset          Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  title          String
+  description    String   @db.Text
+  severity       Severity
+  cvssScore      Float?
+  // Full CVSS v3.1 vector string (e.g. "CVSS:3.1/AV:N/AC:L/..."), kept
+  // alongside the derived cvssScore so the score can be redisplayed or
+  // recalculated without re-deriving it from raw scan output.
+  cvssVector     String?
+  remediation    String?  @db.Text
+  status         VulnStatus @default(OPEN)
+  createdAt      DateTime @default(now())
+
+  // pgvector embedding of title+description+remediation, for future
+  // semantic search / AI advisor retrieval (Phase 7). Same vector(384)
+  // convention as Control.embedding and Evidence.embedding — populated
+  // best-effort via Ollama, written with raw SQL (see src/workers/
+  // classification.ts's identical pattern; Prisma has no native vector type).
+  embedding      Unsupported("vector(384)")?
+
+  @@index([organizationId, createdAt])
+}
+
+// Phase 5 Part 2 — lightweight target registry so a Vulnerability can
+// optionally reference a specific scanned asset (domain/IP/hostname)
+// rather than only a Control. PRD mentions "assets" but the Part 1 schema
+// only had controlId — this fills that gap.
+model Asset {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  identifier     String   // domain, IP, or hostname
+  createdAt      DateTime @default(now())
+  vulnerabilities Vulnerability[]
+
+  @@index([organizationId, createdAt])
+}
+
+enum Severity {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VulnStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  WONT_FIX
 }

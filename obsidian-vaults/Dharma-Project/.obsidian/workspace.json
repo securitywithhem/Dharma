@@ -1,0 +1,196 @@
+{
+  "main": {
+    "id": "8ca8207899aaa0bd",
+    "type": "split",
+    "children": [
+      {
+        "id": "17e3794ecbc1b7f3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f98bf13ca02d52f5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "1_PRD.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "1_PRD"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b8b03c6bddd0864c",
+    "type": "split",
+    "children": [
+      {
+        "id": "8eb1107a6986b7c8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "657fd479ebc76a22",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "a672766cc1b013aa",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "758e75645a458600",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "right": {
+    "id": "d376600123ecda72",
+    "type": "split",
+    "children": [
+      {
+        "id": "8f09306b2297dbaa",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bbc32e2d592e42e2",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "graphify-out/GRAPH_REPORT.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for GRAPH_REPORT"
+            }
+          },
+          {
+            "id": "7a60940081a16c2f",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "graphify-out/GRAPH_REPORT.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from GRAPH_REPORT"
+            }
+          },
+          {
+            "id": "708f39f30dbfbba8",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "2561a655ab6b87cf",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "76a3cd2b58754e9a",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "graphify-out/GRAPH_REPORT.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of GRAPH_REPORT"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "f98bf13ca02d52f5",
+  "lastOpenFiles": [
+    "graphify-out/GRAPH_REPORT.md",
+    "2026-07-10.md",
+    "graphify-out/cache/semantic",
+    "Untitled.base",
+    "Untitled 1.canvas",
+    "Untitled.canvas"
+  ]
+}

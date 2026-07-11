@@ -16,6 +16,8 @@ import { billingRouter } from "@/server/routers/billing";
 import { entitlementRouter } from "@/server/routers/entitlement";
 import { marketplaceRouter } from "@/server/routers/marketplace";
 import { importRouter } from "@/server/routers/import";
+import { pentestRouter } from "@/server/routers/pentest";
+import { vulnerabilityRouter } from "@/server/routers/vulnerability";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -35,6 +37,8 @@ export const appRouter = createTRPCRouter({
   entitlement: entitlementRouter,
   marketplace: marketplaceRouter,
   import: importRouter,
+  pentest: pentestRouter,
+  vulnerability: vulnerabilityRouter,
 });
 
 export type AppRouter = typeof appRouter;

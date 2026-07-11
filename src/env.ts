@@ -69,6 +69,14 @@ const envSchema = z.object({
   // one secret class doesn't also expose the other. Same 64-hex-char format.
   WEBHOOK_ENCRYPTION_KEY: z.string().min(32).default("change-me-32-char-key-for-webhooks"),
   WEBHOOK_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
+
+  // ── Phase 5 Part 1: Pentest Scan Engine ─────────────────────────────────
+  // Local tag built from docker/pentest-scanner/Dockerfile (pinned nuclei
+  // digest lives in that Dockerfile, not here — this just names the image
+  // `docker run` should launch).
+  NUCLEI_SCANNER_IMAGE: z.string().min(1).default("dharma-pentest-scanner:local"),
+  PENTEST_SCAN_TIMEOUT_MS: z.coerce.number().int().positive().default(600_000),
+  PENTEST_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
 });
 
 export const env = envSchema.parse(process.env);

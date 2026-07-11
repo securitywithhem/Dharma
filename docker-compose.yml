@@ -300,6 +300,60 @@ services:
       - dharma-network
 
   # ------------------------------------------------------------
+  # Pentest Scan Worker – Phase 5 Part 1
+  #
+  # Isolated from `worker` above: this is the ONLY service with the host
+  # Docker socket mounted, so it can launch a sandboxed nuclei container
+  # per scan job (docker/pentest-scanner/Dockerfile). Keeping it separate
+  # means a compromised scan can't reach the connector/webhook/AI queues
+  # or their decrypted credentials, which only the `worker` container
+  # touches. See docker/pentest-worker/Dockerfile for why this container
+  # itself runs as root (socket access is already host-root-equivalent).
+  # ------------------------------------------------------------
+  pentest-worker:
+    build:
+      context: .
+      dockerfile: docker/pentest-worker/Dockerfile
+    container_name: dharma-pentest-worker
+    restart: on-failure:3
+    env_file:
+      - envs/.env.docker
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      NUCLEI_SCANNER_IMAGE: dharma-pentest-scanner:local
+      PENTEST_SCAN_TIMEOUT_MS: ${PENTEST_SCAN_TIMEOUT_MS:-600000}
+      PENTEST_WORKER_CONCURRENCY: ${PENTEST_WORKER_CONCURRENCY:-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      # Docker-outside-of-Docker: lets this worker spawn the nuclei scanner
+      # container as a sibling, without granting Docker access to any other
+      # service. Read-only mount — connecting to the API doesn't require a
+      # writable socket file, only enough to open the connection.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - dharma-network
+
+  # ------------------------------------------------------------
   # Caddy – Reverse proxy (HTTP / HTTPS termination)
   # ------------------------------------------------------------
   caddy:
