@@ -15,6 +15,8 @@ import { startConnectorWorker } from "./connectors/index";
 import { startAuditorPackageWorker } from "./auditorPackage";
 import { startConnectorEvidenceWorker } from "@/server/queue/workers/connectorEvidenceWorker";
 import { startWebhookWorker } from "@/server/queue/workers/webhookWorker";
+import { startControlEmbeddingWorker } from "@/server/queue/workers/controlEmbeddingWorker";
+import { startReadinessScoreWorker, registerDailySweep } from "@/server/queue/workers/readinessScoreWorker";
 
 console.log("🚀 Starting Dharma background workers...");
 
@@ -25,6 +27,9 @@ const connectorWorker = startConnectorWorker();
 const auditorPackageWorker = startAuditorPackageWorker();
 const connectorEvidenceWorker = startConnectorEvidenceWorker();
 const webhookWorker = startWebhookWorker();
+const controlEmbeddingWorker = startControlEmbeddingWorker();
+const readinessScoreWorker = startReadinessScoreWorker();
+void registerDailySweep();
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received — draining workers...");
@@ -36,6 +41,8 @@ process.on("SIGTERM", async () => {
     auditorPackageWorker.close(),
     connectorEvidenceWorker.close(),
     webhookWorker.close(),
+    controlEmbeddingWorker.close(),
+    readinessScoreWorker.close(),
   ]);
   process.exit(0);
 });

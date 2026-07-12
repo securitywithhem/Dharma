@@ -1,21 +1,27 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
   Circle,
   Clock,
+  Gauge,
+  ListTree,
+  Rows3,
   Shield,
   ShieldAlert,
 } from "lucide-react";
 import { api } from "@/hooks/trpc";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Route } from "next";
 import { ControlTable } from "./ControlTable";
+import { ControlTree } from "@/components/controls/ControlTree";
 import { DomainBreakdown } from "./DomainBreakdown";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +38,7 @@ function getProgressStatus(pct: number) {
 export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps) {
   const { id } = use(params);
   const utils = api.useUtils();
+  const [controlView, setControlView] = useState<"tree" | "flat">("tree");
 
   const { data: framework, isLoading, isError, error } = api.framework.getById.useQuery(
     { id },
@@ -129,6 +136,12 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
               )}
             </div>
           </div>
+          <Link href={`/dashboard/frameworks/${id}/readiness` as Route}>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Gauge className="h-4 w-4" />
+              Audit Readiness
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -215,23 +228,50 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
         </CardContent>
       </Card>
 
-      {/* Controls table */}
+      {/* Controls */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">
-              Controls
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {framework.controlCount} total
-            </Badge>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-base">Controls</CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Tree / Flat toggle */}
+              <div className="flex rounded-md border border-border p-0.5" role="group" aria-label="Control view">
+                <Button
+                  variant={controlView === "tree" ? "default" : "ghost"}
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  aria-pressed={controlView === "tree"}
+                  onClick={() => setControlView("tree")}
+                >
+                  <ListTree className="h-3.5 w-3.5" />
+                  Tree
+                </Button>
+                <Button
+                  variant={controlView === "flat" ? "default" : "ghost"}
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  aria-pressed={controlView === "flat"}
+                  onClick={() => setControlView("flat")}
+                >
+                  <Rows3 className="h-3.5 w-3.5" />
+                  Flat
+                </Button>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {framework.controlCount} total
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <ControlTable
-            controls={framework.controls}
-            onStatusChanged={handleStatusChanged}
-          />
+          {controlView === "tree" ? (
+            <ControlTree frameworkId={id} />
+          ) : (
+            <ControlTable
+              controls={framework.controls}
+              onStatusChanged={handleStatusChanged}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

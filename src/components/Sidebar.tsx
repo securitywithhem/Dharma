@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bug, FileCheck2, FileText, LayoutDashboard, LogOut, Radar, Settings2, Shield, Store } from "lucide-react";
+import { Bug, FileCheck2, FileText, Grid3x3, LayoutDashboard, LogOut, Radar, Settings2, Shield, Store } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -34,6 +34,11 @@ const navigation = [
     href: "/dashboard/marketplace" as Route,
     label: "Marketplace",
     icon: Store
+  },
+  {
+    href: "/dashboard/cross-walk" as Route,
+    label: "Cross-Walk Mapping",
+    icon: Grid3x3
   },
   {
     href: "/dashboard/pentests" as Route,
