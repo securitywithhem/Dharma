@@ -11,6 +11,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScoreGauge } from "@/components/readiness/ScoreGauge";
+import { api } from "@/hooks/trpc";
 import { cn } from "@/lib/utils";
 
 interface FrameworkCardProps {
@@ -110,6 +113,7 @@ export function FrameworkCard({
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
+              <ReadinessScoreBadge frameworkId={id} />
               <Badge variant="outline" className="text-xs whitespace-nowrap">
                 v{version}
               </Badge>
@@ -184,6 +188,17 @@ export function FrameworkCard({
 // ------------------------------------------------------------------
 // Helper sub-component
 // ------------------------------------------------------------------
+
+/** Compact Audit Readiness Score badge (Phase 6 Part 3) for a frameworks-list card. */
+function ReadinessScoreBadge({ frameworkId }: { frameworkId: string }) {
+  const { data } = api.readiness.getScore.useQuery({ frameworkId });
+
+  if (!data || data.status === "computing") {
+    return <Skeleton className="h-9 w-9 rounded-full" />;
+  }
+
+  return <ScoreGauge score={data.overallScore} size={36} strokeWidth={4} compact />;
+}
 
 function StatPill({
   icon,

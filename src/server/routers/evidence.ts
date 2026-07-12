@@ -29,6 +29,7 @@ import {
   initializeMinIOBucket,
 } from "@/server/minio";
 import { evidenceQueue } from "@/workers/classification";
+import { enqueueReadinessRecompute } from "@/server/queue/readinessScoreQueue";
 
 // Lazily ensure the bucket exists on first request
 let bucketReady = false;
@@ -130,7 +131,7 @@ export const evidenceRouter = createTRPCRouter({
           id: input.controlId,
           framework: { organizationId: ctx.session.user.organizationId },
         },
-        select: { id: true, title: true },
+        select: { id: true, title: true, frameworkId: true },
       });
 
       if (!control) {
@@ -169,6 +170,12 @@ export const evidenceRouter = createTRPCRouter({
           controlId: input.controlId,
           controlTitle: control.title,
         },
+      });
+
+      // Phase 6 Part 3: debounced, async — evidence upload's own success must
+      // never be blocked or failed by a readiness-score recompute hiccup.
+      enqueueReadinessRecompute(ctx.session.user.organizationId, control.frameworkId).catch((err) => {
+        console.warn(`[readiness-score] Failed to enqueue recompute after evidence upload:`, err);
       });
 
       return evidence;
@@ -249,6 +256,7 @@ export const evidenceRouter = createTRPCRouter({
           id: input.id,
           organizationId: ctx.session.user.organizationId,
         },
+        include: { control: { select: { frameworkId: true } } },
       });
 
       if (!evidence) {
@@ -280,6 +288,10 @@ export const evidenceRouter = createTRPCRouter({
         entity: "Evidence",
         entityId: input.id,
         changes: { fileName: evidence.fileName, type: evidence.type },
+      });
+
+      enqueueReadinessRecompute(ctx.session.user.organizationId, evidence.control.frameworkId).catch((err) => {
+        console.warn(`[readiness-score] Failed to enqueue recompute after evidence delete:`, err);
       });
 
       return { success: true };

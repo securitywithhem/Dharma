@@ -18,6 +18,8 @@ import { marketplaceRouter } from "@/server/routers/marketplace";
 import { importRouter } from "@/server/routers/import";
 import { pentestRouter } from "@/server/routers/pentest";
 import { vulnerabilityRouter } from "@/server/routers/vulnerability";
+import { controlMappingRouter } from "@/server/routers/controlMapping";
+import { readinessRouter } from "@/server/routers/readiness";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -39,6 +41,8 @@ export const appRouter = createTRPCRouter({
   import: importRouter,
   pentest: pentestRouter,
   vulnerability: vulnerabilityRouter,
+  controlMapping: controlMappingRouter,
+  readiness: readinessRouter,
 });
 
 export type AppRouter = typeof appRouter;

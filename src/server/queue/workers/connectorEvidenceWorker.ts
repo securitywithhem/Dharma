@@ -21,6 +21,7 @@ import {
   CONNECTOR_EVIDENCE_QUEUE_NAME,
   type ConnectorEvidenceJobData,
 } from "@/server/queue/connectorQueue";
+import { enqueueReadinessRecompute } from "@/server/queue/readinessScoreQueue";
 
 // ------------------------------------------------------------------
 // Prisma singleton (matches src/workers/connectors/index.ts convention)
@@ -96,7 +97,7 @@ export async function processConnectorEvidenceJob(
       where: { id: evidenceMappingId },
       include: {
         connector: true,
-        control: { select: { id: true, status: true, framework: { select: { organizationId: true } } } },
+        control: { select: { id: true, status: true, frameworkId: true, framework: { select: { organizationId: true } } } },
       },
     });
 
@@ -213,6 +214,14 @@ export async function processConnectorEvidenceJob(
           evidenceType: item.type,
           status: item.status,
           collectedAt: item.collectedAt,
+        });
+      }
+
+      // Phase 6 Part 3: debounced, async — auto-collection's own success/audit
+      // trail must never be blocked by a readiness-score recompute hiccup.
+      if (createdEvidence.length > 0) {
+        enqueueReadinessRecompute(organizationId, control.frameworkId).catch((err) => {
+          console.warn(`[readiness-score] Failed to enqueue recompute after auto-collection:`, err);
         });
       }
 
