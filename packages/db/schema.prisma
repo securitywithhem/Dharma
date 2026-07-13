@@ -49,6 +49,16 @@ model Organization {
   readinessScores ReadinessScore[]
   recommendations Recommendation[]
 
+  // Phase 7 Part 1 — AI Advisor data layer
+  aiAdvisorSessions      AIAdvisorSession[]
+  organizationEmbeddings OrganizationEmbedding[]
+  ingestedDocuments      IngestedDocument[]
+  orgGraphNodes          OrgGraphNode[]
+  orgGraphEdges          OrgGraphEdge[]
+
+  // Phase 7 Part 2 — AI Advisor chat usage / token-cost tracking
+  aiUsageLogs            AIUsageLog[]
+
   // Phase 2 Feature 1: per-org AI provider config
   // mode: 'local-ollama' | 'local-small' | 'remote-opt-in'
   // stored as encrypted JSON blob
@@ -92,6 +102,10 @@ model User {
   marketplaceItems MarketplaceItem[] @relation("MarketplaceItemAuthor")
   marketplaceReviews MarketplaceReview[] @relation("MarketplaceReviews")
   penTestsRequested PenTest[]
+
+  // Phase 7 Part 1 — AI Advisor data layer
+  aiAdvisorSessions AIAdvisorSession[]
+  ingestedDocuments IngestedDocument[] @relation("IngestedDocumentUploader")
 
   @@index([organizationId])
   @@index([email])
@@ -340,6 +354,16 @@ model Evidence {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   source         String                @default("manual")
+
+  // Phase 7 Part 3: NLP evidence auto-tagging (PRD Phase 7).
+  // AI-SUGGESTED cross-control associations, computed async after upload by the
+  // evidenceAutoTag worker. These are SUGGESTIONS ONLY — never auto-applied.
+  // The user accepts (which creates a real ControlMapping / re-assigns) or
+  // rejects them in the UI, preserving audit integrity. Shape of
+  // suggestedControlIds: [{ controlId, code, title, confidence }].
+  suggestedControlIds Json?
+  autoTagConfidence   Float?
+  autoTagStatus       AutoTagStatus @default(NONE)
 
   @@index([controlId])
   @@index([organizationId])
@@ -811,4 +835,159 @@ enum VulnStatus {
   IN_PROGRESS
   RESOLVED
   WONT_FIX
+}
+
+// =============================================================================
+// Phase 7 Part 1 — AI Advisor data layer
+//
+// Document ingestion → chunk → embed → tenant-scoped knowledge graph.
+// This part builds ONLY the data layer; the RAG retrieval layer (Part 2) and
+// chat endpoint/UI (Part 2/3) are out of scope here.
+//
+// Embedding dimension is 384 to match the existing Dharma pgvector columns
+// (Control/Evidence/Vulnerability) and the Ollama `nomic-embed-text` default —
+// see 2_TRD.md §3 "yielding 384-dimension vectors". The OpenAI provider path
+// (text-embedding-3-small, 1536-dim) would require a separate column/migration
+// and is intentionally not enabled here.
+// =============================================================================
+
+/// A persisted AI Advisor chat session. Populated in Part 2/3; the model is
+/// added now so the data layer's relations are complete.
+model AIAdvisorSession {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages       Json // array of { role, content, citations? }
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, userId])
+}
+
+/// One embedded chunk of an org document. Per-org, never shared across tenants
+/// (2_TRD.md: local-first, no training on customer data; embeddings per org).
+/// `embedding` is written via raw SQL ($1::vector) since Prisma has no native
+/// vector type — same pattern as Control/Evidence embeddings.
+model OrganizationEmbedding {
+  id               String                      @id @default(cuid())
+  organizationId   String
+  organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType     String // "control" | "evidence" | "policy_doc" | "incident_report"
+  documentId       String
+  sourceDocumentId String? // FK to IngestedDocument when applicable
+  sourceDocument   IngestedDocument?           @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  embedding        Unsupported("vector(384)")?
+  chunkIndex       Int
+  content          String                      @db.Text
+  metadata         Json? // { pageNumber, section, graphNodeId }
+  createdAt        DateTime                    @default(now())
+
+  @@index([organizationId, documentType])
+  @@index([sourceDocumentId])
+}
+
+/// A raw document uploaded for ingestion (policy, incident report, etc.). The
+/// file itself lives in MinIO under `s3Key`; this row tracks pipeline state.
+model IngestedDocument {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedById   String
+  uploadedBy     User            @relation("IngestedDocumentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+  filename       String
+  mimeType       String
+  s3Key          String // MinIO object key
+  status         IngestionStatus @default(PENDING)
+  chunkCount     Int             @default(0)
+  graphNodeCount Int             @default(0)
+  error          String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  embeddings OrganizationEmbedding[]
+  graphNodes OrgGraphNode[]
+  graphEdges OrgGraphEdge[]
+
+  @@index([organizationId, status])
+}
+
+/// A node in the per-org knowledge graph extracted from ingested documents.
+/// Graphify (the CLI/skill) is not an in-process runtime SDK, so extraction is
+/// persisted here in Postgres and hard-scoped by `organizationId` — this is the
+/// tenant-isolation boundary and the pluggable seam a graph DB could replace.
+model OrgGraphNode {
+  id               String            @id @default(cuid())
+  organizationId   String
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sourceDocumentId String?
+  sourceDocument   IngestedDocument? @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  nodeType         String // "control" | "policy" | "requirement" | "system" | "entity"
+  label            String
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+
+  outgoingEdges OrgGraphEdge[] @relation("OrgGraphEdgeFrom")
+  incomingEdges OrgGraphEdge[] @relation("OrgGraphEdgeTo")
+
+  @@index([organizationId, nodeType])
+  @@index([sourceDocumentId])
+}
+
+/// A directed relationship between two OrgGraphNodes, e.g.
+/// "Policy X" —[implements]→ "Control CC6.1". Also org-scoped.
+model OrgGraphEdge {
+  id               String            @id @default(cuid())
+  organizationId   String
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sourceDocumentId String?
+  sourceDocument   IngestedDocument? @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  fromNodeId       String
+  fromNode         OrgGraphNode      @relation("OrgGraphEdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNodeId         String
+  toNode           OrgGraphNode      @relation("OrgGraphEdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+  relation         String // e.g. "implements", "requires", "mitigates"
+  createdAt        DateTime          @default(now())
+
+  @@index([organizationId])
+  @@index([sourceDocumentId])
+  @@index([fromNodeId])
+  @@index([toNodeId])
+}
+
+enum IngestionStatus {
+  PENDING
+  CHUNKING
+  EMBEDDING
+  GRAPH_EXTRACTING
+  COMPLETED
+  FAILED
+}
+
+/// Phase 7 Part 3 — lifecycle of an Evidence row's NLP auto-tag suggestions.
+enum AutoTagStatus {
+  NONE // not yet processed
+  PROCESSING // worker running
+  SUGGESTED // suggestions available, awaiting user accept/reject
+  ACCEPTED // user accepted a suggestion
+  REJECTED // user dismissed suggestions
+  FAILED // auto-tag job failed (non-fatal to the evidence itself)
+}
+
+/// Phase 7 Part 2 — per-request AI token usage, for per-org rate/budget
+/// enforcement and cost reporting. One row per completed chat turn. The
+/// monthly budget check sums promptTokens+completionTokens for the org over
+/// the current calendar month against Plan.limits.aiTokensPerMonth.
+model AIUsageLog {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId           String
+  sessionId        String?
+  promptTokens     Int
+  completionTokens Int
+  createdAt        DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
 }
