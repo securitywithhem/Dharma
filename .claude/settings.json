@@ -13,7 +13,7 @@
         "timeout": 3000
       }
     ],
-    "PreCommit": [
+    "PreToolUse": [
       {
         "command": "code-review-graph detect-changes --brief",
         "timeout": 10000

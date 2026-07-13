@@ -142,4 +142,19 @@ export async function deleteFile(objectKey: string): Promise<void> {
   }
 }
 
+/**
+ * Fetch an object's full contents into a Buffer (server-side use only).
+ * Used by the AI ingestion worker to pull an uploaded document's bytes for
+ * text extraction. Streams the object and concatenates chunks.
+ * @param objectKey - The MinIO object key
+ */
+export async function getFileBuffer(objectKey: string): Promise<Buffer> {
+  const stream = await minioClient.getObject(BUCKET_NAME, objectKey);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : (chunk as Buffer));
+  }
+  return Buffer.concat(chunks);
+}
+
 export default minioClient;

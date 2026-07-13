@@ -20,6 +20,8 @@ import { pentestRouter } from "@/server/routers/pentest";
 import { vulnerabilityRouter } from "@/server/routers/vulnerability";
 import { controlMappingRouter } from "@/server/routers/controlMapping";
 import { readinessRouter } from "@/server/routers/readiness";
+import { aiIngestionRouter } from "@/server/routers/aiIngestion";
+import { aiAdvisorRouter } from "@/server/routers/aiAdvisor";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -43,6 +45,8 @@ export const appRouter = createTRPCRouter({
   vulnerability: vulnerabilityRouter,
   controlMapping: controlMappingRouter,
   readiness: readinessRouter,
+  aiIngestion: aiIngestionRouter,
+  aiAdvisor: aiAdvisorRouter,
 });
 
 export type AppRouter = typeof appRouter;
