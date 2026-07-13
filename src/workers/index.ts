@@ -17,6 +17,8 @@ import { startConnectorEvidenceWorker } from "@/server/queue/workers/connectorEv
 import { startWebhookWorker } from "@/server/queue/workers/webhookWorker";
 import { startControlEmbeddingWorker } from "@/server/queue/workers/controlEmbeddingWorker";
 import { startReadinessScoreWorker, registerDailySweep } from "@/server/queue/workers/readinessScoreWorker";
+import { startAiIngestionWorker } from "@/server/queue/workers/aiIngestionWorker";
+import { startEvidenceAutoTagWorker } from "@/server/queue/workers/evidenceAutoTagWorker";
 
 console.log("🚀 Starting Dharma background workers...");
 
@@ -29,6 +31,8 @@ const connectorEvidenceWorker = startConnectorEvidenceWorker();
 const webhookWorker = startWebhookWorker();
 const controlEmbeddingWorker = startControlEmbeddingWorker();
 const readinessScoreWorker = startReadinessScoreWorker();
+const aiIngestionWorker = startAiIngestionWorker();
+const evidenceAutoTagWorker = startEvidenceAutoTagWorker();
 void registerDailySweep();
 
 process.on("SIGTERM", async () => {
@@ -43,6 +47,8 @@ process.on("SIGTERM", async () => {
     webhookWorker.close(),
     controlEmbeddingWorker.close(),
     readinessScoreWorker.close(),
+    aiIngestionWorker.close(),
+    evidenceAutoTagWorker.close(),
   ]);
   process.exit(0);
 });
