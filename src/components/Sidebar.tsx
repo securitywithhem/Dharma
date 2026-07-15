@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bug, FileCheck2, FileText, Grid3x3, LayoutDashboard, LogOut, Radar, Settings2, Shield, Store } from "lucide-react";
+import { Bell, Bug, FileBarChart, FileCheck2, FileText, Grid3x3, LayoutDashboard, LogOut, MonitorSmartphone, Radar, Settings2, Shield, Store } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { api } from "@/lib/trpc";
 
 import type { Route } from "next";
 
@@ -51,11 +52,42 @@ const navigation = [
     icon: Bug
   },
   {
+    // Phase 9 Part 1 — endpoint agent (EDR-lite)
+    href: "/dashboard/endpoints" as Route,
+    label: "Endpoints",
+    icon: MonitorSmartphone
+  },
+  {
+    // Phase 9 Part 2 — advanced reporting
+    href: "/dashboard/reports" as Route,
+    label: "Reports",
+    icon: FileBarChart
+  },
+  {
+    // Phase 9 Part 3 — regulatory change monitoring (notification bell)
+    href: "/dashboard/regulatory-alerts" as Route,
+    label: "Regulatory",
+    icon: Bell
+  },
+  {
     href: "/dashboard/settings" as Route,
     label: "Settings",
     icon: Settings2
   }
 ];
+
+/** Unread-alert count badge for the notification bell nav item. */
+function RegulatoryBadge() {
+  const { data } = api.regulatory.unreadCount.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
+  if (!data || data <= 0) return null;
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+      {data > 99 ? "99+" : data}
+    </span>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -89,6 +121,7 @@ export function Sidebar() {
             >
               <Icon className="h-4 w-4" />
               {label}
+              {(href as string) === "/dashboard/regulatory-alerts" && <RegulatoryBadge />}
             </Link>
           );
         })}

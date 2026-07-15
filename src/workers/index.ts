@@ -21,6 +21,13 @@ import { startAiIngestionWorker } from "@/server/queue/workers/aiIngestionWorker
 import { startEvidenceAutoTagWorker } from "@/server/queue/workers/evidenceAutoTagWorker";
 import { startAuditEventWorker } from "@/server/queue/workers/auditEventWorker";
 import { startSiemExportWorker } from "@/server/queue/workers/siemExportWorker";
+import { startEndpointCheckPostprocessWorker } from "@/server/queue/workers/endpointCheckPostprocessWorker";
+import { startEndpointStaleSweepWorker } from "@/server/queue/workers/endpointStaleSweepWorker";
+import { registerEndpointStaleSweep } from "@/server/queue/endpointQueue";
+import { startReportWorker } from "@/server/queue/workers/reportWorker";
+import { startReportScheduleDispatchWorker } from "@/server/queue/workers/reportScheduleDispatchWorker";
+import { registerReportScheduleDispatch } from "@/server/queue/reportQueue";
+import { startRegulatoryFanoutWorker } from "@/server/queue/workers/regulatoryFanoutWorker";
 
 console.log("🚀 Starting Dharma background workers...");
 
@@ -38,7 +45,17 @@ const evidenceAutoTagWorker = startEvidenceAutoTagWorker();
 // Phase 8 Part 2 — async audit writer + SIEM export
 const auditEventWorker = startAuditEventWorker();
 const siemExportWorker = startSiemExportWorker();
+// Phase 9 Part 1 — endpoint agent (EDR-lite)
+const endpointCheckPostprocessWorker = startEndpointCheckPostprocessWorker();
+const endpointStaleSweepWorker = startEndpointStaleSweepWorker();
+// Phase 9 Part 2 — advanced reporting
+const reportWorker = startReportWorker();
+const reportScheduleDispatchWorker = startReportScheduleDispatchWorker();
+// Phase 9 Part 3 — regulatory change monitoring fanout
+const regulatoryFanoutWorker = startRegulatoryFanoutWorker();
 void registerDailySweep();
+void registerEndpointStaleSweep();
+void registerReportScheduleDispatch();
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received — draining workers...");
@@ -56,6 +73,11 @@ process.on("SIGTERM", async () => {
     evidenceAutoTagWorker.close(),
     auditEventWorker.close(),
     siemExportWorker.close(),
+    endpointCheckPostprocessWorker.close(),
+    endpointStaleSweepWorker.close(),
+    reportWorker.close(),
+    reportScheduleDispatchWorker.close(),
+    regulatoryFanoutWorker.close(),
   ]);
   process.exit(0);
 });
