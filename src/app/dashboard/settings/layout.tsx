@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Users, CreditCard, Shield, Cloud, Webhook, KeyRound, UserCog, ScrollText, Palette } from "lucide-react";
+import { Settings, Users, CreditCard, Shield, Cloud, Webhook, KeyRound, UserCog, ScrollText, Palette, Code2 } from "lucide-react";
 
 const settingsTabs = [
   { href: "/dashboard/settings/general", label: "General", icon: <Settings className="w-4 h-4" /> },
@@ -18,6 +18,8 @@ const settingsTabs = [
   // Phase 8 Part 2 — audit viewer + white-label
   { href: "/dashboard/settings/enterprise/audit-log", label: "Audit Log", icon: <ScrollText className="w-4 h-4" /> },
   { href: "/dashboard/settings/enterprise/white-label", label: "White-label", icon: <Palette className="w-4 h-4" /> },
+  // Phase 9 Part 3 — public API keys
+  { href: "/dashboard/settings/api-keys", label: "API Keys", icon: <Code2 className="w-4 h-4" /> },
 ];
 
 export default function SettingsLayout({

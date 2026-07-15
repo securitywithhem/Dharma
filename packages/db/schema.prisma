@@ -83,6 +83,18 @@ model Organization {
   groupId String?
   group   OrganizationGroup? @relation("GroupOrgs", fields: [groupId], references: [id])
 
+  // Phase 9 Part 1 — Endpoint agent (EDR-lite)
+  endpoints      Endpoint[]
+  endpointChecks EndpointCheck[]
+
+  // Phase 9 Part 2 — Advanced reporting
+  reports         Report[]
+  reportSchedules ReportSchedule[]
+
+  // Phase 9 Part 3 — Regulatory monitoring + public API
+  regulatoryAlerts RegulatoryAlert[]
+  apiKeys          ApiKey[]
+
   @@index([createdAt])
 }
 
@@ -213,6 +225,7 @@ model Control {
   evidence         Evidence[]
   evidenceMappings EvidenceMapping[]
   vulnerabilities  Vulnerability[]
+  endpointChecks   EndpointCheck[] // Phase 9 Part 1 — agent posture-check results mapped to this control
 
   // ----- Phase 6 Part 2: Cross-Walking -----
   sourceMappings ControlMapping[] @relation("SourceMappings")
@@ -691,6 +704,9 @@ model MarketplaceItem {
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
 
+  // Phase 9 Part 3 — regulatory version history
+  frameworkVersions FrameworkVersion[]
+
   @@index([authorId, isPublic, createdAt])
   @@index([category, isPublic])
 }
@@ -1102,4 +1118,181 @@ model MsspGrant {
 
   @@index([grantedUserId])
   @@index([groupId])
+}
+
+// ----- Phase 9 Part 1: Endpoint Agent (EDR-lite) -----
+// PRD Phase 9: "Agent installation on endpoints for continuous compliance
+// monitoring (EDR-lite)." Follows the Phase 4 Connector model's tenant-scoping
+// and index conventions (onDelete: Cascade on the org relation — repo-wide
+// convention the task brief omitted).
+
+model Endpoint {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hostname            String
+  os                  String
+  osVersion           String
+  agentVersion        String
+  // DEVIATION (flagged): the task brief names this `enrollmentToken` storing the
+  // token itself. Per Step 2 ("hashed with SHA-256 before storage, never store
+  // plaintext"), the column stores the SHA-256 HASH — same validate-only pattern
+  // as OrganizationSettings.scimTokenHash (Phase 8). The plaintext is returned
+  // to the caller exactly once at enrollment and never persisted.
+  enrollmentTokenHash String          @unique
+  status              EndpointStatus  @default(PENDING)
+  lastHeartbeatAt     DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  checks              EndpointCheck[]
+
+  @@index([organizationId, status])
+}
+
+enum EndpointStatus {
+  PENDING // enrolled, no heartbeat yet
+  ACTIVE // heartbeat received within the staleness window
+  STALE // no heartbeat for > 48h (set by the stale-sweep worker)
+  REVOKED // token revoked by an admin; heartbeats rejected
+}
+
+model EndpointCheck {
+  id             String       @id @default(cuid())
+  endpointId     String
+  endpoint       Endpoint     @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checkType      String // "disk_encryption" | "os_patch_level" | "screen_lock" | "firewall_status"
+  result         Json // { pass: boolean, raw: {...} }
+  // Nullable: a check whose type has no mapped control in this org's frameworks
+  // is stored with controlId null and surfaced as an "unmapped check" in the UI.
+  controlId      String?
+  control        Control?     @relation(fields: [controlId], references: [id], onDelete: SetNull)
+  collectedAt    DateTime     @default(now())
+
+  @@index([organizationId, checkType, collectedAt])
+  @@index([endpointId, collectedAt])
+}
+
+// ----- Phase 9 Part 2: Advanced Reporting -----
+// PRD Phase 9: "Advanced reporting (custom PDF reports, board summaries)."
+// PDF generation is async/queued (2_TRD.md long-running tasks), never in a
+// request thread.
+
+model Report {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           ReportType
+  title          String
+  // Section selection, date range, framework filters (CUSTOM_PDF) — BOARD_SUMMARY
+  // is auto-composed so config is minimal.
+  config         Json
+  status         ReportStatus @default(QUEUED)
+  // MinIO object KEY (not a raw presigned URL — presigned URLs are minted
+  // on-demand in report.get, per the brief's "presigned reference key" note).
+  fileUrl        String?
+  // Failure detail lives here for the UI; the raw stack trace goes only to the
+  // AuditLog metadata, never surfaced to the client.
+  errorMessage   String?
+  // Plain actor id (no FK) — matches the brief and the repo's audit-actor style.
+  generatedById  String
+  createdAt      DateTime     @default(now())
+  completedAt    DateTime?
+
+  @@index([organizationId, type, createdAt])
+  @@index([organizationId, status])
+}
+
+enum ReportType {
+  CUSTOM_PDF
+  BOARD_SUMMARY
+}
+
+enum ReportStatus {
+  QUEUED
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+model ReportSchedule {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  // Same shape as Report.config plus a `type` discriminator.
+  reportConfig   Json
+  // Stored as a cron expression, but the UI only offers daily/weekly/monthly
+  // presets that map to fixed crons (no raw cron input).
+  cron           String
+  recipients     Json // string[] of emails
+  enabled        Boolean      @default(true)
+  lastRunAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, enabled])
+}
+
+// ----- Phase 9 Part 3: Regulatory Change Monitoring + Public API -----
+// PRD Phase 9: "Regulatory change monitoring – alerts when frameworks update"
+// and "Full API for third-party integrations."
+
+/// A published version of a framework (MarketplaceItem of type FRAMEWORK).
+/// controlsSnapshot holds the full control tree at that version so the diff
+/// engine can compute added/removed/modified controls between versions.
+model FrameworkVersion {
+  id                String            @id @default(cuid())
+  marketplaceItemId String
+  marketplaceItem   MarketplaceItem   @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
+  version           String
+  changelog         String            @db.Text
+  controlsSnapshot  Json
+  publishedAt       DateTime          @default(now())
+  alerts            RegulatoryAlert[]
+
+  @@unique([marketplaceItemId, version])
+  @@index([marketplaceItemId, publishedAt])
+}
+
+/// Per-org alert raised when a framework the org imported gets a new version.
+model RegulatoryAlert {
+  id                 String           @id @default(cuid())
+  organizationId     String
+  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  frameworkVersionId String
+  frameworkVersion   FrameworkVersion @relation(fields: [frameworkVersionId], references: [id], onDelete: Cascade)
+  diffSummary        Json // { added: [], removed: [], modified: [] }
+  status             AlertStatus      @default(UNREAD)
+  createdAt          DateTime         @default(now())
+
+  // One alert per org per framework version — re-running fanout is idempotent.
+  @@unique([organizationId, frameworkVersionId])
+  @@index([organizationId, status])
+}
+
+enum AlertStatus {
+  UNREAD
+  ACKNOWLEDGED
+  DISMISSED
+}
+
+/// Third-party API credential. Only the SHA-256 hash is stored (never the
+/// plaintext), same rule as Phase 9 Part 1 endpoint enrollment tokens and the
+/// Phase 8 SCIM token. keyPrefix is a non-secret identifier shown in the UI.
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  keyHash        String       @unique
+  keyPrefix      String // e.g. "dhm_a1b2" — first chars, for identification only
+  scopes         Json // ["controls:read","evidence:write",...]
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdById    String
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, revokedAt])
 }

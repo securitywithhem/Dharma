@@ -26,6 +26,9 @@ import { ssoRouter } from "@/server/routers/sso";
 import { rolesRouter } from "@/server/routers/roles";
 import { whiteLabelRouter } from "@/server/routers/whiteLabel";
 import { msspRouter } from "@/server/routers/mssp";
+import { endpointRouter } from "@/server/routers/endpoint";
+import { regulatoryRouter } from "@/server/routers/regulatory";
+import { apiKeyRouter } from "@/server/routers/apiKey";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -55,6 +58,9 @@ export const appRouter = createTRPCRouter({
   roles: rolesRouter,
   whiteLabel: whiteLabelRouter,
   mssp: msspRouter,
+  endpoint: endpointRouter,
+  regulatory: regulatoryRouter,
+  apiKey: apiKeyRouter,
 });
 
 export type AppRouter = typeof appRouter;

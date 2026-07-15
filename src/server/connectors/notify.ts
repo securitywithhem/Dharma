@@ -10,6 +10,18 @@ import { enqueueWebhookDelivery } from "@/server/queue/webhookQueue";
 
 export const WEBHOOK_EVENT_EVIDENCE_UPDATED = "evidence.updated";
 export const WEBHOOK_EVENT_CONTROL_FAILED = "control.failed";
+// Phase 9 Part 3 — new event types. Additions to the existing dispatcher's
+// event vocabulary, NOT a second dispatcher.
+export const WEBHOOK_EVENT_REGULATORY_ALERT_CREATED = "regulatory.alert_created";
+export const WEBHOOK_EVENT_EVIDENCE_CREATED = "evidence.created";
+
+/** All event types an org can subscribe a webhook to (for UI + validation). */
+export const WEBHOOK_EVENT_TYPES = [
+  WEBHOOK_EVENT_EVIDENCE_UPDATED,
+  WEBHOOK_EVENT_CONTROL_FAILED,
+  WEBHOOK_EVENT_REGULATORY_ALERT_CREATED,
+  WEBHOOK_EVENT_EVIDENCE_CREATED,
+] as const;
 
 export interface EvidenceUpdatedSummary {
   id: string;
@@ -81,6 +93,72 @@ export async function notifyControlFailed(
       webhookId: webhook.id,
       event: WEBHOOK_EVENT_CONTROL_FAILED,
       payload: { controlId, failedAt: new Date().toISOString() },
+    });
+  }
+}
+
+/**
+ * Phase 9 Part 3 — enqueues a "regulatory.alert_created" delivery to every
+ * active subscribed webhook in the org. Payload is minimal metadata (no full
+ * diff blob — the org can fetch it via regulatory.listAlerts / the API).
+ */
+export async function notifyRegulatoryAlertCreated(
+  prisma: PrismaClient,
+  organizationId: string,
+  alert: { id: string; frameworkVersionId: string; version: string },
+): Promise<void> {
+  const webhooks = await prisma.webhook.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+      events: { has: WEBHOOK_EVENT_REGULATORY_ALERT_CREATED },
+    },
+    select: { id: true },
+  });
+
+  for (const webhook of webhooks) {
+    await enqueueWebhookDelivery({
+      webhookId: webhook.id,
+      event: WEBHOOK_EVENT_REGULATORY_ALERT_CREATED,
+      payload: {
+        alertId: alert.id,
+        frameworkVersionId: alert.frameworkVersionId,
+        version: alert.version,
+        createdAt: new Date().toISOString(),
+      },
+    });
+  }
+}
+
+/**
+ * Phase 9 Part 3 — enqueues an "evidence.created" delivery when a third party
+ * pushes evidence via the public API. Same minimal-payload contract.
+ */
+export async function notifyEvidenceCreated(
+  prisma: PrismaClient,
+  organizationId: string,
+  evidence: { id: string; controlId: string; evidenceType: string },
+): Promise<void> {
+  const webhooks = await prisma.webhook.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+      events: { has: WEBHOOK_EVENT_EVIDENCE_CREATED },
+    },
+    select: { id: true },
+  });
+
+  for (const webhook of webhooks) {
+    await enqueueWebhookDelivery({
+      webhookId: webhook.id,
+      event: WEBHOOK_EVENT_EVIDENCE_CREATED,
+      payload: {
+        evidenceId: evidence.id,
+        controlId: evidence.controlId,
+        evidenceType: evidence.evidenceType,
+        source: "api",
+        createdAt: new Date().toISOString(),
+      },
     });
   }
 }

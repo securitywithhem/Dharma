@@ -7,6 +7,132 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import { ReportDocument } from '@/lib/pdf/ReportDocument';
 import { createAuditLog } from '@/server/audit-log';
 import React from 'react';
+// ── Phase 9 Part 2: Advanced reporting (custom PDF + AI board summaries) ────
+import { emitAuditEvent } from '@/server/services/audit/writer';
+import { enqueueReportGeneration } from '@/server/queue/reportQueue';
+import { generatePresignedDownloadUrl, deleteObject } from '@/server/minio';
+import { REPORT_SECTIONS } from '@/server/services/reportData';
+import { reportCronPresets, type ReportCronPreset } from '@/server/lib/cronMatch';
+
+const reportTypeSchema = z.enum(['CUSTOM_PDF', 'BOARD_SUMMARY']);
+const cronPresetSchema = z.enum(['daily', 'weekly', 'monthly']);
+
+// Report config validated per type. CUSTOM_PDF needs a non-empty section list;
+// BOARD_SUMMARY is auto-composed (no section picker), only optional filters.
+const reportConfigSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('CUSTOM_PDF'),
+    sections: z.array(z.enum(REPORT_SECTIONS as [string, ...string[]])).min(1),
+    frameworkIds: z.array(z.string()).optional(),
+    from: z.string().datetime().nullish(),
+    to: z.string().datetime().nullish(),
+  }),
+  z.object({
+    type: z.literal('BOARD_SUMMARY'),
+    frameworkIds: z.array(z.string()).optional(),
+    from: z.string().datetime().nullish(),
+    to: z.string().datetime().nullish(),
+  }),
+]);
+
+// The nested report.schedule.* CRUD router.
+const reportScheduleRouter = createTRPCRouter({
+  list: orgProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.reportSchedule.findMany({
+      where: { organizationId: ctx.session.user.organizationId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }),
+
+  create: adminProcedure
+    .input(
+      z.object({
+        title: z.string().trim().min(2).max(200),
+        config: reportConfigSchema,
+        cadence: cronPresetSchema,
+        recipients: z.array(z.string().email()).max(50).default([]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const schedule = await ctx.prisma.reportSchedule.create({
+        data: {
+          organizationId,
+          title: input.title,
+          reportConfig: input.config,
+          cron: reportCronPresets[input.cadence as ReportCronPreset],
+          recipients: input.recipients,
+          enabled: true,
+        },
+      });
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: 'REPORT_SCHEDULE_CREATED',
+        entity: 'ReportSchedule',
+        entityId: schedule.id,
+        changes: { title: input.title, cadence: input.cadence, recipients: input.recipients.length },
+      });
+      return schedule;
+    }),
+
+  update: adminProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        title: z.string().trim().min(2).max(200).optional(),
+        cadence: cronPresetSchema.optional(),
+        recipients: z.array(z.string().email()).max(50).optional(),
+        enabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const existing = await ctx.prisma.reportSchedule.findFirst({
+        where: { id: input.id, organizationId },
+      });
+      if (!existing) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const updated = await ctx.prisma.reportSchedule.update({
+        where: { id: existing.id },
+        data: {
+          title: input.title,
+          cron: input.cadence ? reportCronPresets[input.cadence as ReportCronPreset] : undefined,
+          recipients: input.recipients,
+          enabled: input.enabled,
+        },
+      });
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: 'REPORT_SCHEDULE_UPDATED',
+        entity: 'ReportSchedule',
+        entityId: existing.id,
+        changes: { fields: Object.keys(input).filter((k) => k !== 'id') },
+      });
+      return updated;
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const existing = await ctx.prisma.reportSchedule.findFirst({
+        where: { id: input.id, organizationId },
+      });
+      if (!existing) throw new TRPCError({ code: 'NOT_FOUND' });
+      await ctx.prisma.reportSchedule.delete({ where: { id: existing.id } });
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: 'REPORT_SCHEDULE_DELETED',
+        entity: 'ReportSchedule',
+        entityId: existing.id,
+        changes: { title: existing.title },
+      });
+      return { deleted: true };
+    }),
+});
 
 export const reportRouter = createTRPCRouter({
   /**
@@ -182,4 +308,155 @@ export const reportRouter = createTRPCRouter({
       },
     });
   }),
+
+  // ── Phase 9 Part 2: report builder (Report model, async generation) ───────
+
+  /**
+   * Create a report (CUSTOM_PDF or BOARD_SUMMARY), enqueue generation, and
+   * return the reportId immediately — never blocks on rendering.
+   */
+  create: orgProcedure
+    .input(
+      z.object({
+        title: z.string().trim().min(2).max(200),
+        config: reportConfigSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+
+      // If framework filters are supplied, confirm they belong to this org —
+      // a report must never be scoped to another tenant's frameworks.
+      const frameworkIds = input.config.frameworkIds ?? [];
+      if (frameworkIds.length > 0) {
+        const owned = await ctx.prisma.framework.count({
+          where: { id: { in: frameworkIds }, organizationId },
+        });
+        if (owned !== frameworkIds.length) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'One or more frameworks do not belong to this organization.',
+          });
+        }
+      }
+
+      const report = await ctx.prisma.report.create({
+        data: {
+          organizationId,
+          type: input.config.type,
+          title: input.title,
+          config: input.config,
+          status: 'QUEUED',
+          generatedById: ctx.session.user.id,
+        },
+      });
+
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: 'REPORT_REQUESTED',
+        entity: 'Report',
+        entityId: report.id,
+        changes: { type: input.config.type, title: input.title },
+      });
+
+      await enqueueReportGeneration({ reportId: report.id, organizationId });
+
+      return { reportId: report.id, status: report.status };
+    }),
+
+  /** Paginated report list, filterable by type/status. */
+  list: orgProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().int().min(1).max(100).default(50),
+          cursor: z.string().optional(),
+          type: reportTypeSchema.optional(),
+          status: z.enum(['QUEUED', 'GENERATING', 'COMPLETED', 'FAILED']).optional(),
+        })
+        .default({}),
+    )
+    .query(async ({ ctx, input }) => {
+      const items = await ctx.prisma.report.findMany({
+        where: {
+          organizationId: ctx.session.user.organizationId,
+          ...(input.type ? { type: input.type } : {}),
+          ...(input.status ? { status: input.status } : {}),
+          ...(input.cursor ? { id: { lt: input.cursor } } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+        take: input.limit + 1,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          status: true,
+          errorMessage: true,
+          createdAt: true,
+          completedAt: true,
+        },
+      });
+      const hasMore = items.length > input.limit;
+      const data = hasMore ? items.slice(0, input.limit) : items;
+      return {
+        items: data,
+        nextCursor: hasMore ? data[data.length - 1]?.id : undefined,
+        hasMore,
+      };
+    }),
+
+  /** Report status + a fresh presigned download URL when COMPLETED. */
+  get: orgProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const report = await ctx.prisma.report.findFirst({
+        where: { id: input.id, organizationId: ctx.session.user.organizationId },
+      });
+      if (!report) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      let downloadUrl: string | null = null;
+      if (report.status === 'COMPLETED' && report.fileUrl) {
+        downloadUrl = await generatePresignedDownloadUrl(report.fileUrl, 15 * 60);
+      }
+      return {
+        id: report.id,
+        type: report.type,
+        title: report.title,
+        status: report.status,
+        errorMessage: report.errorMessage,
+        createdAt: report.createdAt,
+        completedAt: report.completedAt,
+        downloadUrl,
+      };
+    }),
+
+  /** Delete a report row and its underlying MinIO object (admin-only). */
+  delete: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const report = await ctx.prisma.report.findFirst({
+        where: { id: input.id, organizationId },
+      });
+      if (!report) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      if (report.fileUrl) {
+        // Best-effort object delete — a storage miss must not block the row delete.
+        await deleteObject(report.fileUrl).catch(() => undefined);
+      }
+      await ctx.prisma.report.delete({ where: { id: report.id } });
+
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: 'REPORT_DELETED',
+        entity: 'Report',
+        entityId: report.id,
+        changes: { title: report.title, hadFile: Boolean(report.fileUrl) },
+      });
+      return { deleted: true };
+    }),
+
+  schedule: reportScheduleRouter,
 });
