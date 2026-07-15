@@ -32,3 +32,14 @@ tsconfig.tsbuildinfo
 
 # macOS
 .DS_Store
+
+# Understand Anything knowledge graph (regenerated locally, not committed)
+.ua/
+.understand-anything/
+
+# Terraform (commit .terraform.lock.hcl; ignore providers/state)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log

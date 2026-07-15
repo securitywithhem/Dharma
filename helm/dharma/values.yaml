@@ -1,0 +1,85 @@
+# ============================================================
+# Dharma Helm chart — default values
+# ============================================================
+# This chart deploys the APPLICATION layer only (Next.js app + BullMQ worker).
+# Data services (Postgres/pgvector, Redis, MinIO) must be reachable and their
+# connection details supplied via `secrets` below (or an existing external Secret).
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+# ── Next.js application (built from docker/nextjs/Dockerfile) ──
+app:
+  replicaCount: 3
+  image:
+    repository: ghcr.io/securitywithhem/dharma
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  env:
+    NODE_ENV: production
+    NEXT_TELEMETRY_DISABLED: "1"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# ── BullMQ worker (built from docker/worker/Dockerfile) ──
+worker:
+  replicaCount: 2
+  image:
+    # Defaults to a separately-built worker image. If you build a single image,
+    # point this at the same repository/tag as app.image.
+    repository: ghcr.io/securitywithhem/dharma-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  env:
+    NODE_ENV: production
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# ── Secret values wired into both app and worker as env ──
+# For production, prefer providing these via an existing Secret (set
+# `secrets.create: false` and `secrets.existingSecret: <name>`) managed by
+# Sealed Secrets / Vault — do NOT commit real values here.
+secrets:
+  create: true
+  existingSecret: ""
+  # Placeholder values — override at install time with -f or --set.
+  databaseUrl: "postgresql://dharma:CHANGE_ME@postgres:5432/dharma_db?schema=public"
+  redisUrl: "redis://:CHANGE_ME@redis:6379"
+  minioEndpoint: "minio:9000"
+  minioAccessKey: "CHANGE_ME"
+  minioSecretKey: "CHANGE_ME"
+  nextauthSecret: "CHANGE_ME"
+
+# ── Ingress ──
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  host: dharma.example.com
+  tls:
+    enabled: true
+    secretName: dharma-tls

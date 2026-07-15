@@ -1,0 +1,14 @@
+apiVersion: v2
+name: dharma
+description: |
+  Dharma Compliance Platform — application-layer Helm chart (Next.js app + BullMQ worker).
+  Data services (PostgreSQL/pgvector, Redis, MinIO) are expected to be provided externally
+  (managed service, or the raw manifests under k8s/), and wired in via the secret values below.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+# NOTE: Bitnami postgresql/redis subcharts were intentionally NOT declared as dependencies.
+# This keeps the chart self-contained and lint/template-able offline. To run data services
+# in-cluster instead, either apply k8s/postgres.yaml + k8s/redis.yaml, or add subchart
+# dependencies here and run `helm dependency update`.

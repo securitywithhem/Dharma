@@ -1,0 +1,12 @@
+app:
+  image:
+    tag: develop-latest
+  autoscaling:
+    enabled: false
+  replicaCount: 1
+worker:
+  replicaCount: 1
+ingress:
+  host: dharma-dev.example.com
+secrets:
+  existingSecret: dharma-secrets

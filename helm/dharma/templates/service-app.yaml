@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dharma.fullname" . }}-app
+  labels:
+    {{- include "dharma.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  type: {{ .Values.app.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.app.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dharma.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app

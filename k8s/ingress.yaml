@@ -1,0 +1,79 @@
+# ============================================================
+# Ingress + TLS Certificate
+# Requires: cert-manager and ingress-nginx
+# ============================================================
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dharma-tls
+  namespace: dharma
+spec:
+  secretName: dharma-tls-secret
+  duration: 2160h  # 90 days
+  renewBefore: 720h  # 30 days
+  commonName: dharma.example.com
+  dnsNames:
+    - dharma.example.com
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dharma
+  namespace: dharma
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - dharma.example.com
+      secretName: dharma-tls-secret
+  rules:
+    - host: dharma.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextjs
+                port:
+                  number: 3000
+          - path: /minio
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 9000
+
+---
+# ClusterIssuer for Let's Encrypt (must be created separately)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
