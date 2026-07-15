@@ -132,7 +132,38 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60
   },
   callbacks: {
-    async signIn() {
+    // Phase 8 Part 1: block deactivated (SCIM-deprovisioned) users, and
+    // block password/Google sign-in for orgs that enforce SSO-only login.
+    // Enterprise SSO logins don't pass through here (they mint the session
+    // in src/server/services/sso/session.ts), so this check only ever
+    // constrains the non-SSO paths — exactly what "SSO-only" means.
+    async signIn({ user }) {
+      const email = user?.email;
+      if (!email) {
+        return true;
+      }
+
+      const existing = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        select: {
+          isActive: true,
+          organization: {
+            select: { settings: { select: { ssoEnforced: true } } },
+          },
+        },
+      });
+
+      if (!existing) {
+        // Brand-new signup — creates its own org, nothing to enforce yet.
+        return true;
+      }
+      if (!existing.isActive) {
+        return false;
+      }
+      if (existing.organization.settings?.ssoEnforced) {
+        return false;
+      }
+
       return true;
     },
     async redirect({ url, baseUrl }) {
