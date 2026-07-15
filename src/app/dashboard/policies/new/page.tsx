@@ -120,7 +120,6 @@ export default function NewPolicyPage() {
   };
 
   const handleRequestReview = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = (editor?.storage as any)?.markdown?.getMarkdown() || editor?.getHTML() || "";
     if (!content) {
       toast.error("Policy content is empty.");
@@ -130,7 +129,6 @@ export default function NewPolicyPage() {
   };
 
   const handleSave = (isPublished: boolean) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = (editor?.storage as any)?.markdown?.getMarkdown() || editor?.getHTML() || "";
     if (!content) {
       toast.error("Policy content is empty!");
