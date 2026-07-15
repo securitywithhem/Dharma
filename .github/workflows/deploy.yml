@@ -33,10 +33,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install -g pnpm@10.6.2
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm type-check
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
 
   # ============================================================
   # STAGE 2: Unit & Integration Tests
@@ -73,10 +72,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install -g pnpm@10.6.2
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prisma migrate deploy --schema packages/db/schema.prisma
-      - run: pnpm test
+      - run: npm ci
+      - run: npx prisma migrate deploy --schema packages/db/schema.prisma
+      - run: npm test
       - uses: codecov/codecov-action@v3
         with:
           files: ./coverage/lcov.info
@@ -119,6 +117,7 @@ jobs:
         id: build
         with:
           context: .
+          file: docker/nextjs/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

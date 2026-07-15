@@ -1,6 +1,12 @@
 # DHARMA — COMPREHENSIVE DEVOPS & SRE ARCHITECTURE
 
-**Status:** Production-ready K8s deployment strategy for Phase 0-9
+> ⚠️ **Status: DESIGN / SCAFFOLDING — NOT DEPLOYED OR VALIDATED.** This is a
+> proposed strategy plus template manifests. No image has been built from these,
+> nothing has been deployed to a cluster, and no readiness percentage here has
+> been earned by testing. Treat all "✅" marks as "designed," not "verified."
+> The only artifact validated so far is `helm/dharma` (`helm lint` + `helm template` pass).
+
+**Status:** Proposed K8s deployment strategy for Phase 0-9 (templates, untested)
 **Scope:** Containerization, Kubernetes, CI/CD, Observability, Secrets, HA/DR
 **Date:** 2026-07-15
 

@@ -32,3 +32,7 @@ tsconfig.tsbuildinfo
 
 # macOS
 .DS_Store
+
+# Understand Anything knowledge graph (regenerated locally, not committed)
+.ua/
+.understand-anything/

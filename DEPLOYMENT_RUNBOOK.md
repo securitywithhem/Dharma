@@ -2,6 +2,11 @@
 
 **Operational guide for deploying, scaling, monitoring, and troubleshooting Dharma on Kubernetes**
 
+> ⚠️ **Untested procedures.** None of the commands below have been run against a
+> live Dharma cluster. They are a starting-point runbook derived from the
+> template manifests, not a verified operational playbook. Validate in staging
+> and correct as you go.
+
 ---
 
 ## TABLE OF CONTENTS

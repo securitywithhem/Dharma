@@ -1,6 +1,11 @@
 # DHARMA DEVOPS — QUICKSTART GUIDE
 
-**Complete production-ready Kubernetes deployment infrastructure for Dharma**
+**Template/scaffolding Kubernetes deployment guide for Dharma**
+
+> ⚠️ **Not deployed or validated.** These manifests and steps are untested
+> templates — no cluster deploy has been run. The `helm/dharma` chart passes
+> `helm lint`/`helm template`; everything else here is design-stage. Verify each
+> step in a staging cluster before relying on it.
 
 ---
 
@@ -441,6 +446,5 @@ For issues or questions:
 
 ---
 
-**Status:** Production-ready ✅
+**Status:** Untested templates — not yet deployed to a cluster
 **Last Updated:** 2026-07-15
-**Maintained By:** DevOps Team
