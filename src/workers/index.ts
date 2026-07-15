@@ -19,6 +19,8 @@ import { startControlEmbeddingWorker } from "@/server/queue/workers/controlEmbed
 import { startReadinessScoreWorker, registerDailySweep } from "@/server/queue/workers/readinessScoreWorker";
 import { startAiIngestionWorker } from "@/server/queue/workers/aiIngestionWorker";
 import { startEvidenceAutoTagWorker } from "@/server/queue/workers/evidenceAutoTagWorker";
+import { startAuditEventWorker } from "@/server/queue/workers/auditEventWorker";
+import { startSiemExportWorker } from "@/server/queue/workers/siemExportWorker";
 
 console.log("🚀 Starting Dharma background workers...");
 
@@ -33,6 +35,9 @@ const controlEmbeddingWorker = startControlEmbeddingWorker();
 const readinessScoreWorker = startReadinessScoreWorker();
 const aiIngestionWorker = startAiIngestionWorker();
 const evidenceAutoTagWorker = startEvidenceAutoTagWorker();
+// Phase 8 Part 2 — async audit writer + SIEM export
+const auditEventWorker = startAuditEventWorker();
+const siemExportWorker = startSiemExportWorker();
 void registerDailySweep();
 
 process.on("SIGTERM", async () => {
@@ -49,6 +54,8 @@ process.on("SIGTERM", async () => {
     readinessScoreWorker.close(),
     aiIngestionWorker.close(),
     evidenceAutoTagWorker.close(),
+    auditEventWorker.close(),
+    siemExportWorker.close(),
   ]);
   process.exit(0);
 });

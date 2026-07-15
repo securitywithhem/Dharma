@@ -15,11 +15,23 @@
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { verifyAuditChain } from "@/server/audit-log";
 import { createTRPCRouter, adminProcedure, orgProcedure } from "@/server/trpc";
 import { anchorQueue, type AnchorJobData } from "@/workers/anchor";
 import { verifyAgainstStoredAnchor } from "@/lib/services/chainAnchor";
 import { createAuditLog } from "@/server/audit-log";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
+import { emitAuditEvent } from "@/server/services/audit/writer";
+import { getAuditEventChain } from "@/server/services/audit/graph.service";
+import {
+  siemExportConfigSchema,
+  parseStoredSiemConfig,
+  splunkHecConfigSchema,
+  syslogConfigSchema,
+} from "@/server/services/audit/siem-export";
+import { encryptSiemSecret } from "@/server/lib/crypto/siemVault";
+import { putObject, generatePresignedDownloadUrl } from "@/server/minio";
 
 
 export const auditRouter = createTRPCRouter({
@@ -29,13 +41,19 @@ export const auditRouter = createTRPCRouter({
    * Returns logs ordered newest-first with user info attached.
    * Uses cursor-based pagination to avoid heavy OFFSET scans on large tables.
    */
-  list: adminProcedure
+  // Phase 8 Part 2: gated by requirePermission("audit.read") — identical
+  // reach for legacy enum roles (ADMIN only), but grantable to custom roles.
+  // Adds date-range and actor filters for the enterprise audit viewer.
+  list: permissionProcedure("audit.read")
     .input(
       z.object({
         limit: z.number().int().min(1).max(500).default(100),
         cursor: z.string().optional(), // cuid of the last seen entry
         action: z.string().optional(), // filter by action name
         entity: z.string().optional(), // filter by entity type
+        actorId: z.string().optional(), // filter by acting user
+        from: z.date().optional(), // date-range start (inclusive)
+        to: z.date().optional(), // date-range end (inclusive)
       }).default({}),
     )
     .query(async ({ ctx, input }) => {
@@ -44,6 +62,15 @@ export const auditRouter = createTRPCRouter({
           organizationId: ctx.session.user.organizationId,
           ...(input.action ? { action: input.action } : {}),
           ...(input.entity ? { entity: input.entity } : {}),
+          ...(input.actorId ? { userId: input.actorId } : {}),
+          ...(input.from || input.to
+            ? {
+                timestamp: {
+                  ...(input.from ? { gte: input.from } : {}),
+                  ...(input.to ? { lte: input.to } : {}),
+                },
+              }
+            : {}),
           ...(input.cursor
             ? {
                 // cursor is a cuid; sort by timestamp desc so cursor points to an older entry
@@ -208,4 +235,174 @@ export const auditRouter = createTRPCRouter({
 
     return { jobId: job.id };
   }),
+
+  // ────────────────────────────────────────────────────────────────
+  // Phase 8 Part 2 — enterprise audit viewer additions.
+  // Append-only invariant: this router (and the whole app) exposes NO
+  // update or delete path for AuditLog rows — verified by
+  // tests/audit.appendOnly.test.ts.
+  // ────────────────────────────────────────────────────────────────
+
+  /**
+   * CSV export: written server-side to MinIO (the existing S3-compatible
+   * store), returned as a short-lived pre-signed download URL — the
+   * established file-delivery pattern, not a new one.
+   */
+  exportCsv: permissionProcedure("audit.export")
+    .input(
+      z.object({
+        action: z.string().optional(),
+        entity: z.string().optional(),
+        actorId: z.string().optional(),
+        from: z.date().optional(),
+        to: z.date().optional(),
+      }).default({}),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const rows = await ctx.prisma.auditLog.findMany({
+        where: {
+          organizationId,
+          ...(input.action ? { action: input.action } : {}),
+          ...(input.entity ? { entity: input.entity } : {}),
+          ...(input.actorId ? { userId: input.actorId } : {}),
+          ...(input.from || input.to
+            ? {
+                timestamp: {
+                  ...(input.from ? { gte: input.from } : {}),
+                  ...(input.to ? { lte: input.to } : {}),
+                },
+              }
+            : {}),
+        },
+        include: { user: { select: { email: true } } },
+        orderBy: { timestamp: "asc" },
+        take: 50_000, // hard cap keeps export memory bounded
+      });
+
+      const escape = (value: unknown) => {
+        let text = value == null ? "" : String(value);
+        // Formula-injection guard: a leading = + - @ executes in Excel/Sheets.
+        if (/^[=+\-@]/.test(text)) text = `'${text}`;
+        return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+      };
+      const header = "timestamp,action,actorEmail,entity,entityId,changes,currentHash";
+      const csv = [
+        header,
+        ...rows.map((row) =>
+          [
+            row.timestamp.toISOString(),
+            row.action,
+            row.user?.email ?? (row.userId ?? "system"),
+            row.entity,
+            row.entityId,
+            JSON.stringify(row.changes ?? null),
+            row.currentHash,
+          ]
+            .map(escape)
+            .join(","),
+        ),
+      ].join("\n");
+
+      const objectName = `${organizationId}/audit-exports/${Date.now()}-audit-log.csv`;
+      await putObject(objectName, csv, "text/csv");
+      const downloadUrl = await generatePresignedDownloadUrl(objectName, 15 * 60);
+
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: "AUDIT_LOG_EXPORTED",
+        entity: "AuditLog",
+        entityId: objectName,
+        changes: { rowCount: rows.length, filters: input },
+      });
+
+      return { downloadUrl, rowCount: rows.length };
+    }),
+
+  /**
+   * "Related events" chain for one audit entry: correlation-graph walk plus
+   * same-actor-session / same-resource temporal joins (graph.service.ts).
+   */
+  getEventChain: permissionProcedure("audit.read")
+    .input(
+      z.object({
+        auditLogId: z.string().min(1),
+        hops: z.number().int().min(1).max(4).default(2),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return getAuditEventChain(
+        ctx.prisma,
+        ctx.session.user.organizationId,
+        input.auditLogId,
+        input.hops,
+      );
+    }),
+
+  getSiemConfig: permissionProcedure("audit.export").query(async ({ ctx }) => {
+    const settings = await ctx.prisma.organizationSettings.findUnique({
+      where: { organizationId: ctx.session.user.organizationId },
+      select: { siemExportConfig: true },
+    });
+    const config = parseStoredSiemConfig(settings?.siemExportConfig);
+    if (!config) return null;
+    // Redact the HEC token envelope on read.
+    return config.type === "splunk-hec"
+      ? { type: config.type, url: config.url, index: config.index ?? null, tokenSet: true }
+      : { type: config.type, host: config.host, port: config.port, protocol: config.protocol };
+  }),
+
+  configureSiemExport: permissionProcedure("audit.export")
+    .input(
+      z.union([
+        splunkHecConfigSchema
+          .omit({ tokenEnc: true })
+          .extend({ token: z.string().min(1).max(4096) }),
+        syslogConfigSchema,
+        z.object({ type: z.literal("disabled") }),
+      ]),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+
+      const stored =
+        input.type === "disabled"
+          ? null
+          : input.type === "splunk-hec"
+            ? siemExportConfigSchema.parse({
+                type: "splunk-hec",
+                url: input.url,
+                index: input.index,
+                sourcetype: input.sourcetype,
+                tokenEnc: encryptSiemSecret(input.token),
+              })
+            : siemExportConfigSchema.parse(input);
+
+      await ctx.prisma.organizationSettings.upsert({
+        where: { organizationId },
+        create: {
+          organizationId,
+          siemExportConfig: stored ?? Prisma.DbNull,
+        },
+        update: { siemExportConfig: stored ?? Prisma.DbNull },
+      });
+
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: "SIEM_EXPORT_CONFIGURED",
+        entity: "OrganizationSettings",
+        entityId: organizationId,
+        // Never the token — only the target shape.
+        changes:
+          stored === null
+            ? { disabled: true }
+            : stored.type === "splunk-hec"
+              ? { type: stored.type, url: stored.url }
+              : { type: stored.type, host: stored.host, port: stored.port },
+      });
+
+      return { configured: stored !== null };
+    }),
 });
