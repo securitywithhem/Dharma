@@ -1,0 +1,12 @@
+app:
+  image:
+    tag: staging-latest
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 5
+worker:
+  replicaCount: 2
+ingress:
+  host: dharma-staging.example.com
+secrets:
+  existingSecret: dharma-secrets

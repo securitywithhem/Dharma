@@ -1,0 +1,14 @@
+# Override values for the dharma Helm chart (prod).
+# Real secrets should come from an existing Secret (Sealed Secrets / Vault), not here.
+app:
+  image:
+    tag: latest
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 10
+worker:
+  replicaCount: 3
+ingress:
+  host: dharma.example.com
+secrets:
+  existingSecret: dharma-secrets
