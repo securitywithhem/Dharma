@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Users, CreditCard, Shield, Cloud, Webhook } from "lucide-react";
+import { Settings, Users, CreditCard, Shield, Cloud, Webhook, KeyRound, UserCog, ScrollText, Palette } from "lucide-react";
 
 const settingsTabs = [
   { href: "/dashboard/settings/general", label: "General", icon: <Settings className="w-4 h-4" /> },
@@ -12,6 +12,12 @@ const settingsTabs = [
   { href: "/dashboard/settings/webhooks", label: "Webhooks", icon: <Webhook className="w-4 h-4" /> },
   { href: "/dashboard/settings/billing", label: "Billing", icon: <CreditCard className="w-4 h-4" /> },
   { href: "/dashboard/settings/security", label: "Security", icon: <Shield className="w-4 h-4" /> },
+  // Phase 8 Part 1 — Enterprise SSO/SCIM + custom roles
+  { href: "/dashboard/settings/enterprise/sso", label: "SSO & SCIM", icon: <KeyRound className="w-4 h-4" /> },
+  { href: "/dashboard/settings/enterprise/roles", label: "Roles", icon: <UserCog className="w-4 h-4" /> },
+  // Phase 8 Part 2 — audit viewer + white-label
+  { href: "/dashboard/settings/enterprise/audit-log", label: "Audit Log", icon: <ScrollText className="w-4 h-4" /> },
+  { href: "/dashboard/settings/enterprise/white-label", label: "White-label", icon: <Palette className="w-4 h-4" /> },
 ];
 
 export default function SettingsLayout({
