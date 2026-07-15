@@ -70,6 +70,19 @@ const envSchema = z.object({
   WEBHOOK_ENCRYPTION_KEY: z.string().min(32).default("change-me-32-char-key-for-webhooks"),
   WEBHOOK_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
 
+  // ── Phase 8 Part 1: SSO Secret Encryption ───────────────────────────────
+  // AES-256-GCM key for OIDC client secrets and OIDC login-transaction
+  // cookies (src/server/lib/crypto/ssoVault.ts). Distinct from the connector
+  // and webhook keys, same 64-hex-char format. Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  SSO_ENCRYPTION_KEY: z.string().length(64).optional(),
+
+  // ── Phase 8 Part 2: Audit pipeline & SIEM export ────────────────────────
+  // AUDIT_WRITER_MODE=sync forces synchronous audit writes (tests; also a
+  // valid single-process deployment mode). Default: async via BullMQ.
+  AUDIT_WRITER_MODE: z.enum(["async", "sync"]).optional(),
+  SIEM_ENCRYPTION_KEY: z.string().length(64).optional(),
+
   // ── Phase 5 Part 1: Pentest Scan Engine ─────────────────────────────────
   // Local tag built from docker/pentest-scanner/Dockerfile (pinned nuclei
   // digest lives in that Dockerfile, not here — this just names the image

@@ -1,0 +1,24 @@
+# Phase 8 Part 2 — mock SIEM receivers for local export testing.
+# Standalone dev/test-only compose file (same rationale as test-saml-idp).
+#
+#   docker compose -f docker/test-siem/docker-compose.yml up -d
+#
+# Splunk HEC mock: http-echo prints every received HEC POST to its logs —
+#   configure Dharma with url http://localhost:8089 and any token, then
+#   `docker logs -f dharma-test-hec` to watch events arrive.
+# Syslog mock: a netcat listener printing RFC 5424 lines on udp/5514.
+services:
+  test-splunk-hec:
+    image: mendhak/http-https-echo:33
+    container_name: dharma-test-hec
+    ports:
+      - "8089:8080"
+    environment:
+      HTTP_PORT: 8080
+
+  test-syslog:
+    image: alpine:3.20
+    container_name: dharma-test-syslog
+    command: sh -c "apk add --no-cache socat >/dev/null && socat -u UDP-RECV:5514 STDOUT"
+    ports:
+      - "5514:5514/udp"

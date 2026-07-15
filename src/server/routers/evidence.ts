@@ -30,6 +30,7 @@ import {
 } from "@/server/minio";
 import { evidenceQueue } from "@/workers/classification";
 import { enqueueReadinessRecompute } from "@/server/queue/readinessScoreQueue";
+import { enqueueEvidenceAutoTag } from "@/server/queue/evidenceAutoTagQueue";
 
 // Lazily ensure the bucket exists on first request
 let bucketReady = false;
@@ -178,7 +179,112 @@ export const evidenceRouter = createTRPCRouter({
         console.warn(`[readiness-score] Failed to enqueue recompute after evidence upload:`, err);
       });
 
+      // Phase 7 Part 3: NLP auto-tagging — fully async/background, never blocks
+      // or fails the upload. Produces suggested (not applied) control links.
+      enqueueEvidenceAutoTag(evidence.id).catch((err) => {
+        console.warn(`[evidence-auto-tag] Failed to enqueue auto-tag after evidence upload:`, err);
+      });
+
       return evidence;
+    }),
+
+  /**
+   * Phase 7 Part 3 — accept an AI-suggested control association for a piece of
+   * evidence. Creates a NEW evidence row linking the same file to the accepted
+   * control (evidence can satisfy multiple controls); never silently mutates
+   * the original. Requires the controlId to be among the stored suggestions.
+   */
+  acceptAutoTag: managerProcedure
+    .input(z.object({ evidenceId: z.string().min(1), controlId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const evidence = await ctx.prisma.evidence.findFirst({
+        where: { id: input.evidenceId, organizationId },
+        select: {
+          id: true, fileName: true, filePath: true, fileSizeBytes: true, type: true, summary: true,
+          suggestedControlIds: true,
+        },
+      });
+      if (!evidence) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Evidence not found for the current organisation." });
+      }
+
+      const suggestions = Array.isArray(evidence.suggestedControlIds)
+        ? (evidence.suggestedControlIds as Array<{ controlId?: string }>)
+        : [];
+      if (!suggestions.some((s) => s?.controlId === input.controlId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That control was not an AI suggestion for this evidence." });
+      }
+
+      const control = await ctx.prisma.control.findFirst({
+        where: { id: input.controlId, framework: { organizationId } },
+        select: { id: true, title: true, frameworkId: true },
+      });
+      if (!control) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Control not found for the current organisation." });
+      }
+
+      const created = await ctx.prisma.evidence.create({
+        data: {
+          controlId: control.id,
+          organizationId,
+          fileName: evidence.fileName,
+          filePath: evidence.filePath,
+          fileSizeBytes: evidence.fileSizeBytes,
+          type: evidence.type,
+          summary: evidence.summary,
+          collectedAt: new Date(),
+          source: "ai-auto-tag",
+        },
+        select: { id: true },
+      });
+
+      await ctx.prisma.evidence.update({
+        where: { id: evidence.id },
+        data: { autoTagStatus: "ACCEPTED" },
+      });
+
+      await createAuditLog(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: "EVIDENCE_AUTOTAG_ACCEPTED",
+        entity: "Evidence",
+        entityId: evidence.id,
+        changes: { acceptedControlId: control.id, controlTitle: control.title, newEvidenceId: created.id },
+      });
+
+      enqueueReadinessRecompute(organizationId, control.frameworkId).catch(() => {});
+      return { newEvidenceId: created.id };
+    }),
+
+  /**
+   * Phase 7 Part 3 — dismiss AI-suggested control associations. Clears the
+   * suggestions; persists NO association.
+   */
+  rejectAutoTag: managerProcedure
+    .input(z.object({ evidenceId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const evidence = await ctx.prisma.evidence.findFirst({
+        where: { id: input.evidenceId, organizationId },
+        select: { id: true },
+      });
+      if (!evidence) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Evidence not found for the current organisation." });
+      }
+      await ctx.prisma.evidence.update({
+        where: { id: evidence.id },
+        data: { autoTagStatus: "REJECTED", suggestedControlIds: undefined, autoTagConfidence: null },
+      });
+      await createAuditLog(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: "EVIDENCE_AUTOTAG_REJECTED",
+        entity: "Evidence",
+        entityId: evidence.id,
+        changes: {},
+      });
+      return { success: true };
     }),
 
   /**

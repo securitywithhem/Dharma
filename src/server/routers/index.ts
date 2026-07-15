@@ -22,6 +22,10 @@ import { controlMappingRouter } from "@/server/routers/controlMapping";
 import { readinessRouter } from "@/server/routers/readiness";
 import { aiIngestionRouter } from "@/server/routers/aiIngestion";
 import { aiAdvisorRouter } from "@/server/routers/aiAdvisor";
+import { ssoRouter } from "@/server/routers/sso";
+import { rolesRouter } from "@/server/routers/roles";
+import { whiteLabelRouter } from "@/server/routers/whiteLabel";
+import { msspRouter } from "@/server/routers/mssp";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -47,6 +51,10 @@ export const appRouter = createTRPCRouter({
   readiness: readinessRouter,
   aiIngestion: aiIngestionRouter,
   aiAdvisor: aiAdvisorRouter,
+  sso: ssoRouter,
+  roles: rolesRouter,
+  whiteLabel: whiteLabelRouter,
+  mssp: msspRouter,
 });
 
 export type AppRouter = typeof appRouter;

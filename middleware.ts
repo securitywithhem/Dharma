@@ -66,9 +66,16 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 3. Apply security headers to response
-  const response = NextResponse.next();
-  
+  // 3. Phase 8 Part 2 — white-label tenant resolution. The edge runtime has
+  // no Prisma, so the middleware only FORWARDS the incoming Host on a
+  // trusted internal header; the root layout's SSR (getTenantTheme) does the
+  // DB lookup. Overwriting any client-supplied value of the header prevents
+  // spoofing another tenant's theme context.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-dharma-tenant-host", req.headers.get("host") ?? "");
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+
   // Set Helmet-equivalent security headers
   response.headers.set(
     "Content-Security-Policy",

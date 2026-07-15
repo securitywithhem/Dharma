@@ -1,0 +1,21 @@
+# Phase 8 Part 1 — mock SAML IdP for local SSO development/testing.
+# Deliberately a standalone compose file (not a service in the root
+# docker-compose.yml): it is a dev/test-only tool and must never ship in a
+# production stack.
+#
+# Usage:
+#   docker compose -f docker/test-saml-idp/docker-compose.yml up -d
+#   # IdP metadata: http://localhost:8880/simplesaml/saml2/idp/metadata.php
+#   # Test users:   user1/user1pass, user2/user2pass (image defaults)
+#
+# Point SIMPLESAMLPHP_SP_* at the org you are testing (replace <orgId>):
+services:
+  test-saml-idp:
+    image: kristophjunge/test-saml-idp:1.15
+    container_name: dharma-test-saml-idp
+    ports:
+      - "8880:8080"
+    environment:
+      SIMPLESAMLPHP_SP_ENTITY_ID: http://localhost:3000/api/sso/saml/<orgId>/metadata
+      SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE: http://localhost:3000/api/sso/saml/<orgId>/callback
+      SIMPLESAMLPHP_SP_SINGLE_LOGOUT_SERVICE: http://localhost:3000/api/sso/saml/<orgId>/callback
