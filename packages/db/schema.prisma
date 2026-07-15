@@ -11,40 +11,40 @@ datasource db {
 }
 
 model Plan {
-  id               String   @id @default(cuid())
-  name             String   @unique // "free", "pro", "enterprise"
-  displayName      String   // "Free", "Pro", "Enterprise"
-  stripePriceId    String?  // null for free tier
-  price            Float    @default(0) // monthly price in USD
-  limits           Json     // { users: 5, frameworks: 3, storageMb: 100 }
-  features         Json?    // { apiAccess: false, sso: false, ...}
-  isPublic         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  organizations    Organization[]
-  
+  id            String         @id @default(cuid())
+  name          String         @unique // "free", "pro", "enterprise"
+  displayName   String // "Free", "Pro", "Enterprise"
+  stripePriceId String? // null for free tier
+  price         Float          @default(0) // monthly price in USD
+  limits        Json // { users: 5, frameworks: 3, storageMb: 100 }
+  features      Json? // { apiAccess: false, sso: false, ...}
+  isPublic      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  organizations Organization[]
+
   @@index([name])
 }
 
 model Organization {
-  id          String               @id @default(cuid())
-  name        String
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  users        User[]
-  frameworks   Framework[]
-  evidences    Evidence[]
-  policies     Policy[]
-  auditLogs    AuditLog[]
-  auditorKeys  AuditorAccess[]
-  invites      OrganizationInvite[]
-  chainAnchors ChainAnchor[]
-  connectors   Connector[]
-  webhooks     Webhook[]
-  auditExports AuditExport[]
-  importedItems ImportedItem[]
-  penTests      PenTest[]
+  id              String               @id @default(cuid())
+  name            String
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  users           User[]
+  frameworks      Framework[]
+  evidences       Evidence[]
+  policies        Policy[]
+  auditLogs       AuditLog[]
+  auditorKeys     AuditorAccess[]
+  invites         OrganizationInvite[]
+  chainAnchors    ChainAnchor[]
+  connectors      Connector[]
+  webhooks        Webhook[]
+  auditExports    AuditExport[]
+  importedItems   ImportedItem[]
+  penTests        PenTest[]
   vulnerabilities Vulnerability[]
-  assets        Asset[]
+  assets          Asset[]
   controlMappings ControlMapping[]
   readinessScores ReadinessScore[]
   recommendations Recommendation[]
@@ -57,23 +57,31 @@ model Organization {
   orgGraphEdges          OrgGraphEdge[]
 
   // Phase 7 Part 2 — AI Advisor chat usage / token-cost tracking
-  aiUsageLogs            AIUsageLog[]
+  aiUsageLogs AIUsageLog[]
 
   // Phase 2 Feature 1: per-org AI provider config
   // mode: 'local-ollama' | 'local-small' | 'remote-opt-in'
   // stored as encrypted JSON blob
-  aiProvider   Json?
+  aiProvider Json?
 
   // Billing and Subscription (Phase 3)
   planId               String?
-  plan                 Plan?           @relation(fields: [planId], references: [id])
-  stripeCustomerId     String?         @unique
-  stripeSubscriptionId String?         @unique
+  plan                 Plan?               @relation(fields: [planId], references: [id])
+  stripeCustomerId     String?             @unique
+  stripeSubscriptionId String?             @unique
   subscriptionStatus   SubscriptionStatus? @default(ACTIVE)
   subscriptionEndsAt   DateTime?
 
   // 64-bit unique lock ID for safe pg_advisory_xact_lock calls
-  lockKeyId    BigInt               @unique @default(autoincrement())
+  lockKeyId BigInt @unique @default(autoincrement())
+
+  // Phase 8 Part 1 — Enterprise SSO / SCIM / RBAC
+  settings    OrganizationSettings?
+  customRoles CustomRole[]
+
+  // Phase 8 Part 3 — MSSP grouping (BackendSchema.md inline comment)
+  groupId String?
+  group   OrganizationGroup? @relation("GroupOrgs", fields: [groupId], references: [id])
 
   @@index([createdAt])
 }
@@ -86,29 +94,43 @@ enum SubscriptionStatus {
 }
 
 model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
-  name           String?
-  image          String?
-  emailVerified  DateTime?
-  role           Role          @default(VIEWER)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  accounts       Account[]
-  sessions       Session[]
-  auditLogs      AuditLog[]
-  marketplaceItems MarketplaceItem[] @relation("MarketplaceItemAuthor")
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  image              String?
+  emailVerified      DateTime?
+  role               Role                @default(VIEWER)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organizationId     String
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accounts           Account[]
+  sessions           Session[]
+  auditLogs          AuditLog[]
+  marketplaceItems   MarketplaceItem[]   @relation("MarketplaceItemAuthor")
   marketplaceReviews MarketplaceReview[] @relation("MarketplaceReviews")
-  penTestsRequested PenTest[]
+  penTestsRequested  PenTest[]
 
   // Phase 7 Part 1 — AI Advisor data layer
   aiAdvisorSessions AIAdvisorSession[]
   ingestedDocuments IngestedDocument[] @relation("IngestedDocumentUploader")
 
+  // Phase 8 Part 1 — Enterprise SSO / SCIM / RBAC.
+  // customRoleId is nullable: when null, permission checks fall back to the
+  // legacy `role` enum mapping (zero-downtime migration path).
+  customRoleId   String?
+  customRole     CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  // SCIM provisioning: the IdP's externalId, unique per org (not globally —
+  // two different orgs' IdPs may reuse the same externalId value).
+  scimExternalId String?
+  // SCIM soft-delete: deactivated users keep their rows (audit integrity)
+  // but can no longer sign in.
+  isActive       Boolean     @default(true)
+
+  @@unique([organizationId, scimExternalId])
   @@index([organizationId])
   @@index([email])
+  @@index([customRoleId])
 }
 
 enum Role {
@@ -157,12 +179,12 @@ model VerificationToken {
 }
 
 model Framework {
-  id             String       @id @default(cuid())
-  name           String
-  version        String       @default("1.0")
-  description    String?      @db.Text
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  name                String
+  version             String       @default("1.0")
+  description         String?      @db.Text
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
   organizationId      String
   organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   controls            Control[]
@@ -170,27 +192,27 @@ model Framework {
   importedItemId      String?
 
   // ----- Phase 6 Part 3: Readiness Scoring -----
-  readinessScores      ReadinessScore[]
-  recommendations      Recommendation[]
+  readinessScores ReadinessScore[]
+  recommendations Recommendation[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
 }
 
 model Control {
-  id          String        @id @default(cuid())
-  frameworkId String
-  framework   Framework     @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
-  domain      String
-  title       String
-  description String        @db.Text
-  guidance    String?       @db.Text
-  status      ControlStatus @default(NOT_STARTED)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  evidence    Evidence[]
+  id               String            @id @default(cuid())
+  frameworkId      String
+  framework        Framework         @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  domain           String
+  title            String
+  description      String            @db.Text
+  guidance         String?           @db.Text
+  status           ControlStatus     @default(NOT_STARTED)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  evidence         Evidence[]
   evidenceMappings EvidenceMapping[]
-  vulnerabilities Vulnerability[]
+  vulnerabilities  Vulnerability[]
 
   // ----- Phase 6 Part 2: Cross-Walking -----
   sourceMappings ControlMapping[] @relation("SourceMappings")
@@ -201,18 +223,18 @@ model Control {
 
   // ----- Phase 6: Advanced Frameworks — arbitrary-depth control hierarchy -----
   // Optional external identifier, e.g. NIST 800-53 "AC-2(1)". Distinct from `title`.
-  code        String?
+  code      String?
   // Self-referential hierarchy: family → control → sub-control → enhancement, unlimited depth.
-  parentId    String?
-  parent      Control?      @relation("ControlHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Control[]     @relation("ControlHierarchy")
+  parentId  String?
+  parent    Control?  @relation("ControlHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Control[] @relation("ControlHierarchy")
   // Materialized path: JSON array of ancestor control IDs, root-first, INCLUDING self.
   // Denormalized cache for O(1) ancestor lookups & Phase 6 cross-walk FK resolution.
   // Source of truth for structure is `parentId`; `path` is maintained by mutations/backfill.
-  path        Json?
-  depth       Int           @default(0)
+  path      Json?
+  depth     Int       @default(0)
   // Ordering among siblings sharing the same parentId (or the same frameworkId root set).
-  sortOrder   Int           @default(0)
+  sortOrder Int       @default(0)
 
   // pgvector embedding for semantic similarity search against Evidence embeddings.
   // Phase 6 Part 2 reuses this same column (title+description text, 384-dim
@@ -220,10 +242,10 @@ model Control {
   // src/server/services/controlEmbeddings.ts. No separate embedding table:
   // one embedding per control, consistent with the existing convention shared
   // by Evidence.embedding and Vulnerability.embedding.
-  embedding   Unsupported("vector(384)")?
-  embeddingStatus EmbeddingStatus @default(PENDING)
-  embeddingError  String?       @db.Text
-  embeddingAttempts Int         @default(0)
+  embedding            Unsupported("vector(384)")?
+  embeddingStatus      EmbeddingStatus             @default(PENDING)
+  embeddingError       String?                     @db.Text
+  embeddingAttempts    Int                         @default(0)
   lastEmbeddingAttempt DateTime?
 
   @@index([frameworkId])
@@ -235,20 +257,20 @@ model Control {
 }
 
 model ControlMapping {
-  id               String   @id @default(cuid())
-  organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  sourceControlId  String
-  sourceControl    Control  @relation("SourceMappings", fields: [sourceControlId], references: [id], onDelete: Cascade)
-  targetControlId  String
-  targetControl    Control  @relation("TargetMappings", fields: [targetControlId], references: [id], onDelete: Cascade)
-  mappingStrength  MappingStrength
-  rationale        String?  @db.Text
-  suggestedByAI    Boolean  @default(false)
-  confidenceScore  Float?
-  createdById      String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String          @id @default(cuid())
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sourceControlId String
+  sourceControl   Control         @relation("SourceMappings", fields: [sourceControlId], references: [id], onDelete: Cascade)
+  targetControlId String
+  targetControl   Control         @relation("TargetMappings", fields: [targetControlId], references: [id], onDelete: Cascade)
+  mappingStrength MappingStrength
+  rationale       String?         @db.Text
+  suggestedByAI   Boolean         @default(false)
+  confidenceScore Float?
+  createdById     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@unique([organizationId, sourceControlId, targetControlId])
   @@index([organizationId, sourceControlId])
@@ -264,11 +286,11 @@ enum MappingStrength {
 // ----- Phase 6 Part 3: Readiness Scoring & Recommendations -----
 
 model ReadinessScore {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   frameworkId    String
-  framework      Framework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  framework      Framework    @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
   overallScore   Float
   evidenceScore  Float
   mappingBonus   Float
@@ -276,26 +298,26 @@ model ReadinessScore {
   // plus the leaf/evidence totals the score was computed from — see
   // src/server/services/readinessScoring.ts's ScoreBreakdown type.
   breakdown      Json
-  computedAt     DateTime @default(now())
+  computedAt     DateTime     @default(now())
 
   @@unique([organizationId, frameworkId])
   @@index([organizationId, frameworkId, computedAt])
 }
 
 model Recommendation {
-  id                 String   @id @default(cuid())
+  id                 String               @id @default(cuid())
   organizationId     String
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   frameworkId        String
-  framework          Framework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  framework          Framework            @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
   controlId          String?
-  control            Control? @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  control            Control?             @relation(fields: [controlId], references: [id], onDelete: Cascade)
   type               RecommendationType
   title              String
-  description        String   @db.Text
+  description        String               @db.Text
   potentialScoreGain Float?
   status             RecommendationStatus @default(OPEN)
-  createdAt          DateTime @default(now())
+  createdAt          DateTime             @default(now())
   dismissedAt        DateTime?
 
   @@index([organizationId, frameworkId, status])
@@ -316,7 +338,6 @@ enum RecommendationStatus {
   RESOLVED
 }
 
-
 enum ControlStatus {
   NOT_STARTED
   IN_PROGRESS
@@ -325,35 +346,35 @@ enum ControlStatus {
 }
 
 model Evidence {
-  id             String                @id @default(cuid())
-  controlId      String
-  control        Control               @relation(fields: [controlId], references: [id], onDelete: Cascade)
-  organizationId String
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                   String                      @id @default(cuid())
+  controlId            String
+  control              Control                     @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  organizationId       String
+  organization         Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // Phase 2 Feature 2: link back to the connector that auto-created this row
-  connectorId    String?
-  connector      Connector?            @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  connectorId          String?
+  connector            Connector?                  @relation(fields: [connectorId], references: [id], onDelete: SetNull)
   // Phase 4 Part 2: link back to the EvidenceMapping rule that auto-collected this row.
   // Not present in the original Part 1 schema — added here per the Implementation
   // Plan's fallback instruction, since no BackendSchema.md exists in the repo to
   // confirm it was already covered.
-  evidenceMappingId String?
-  evidenceMapping   EvidenceMapping?    @relation(fields: [evidenceMappingId], references: [id], onDelete: SetNull)
-  fileName       String
-  filePath       String
-  fileSizeBytes  Int                   @default(0)
-  type           EvidenceType
-  summary        String?               @db.Text
-  collectedAt    DateTime              @default(now())
-  expiresAt      DateTime?
-  embedding      Unsupported("vector(384)")?
-  embeddingStatus EmbeddingStatus      @default(PENDING)
-  embeddingError  String?              @db.Text
-  embeddingAttempts Int                @default(0)
+  evidenceMappingId    String?
+  evidenceMapping      EvidenceMapping?            @relation(fields: [evidenceMappingId], references: [id], onDelete: SetNull)
+  fileName             String
+  filePath             String
+  fileSizeBytes        Int                         @default(0)
+  type                 EvidenceType
+  summary              String?                     @db.Text
+  collectedAt          DateTime                    @default(now())
+  expiresAt            DateTime?
+  embedding            Unsupported("vector(384)")?
+  embeddingStatus      EmbeddingStatus             @default(PENDING)
+  embeddingError       String?                     @db.Text
+  embeddingAttempts    Int                         @default(0)
   lastEmbeddingAttempt DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  source         String                @default("manual")
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  source               String                      @default("manual")
 
   // Phase 7 Part 3: NLP evidence auto-tagging (PRD Phase 7).
   // AI-SUGGESTED cross-control associations, computed async after upload by the
@@ -433,26 +454,26 @@ model AuditLog {
 }
 
 model RegulationSnippet {
-  id            String                     @id @default(cuid())
+  id            String                      @id @default(cuid())
   frameworkName String
   sectionNumber String
-  content       String                     @db.Text
+  content       String                      @db.Text
   embedding     Unsupported("vector(384)")?
-  createdAt     DateTime                   @default(now())
+  createdAt     DateTime                    @default(now())
 
   @@index([frameworkName])
 }
 
 model AuditorAccess {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  tokenHash      String?      @unique
-  sessionTokenHash String?    @unique
-  expiresAt      DateTime
-  isActive       Boolean      @default(true)
-  exchangedAt    DateTime?
-  createdAt      DateTime     @default(now())
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tokenHash        String?      @unique
+  sessionTokenHash String?      @unique
+  expiresAt        DateTime
+  isActive         Boolean      @default(true)
+  exchangedAt      DateTime?
+  createdAt        DateTime     @default(now())
 
   @@index([organizationId])
   @@index([expiresAt])
@@ -486,8 +507,8 @@ model ChainAnchor {
   fromLogId      String
   toLogId        String
   anchoredAt     DateTime     @default(now())
-  storageKey     String       // path in ANCHOR_STORAGE_BUCKET
-  publicProof    String?      // OpenTimestamps .ots receipt path, or null
+  storageKey     String // path in ANCHOR_STORAGE_BUCKET
+  publicProof    String? // OpenTimestamps .ots receipt path, or null
 
   @@index([organizationId])
   @@index([anchoredAt])
@@ -507,7 +528,7 @@ model Connector {
   // src/lib/crypto/credentials.ts. New (Phase 4 Part 1) connectors store everything,
   // including secrets, in `config` via src/server/lib/crypto/connectorVault.ts instead.
   credentials      String?
-  config           Json              // AES-256 encrypted JSON blob
+  config           Json // AES-256 encrypted JSON blob
   status           ConnectorStatus   @default(DISCONNECTED)
   lastSyncAt       DateTime?
   lastError        String?
@@ -598,8 +619,8 @@ model PolicyTemplate {
   policyType   PolicyType
   name         String
   version      String
-  bodyTemplate String     @db.Text   // Handlebars source with {{placeholders}}
-  variables    Json                  // [{ key, label, type, required, defaultValue? }]
+  bodyTemplate String     @db.Text // Handlebars source with {{placeholders}}
+  variables    Json // [{ key, label, type, required, defaultValue? }]
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
 
@@ -612,15 +633,15 @@ model PolicyTemplate {
 // ============================================================
 
 model AuditExport {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  requestedBy    String       // userId who triggered export
-  frameworkIds   Json         // string[]
-  filePath       String       // MinIO object key
-  includeRawFiles Boolean     @default(false)
-  createdAt      DateTime     @default(now())
-  expiresAt      DateTime     // presigned URL expiry (24h after creation)
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy     String // userId who triggered export
+  frameworkIds    Json // string[]
+  filePath        String // MinIO object key
+  includeRawFiles Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  expiresAt       DateTime // presigned URL expiry (24h after creation)
 
   @@index([organizationId])
   @@index([expiresAt])
@@ -637,90 +658,90 @@ enum ItemType {
 }
 
 model MarketplaceItem {
-  id              String   @id @default(cuid())
-  type            ItemType
-  name            String
-  slug            String   @unique
-  description     String   @db.Text
-  shortDescription String? 
-  authorId        String   
-  author          User     @relation("MarketplaceItemAuthor", fields: [authorId], references: [id])
-  
-  price           Float    @default(0)
-  currency        String   @default("USD")
-  
-  metadata        Json
-  category        String
-  tags            String[]
-  logo            String?
-  coverImage      String?
-  
-  version         String   @default("1.0.0")
-  isPublic        Boolean  @default(false)
-  isOfficial      Boolean  @default(false)
-  ratings         Float    @default(0)
-  reviewCount     Int      @default(0)
-  downloads       Int      @default(0)
-  
-  reviews         MarketplaceReview[]
-  importedItems   ImportedItem[]
-  revisions       MarketplaceItemRevision[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  publishedAt     DateTime?
-  
+  id               String   @id @default(cuid())
+  type             ItemType
+  name             String
+  slug             String   @unique
+  description      String   @db.Text
+  shortDescription String?
+  authorId         String
+  author           User     @relation("MarketplaceItemAuthor", fields: [authorId], references: [id])
+
+  price    Float  @default(0)
+  currency String @default("USD")
+
+  metadata   Json
+  category   String
+  tags       String[]
+  logo       String?
+  coverImage String?
+
+  version     String  @default("1.0.0")
+  isPublic    Boolean @default(false)
+  isOfficial  Boolean @default(false)
+  ratings     Float   @default(0)
+  reviewCount Int     @default(0)
+  downloads   Int     @default(0)
+
+  reviews       MarketplaceReview[]
+  importedItems ImportedItem[]
+  revisions     MarketplaceItemRevision[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
   @@index([authorId, isPublic, createdAt])
   @@index([category, isPublic])
 }
 
 model MarketplaceReview {
-  id              String   @id @default(cuid())
+  id                String          @id @default(cuid())
   marketplaceItemId String
-  item            MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
-  reviewerId      String
-  reviewer        User     @relation("MarketplaceReviews", fields: [reviewerId], references: [id])
-  
-  rating          Int
-  title           String
-  content         String   @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  item              MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
+  reviewerId        String
+  reviewer          User            @relation("MarketplaceReviews", fields: [reviewerId], references: [id])
+
+  rating  Int
+  title   String
+  content String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([marketplaceItemId, reviewerId])
   @@index([marketplaceItemId, rating])
 }
 
 model MarketplaceItemRevision {
-  id              String   @id @default(cuid())
+  id                String          @id @default(cuid())
   marketplaceItemId String
-  item            MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
-  
-  version         String
-  metadata        Json
-  changeNotes     String   @db.Text
-  
-  createdAt       DateTime @default(now())
+  item              MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
+
+  version     String
+  metadata    Json
+  changeNotes String @db.Text
+
+  createdAt DateTime @default(now())
 }
 
 model ImportedItem {
-  id             String   @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                String           @id @default(cuid())
+  organizationId    String
+  organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   marketplaceItemId String?
-  sourceItem     MarketplaceItem? @relation(fields: [marketplaceItemId], references: [id], onDelete: SetNull)
-  
-  itemType            ItemType
-  itemName            String
-  itemVersion         String
-  
+  sourceItem        MarketplaceItem? @relation(fields: [marketplaceItemId], references: [id], onDelete: SetNull)
+
+  itemType    ItemType
+  itemName    String
+  itemVersion String
+
   importedFrameworkId String?
   sourceMetadata      Json?
   customizations      Json?
-  
-  importedAt          DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+
+  importedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@unique([organizationId, marketplaceItemId])
   @@index([organizationId, importedAt])
@@ -735,10 +756,10 @@ model PenTest {
   id             String        @id @default(cuid())
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  target         String        // domain or IP, org-admin-confirmed as owned
+  target         String // domain or IP, org-admin-confirmed as owned
   type           PenTestType
   status         PenTestStatus @default(QUEUED)
-  result         Json?         // raw scan output / error detail
+  result         Json? // raw scan output / error detail
 
   // MinIO object path for the raw scanner stdout (pentest-logs/{orgId}/{id}.jsonl),
   // kept separate from `result` for audit/debug access to the untruncated log.
@@ -747,14 +768,14 @@ model PenTest {
   // Cron expression for recurring scans (PRD "scheduled cadence" requirement).
   // When set, a BullMQ repeatable job re-creates a fresh PenTest row on each fire
   // rather than re-running this row, so history of each run is preserved.
-  scheduleCron   String?
+  scheduleCron String?
 
-  requestedById  String
-  requestedBy    User          @relation(fields: [requestedById], references: [id])
+  requestedById String
+  requestedBy   User   @relation(fields: [requestedById], references: [id])
 
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime      @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
 
   vulnerabilities Vulnerability[]
 
@@ -775,33 +796,33 @@ enum PenTestStatus {
 }
 
 model Vulnerability {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   penTestId      String?
-  penTest        PenTest? @relation(fields: [penTestId], references: [id], onDelete: Cascade)
+  penTest        PenTest?     @relation(fields: [penTestId], references: [id], onDelete: Cascade)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   controlId      String?
-  control        Control? @relation(fields: [controlId], references: [id], onDelete: SetNull)
+  control        Control?     @relation(fields: [controlId], references: [id], onDelete: SetNull)
   assetId        String?
-  asset          Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  asset          Asset?       @relation(fields: [assetId], references: [id], onDelete: SetNull)
   title          String
-  description    String   @db.Text
+  description    String       @db.Text
   severity       Severity
   cvssScore      Float?
   // Full CVSS v3.1 vector string (e.g. "CVSS:3.1/AV:N/AC:L/..."), kept
   // alongside the derived cvssScore so the score can be redisplayed or
   // recalculated without re-deriving it from raw scan output.
   cvssVector     String?
-  remediation    String?  @db.Text
-  status         VulnStatus @default(OPEN)
-  createdAt      DateTime @default(now())
+  remediation    String?      @db.Text
+  status         VulnStatus   @default(OPEN)
+  createdAt      DateTime     @default(now())
 
   // pgvector embedding of title+description+remediation, for future
   // semantic search / AI advisor retrieval (Phase 7). Same vector(384)
   // convention as Control.embedding and Evidence.embedding — populated
   // best-effort via Ollama, written with raw SQL (see src/workers/
   // classification.ts's identical pattern; Prisma has no native vector type).
-  embedding      Unsupported("vector(384)")?
+  embedding Unsupported("vector(384)")?
 
   @@index([organizationId, createdAt])
 }
@@ -811,12 +832,12 @@ model Vulnerability {
 // rather than only a Control. PRD mentions "assets" but the Part 1 schema
 // only had controlId — this fills that gap.
 model Asset {
-  id             String   @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  name           String
-  identifier     String   // domain, IP, or hostname
-  createdAt      DateTime @default(now())
+  id              String          @id @default(cuid())
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name            String
+  identifier      String // domain, IP, or hostname
+  createdAt       DateTime        @default(now())
   vulnerabilities Vulnerability[]
 
   @@index([organizationId, createdAt])
@@ -990,4 +1011,95 @@ model AIUsageLog {
   createdAt        DateTime     @default(now())
 
   @@index([organizationId, createdAt])
+}
+
+// ----- Phase 8 Part 1: Enterprise SSO / SCIM / RBAC -----
+
+/// Per-org enterprise settings (BackendSchema.md "Phase 8" block).
+/// Deviations from the doc, flagged in the Phase 8 summary:
+/// - `ssoEnforced` column (App Flow journey 6 step 4 needs a queryable flag
+///   at login time; the doc only sketched ssoConfig Json).
+/// - `scimTokenHash`: the SCIM bearer token is stored as a SHA-256 hash
+///   (validate-only, shown once at creation) instead of the reversible
+///   AES encryption the task brief suggested — same pattern as
+///   AuditorAccess.sessionTokenHash, and strictly safer at rest.
+model OrganizationSettings {
+  id                    String       @id @default(cuid())
+  organizationId        String       @unique
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // { type: "SAML"|"OIDC", ... } — secret members (OIDC clientSecret) are
+  // stored as AES-256-GCM envelopes (secretVault), never plaintext.
+  ssoConfig             Json?
+  ssoEnforced           Boolean      @default(false)
+  scimEnabled           Boolean      @default(false)
+  scimTokenHash         String?
+  whiteLabel            Json? // { logoUrl, primaryColor, customDomain, customDomainVerified, css } — Phase 8 Part 2
+  auditLogRetentionDays Int          @default(365)
+  // Phase 8 Part 2 — SIEM export target: { type: "splunk-hec", url, tokenEnc }
+  // or { type: "syslog", host, port, protocol }. Secret members are
+  // AES-256-GCM envelopes (siemVault), never plaintext.
+  siemExportConfig      Json?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+/// Custom RBAC role (new model, not in BackendSchema.md — flagged as a
+/// deviation; Implementationplan.md task 3 "extend MemberRole to permissions
+/// JSON" is realized as this model plus User.customRoleId).
+model CustomRole {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  // { "controls.read": true, "controls.write": false, ... } — keys validated
+  // against PERMISSION_KEYS in src/server/services/rbac/permissions.ts
+  permissions    Json
+  // Seeded copies of the legacy Role enum defaults; protected from deletion.
+  isDefault      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  users          User[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// ----- Phase 8 Part 3: MSSP Operations -----
+
+/// BackendSchema.md "MSSP support" block: a partner (MSSP) groups its client
+/// organizations under its own parent org.
+model OrganizationGroup {
+  id            String         @id @default(cuid())
+  name          String
+  parentOrgId   String? // the MSSP's own org
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  organizations Organization[] @relation("GroupOrgs")
+  grants        MsspGrant[]
+
+  @@index([parentOrgId])
+}
+
+/// New model, NOT in BackendSchema.md — flagged as a deviation in the Phase 8
+/// report. Cross-tenant reads are gated on an explicit, time-boxable,
+/// revocable grant with an org-id allow-list, rather than "role == MSSP admin
+/// ⇒ bypass tenant isolation for everything": bounded blast radius and a
+/// concrete revocation mechanism, which any security review would demand
+/// before shipping cross-tenant access. The ONLY consumer is
+/// src/server/services/mssp/aggregateQuery.service.ts.
+model MsspGrant {
+  id            String            @id @default(cuid())
+  groupId       String
+  group         OrganizationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  grantedUserId String // the MSSP admin user
+  // Explicit allow-list of client org IDs — never implicitly "all orgs in
+  // the group", so adding an org to a group later never silently widens an
+  // existing grant.
+  scopeOrgIds   String[]
+  expiresAt     DateTime? // optional time-boxed access
+  revokedAt     DateTime? // set by mssp.revokeGrant — blocks further use immediately
+  createdAt     DateTime          @default(now())
+
+  @@index([grantedUserId])
+  @@index([groupId])
 }
