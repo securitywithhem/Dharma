@@ -1,0 +1,168 @@
+# ============================================================
+# Docker Compose for Local Development
+# Run: docker-compose -f docker-compose.local.yml up
+# ============================================================
+
+version: "3.9"
+
+services:
+  # PostgreSQL 15 + pgvector
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: dharma-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dharma_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-dharma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dharma}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dharma-dev
+
+  # Redis 7 (BullMQ queue backend)
+  redis:
+    image: redis:7-alpine
+    container_name: dharma-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass ${REDIS_PASSWORD:-dev-password}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-dev-password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dharma-dev
+
+  # MinIO (S3-compatible object storage)
+  minio:
+    image: minio/minio:latest
+    container_name: dharma-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-dev-password}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dharma-dev
+
+  # Ollama (Local LLM service)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dharma-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - dharma-dev
+
+  # Next.js Application (Frontend + Backend)
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.app
+    container_name: dharma-app
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dev-password}@postgres:5432/${POSTGRES_DB:-dharma_dev}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-password}@redis:6379
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD:-dev-password}
+      OLLAMA_BASE_URL: http://ollama:11434
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-only-change-in-production}
+      LOG_LEVEL: debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - dharma-dev
+
+  # BullMQ Worker (Async job processor)
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: dharma-worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dharma}:${POSTGRES_PASSWORD:-dev-password}@postgres:5432/${POSTGRES_DB:-dharma_dev}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-password}@redis:6379
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD:-dev-password}
+      OLLAMA_BASE_URL: http://ollama:11434
+      LOG_LEVEL: debug
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - dharma-dev
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  ollama_data:
+
+networks:
+  dharma-dev:
+    driver: bridge

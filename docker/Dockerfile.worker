@@ -1,0 +1,50 @@
+# ============================================================
+# BullMQ Worker Dockerfile (Standalone Service)
+# Handles async jobs: evidence processing, report generation, etc.
+# ============================================================
+
+# Stage 1: Dependencies
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm@10.6.2 && \
+    pnpm install --frozen-lockfile
+
+# Stage 2: Build
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm install -g pnpm@10.6.2 && \
+    pnpm prisma generate --schema packages/db/schema.prisma && \
+    pnpm build
+
+# Stage 3: Runtime
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S worker -u 1001
+
+# Copy dependencies and source
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/packages ./packages
+COPY --chown=worker:nodejs package.json pnpm-lock.yaml ./
+
+# Set environment
+ENV NODE_ENV=production
+ENV LOG_LEVEL=info
+
+# Switch to non-root user
+USER worker
+
+# Labels
+LABEL org.opencontainers.image.title="Dharma Worker"
+LABEL org.opencontainers.image.description="BullMQ async job processor"
+
+# Start worker
+CMD ["node", "--require", "tsx", "src/workers/index.ts"]
