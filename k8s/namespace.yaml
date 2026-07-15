@@ -1,0 +1,208 @@
+# ============================================================
+# Kubernetes Namespace + NetworkPolicy
+# ============================================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dharma
+  labels:
+    name: dharma
+    environment: production
+
+---
+# NetworkPolicy: Deny all ingress, allow only required traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-default-deny
+  namespace: dharma
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Allow ingress from Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-allow-ingress
+  namespace: dharma
+spec:
+  podSelector:
+    matchLabels:
+      app: nextjs
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# Allow NextJS to PostgreSQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-allow-nextjs-postgres
+  namespace: dharma
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nextjs
+        - podSelector:
+            matchLabels:
+              app: worker
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# Allow NextJS to Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-allow-nextjs-redis
+  namespace: dharma
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nextjs
+        - podSelector:
+            matchLabels:
+              app: worker
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# Allow NextJS to MinIO
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-allow-nextjs-minio
+  namespace: dharma
+spec:
+  podSelector:
+    matchLabels:
+      app: minio
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nextjs
+        - podSelector:
+            matchLabels:
+              app: worker
+      ports:
+        - protocol: TCP
+          port: 9000
+
+---
+# Allow NextJS + Worker to Ollama
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-allow-ollama
+  namespace: dharma
+spec:
+  podSelector:
+    matchLabels:
+      app: ollama
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nextjs
+        - podSelector:
+            matchLabels:
+              app: worker
+      ports:
+        - protocol: TCP
+          port: 11434
+
+---
+# Allow Worker to Redis (BullMQ)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dharma-allow-worker-redis
+  namespace: dharma
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: worker
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# ResourceQuota: Limit namespace resource usage
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dharma-quota
+  namespace: dharma
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: "40Gi"
+    limits.cpu: "40"
+    limits.memory: "80Gi"
+    pods: "100"
+    services: "20"
+    persistentvolumeclaims: "10"
+
+---
+# LimitRange: Default pod resource limits
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dharma-limits
+  namespace: dharma
+spec:
+  limits:
+    - max:
+        cpu: "2"
+        memory: "4Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "250m"
+        memory: "256Mi"
+      type: Pod
