@@ -228,6 +228,9 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-noreply@dharma.local}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       SEED_DATABASE: ${SEED_DATABASE:-false}
+      # Empty = OTel disabled. With the monitoring profile up, set to
+      # http://otel-collector:4318 to export traces/metrics.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${NEXTJS_PORT:-3000}:3000"
     depends_on:
@@ -280,6 +283,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
       OLLAMA_BASE_URL: http://ollama:11434
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -484,6 +488,37 @@ services:
       resources:
         limits:
           memory: 64M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ------------------------------------------------------------
+  # OpenTelemetry Collector – receives OTLP traces/metrics from
+  # nextjs/worker and re-exposes metrics for Prometheus (:8889).
+  # Profile: monitoring (opt-in). To emit telemetry, also set
+  # OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 in the env.
+  # ------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    container_name: dharma-otel-collector
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4318:4318" # OTLP HTTP
+      - "4317:4317" # OTLP gRPC
+      - "8889:8889" # Prometheus exposition
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - dharma-network
     logging:
