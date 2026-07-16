@@ -3,7 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
-    typedRoutes: true
+    typedRoutes: true,
+    // Enables src/instrumentation.ts (OpenTelemetry bootstrap on server boot).
+    instrumentationHook: true
   }
 };
 

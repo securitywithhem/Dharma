@@ -436,6 +436,39 @@ kubectl get secret postgres-secret -n dharma -o jsonpath='{.data.connection-url}
 
 ---
 
+## 📈 APPLICATION TELEMETRY (OpenTelemetry)
+
+The app and worker are instrumented with OpenTelemetry
+(`src/lib/observability/otel.ts` + `src/instrumentation.ts` /
+`src/workers/instrumentation.ts`). Export is **opt-in**: with
+`OTEL_EXPORTER_OTLP_ENDPOINT` unset, everything is a no-op (dev/tests pay
+nothing).
+
+**Local (docker-compose), verified end-to-end:**
+
+```bash
+# Start the monitoring profile (Prometheus, Grafana, OTel collector, exporters)
+docker compose --env-file envs/.env.docker --profile monitoring up -d
+
+# Enable export from app/worker (add to your env or shell)
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+
+# App/worker metrics land in Prometheus via the collector's scrape endpoint
+curl -s http://localhost:8889/metrics | grep trpc_request_duration
+```
+
+Custom metrics live in `src/lib/observability/metrics.ts`
+(`trpc_request_duration_ms`, `queue_jobs_processed_total`,
+`queue_job_duration_ms`, `auth_attempts_total`); tRPC latency is recorded by
+the timing middleware in `src/server/trpc.ts`. Traces currently go to the
+collector's debug exporter — deploy Jaeger/Tempo and add an exporter in
+`monitoring/otel-collector.yaml` to persist them.
+
+**Kubernetes:** set `OTEL_EXPORTER_OTLP_ENDPOINT` in the Helm values
+(`app.env` / `worker.env`) pointing at a collector Service.
+
+---
+
 ## ✉️ SUPPORT
 
 For issues or questions:

@@ -172,9 +172,12 @@ Kubernetes Cluster (Multi-zone)
 - [ ] Deploy to staging k8s cluster
 
 ### Phase D: Observability (Week 6)
-- [ ] Prometheus + Grafana
+- [x] Prometheus + Grafana (docker-compose `monitoring` profile; k8s stack still pending)
 - [ ] Structured logging (ELK/Loki)
-- [ ] Distributed tracing (OpenTelemetry)
+- [x] OpenTelemetry instrumentation (app + worker emit OTLP traces/metrics when
+      `OTEL_EXPORTER_OTLP_ENDPOINT` is set; collector→Prometheus pipeline verified
+      locally end-to-end — see `src/lib/observability/` and
+      `monitoring/otel-collector.yaml`). Trace BACKEND (Jaeger/Tempo) still pending.
 - [ ] Alert rules
 
 ### Phase E: Secrets & Security (Week 7)

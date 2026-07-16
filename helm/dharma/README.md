@@ -6,7 +6,11 @@ and the BullMQ worker (`docker/worker/Dockerfile`).
 ## What this chart does and does NOT do
 
 - **Deploys:** app Deployment + Service + HPA + Ingress, worker Deployment, a
-  ServiceAccount, and (optionally) a Secret holding connection strings.
+  ServiceAccount, PodDisruptionBudgets (`podDisruptionBudget.*`), optional
+  NetworkPolicies (`networkPolicy.enabled`, needs an enforcing CNI), and
+  (optionally) a Secret holding connection strings. Pod annotations can be set
+  via `app.podAnnotations` / `worker.podAnnotations`; to export OpenTelemetry
+  traces/metrics, set `OTEL_EXPORTER_OTLP_ENDPOINT` in `app.env` / `worker.env`.
 - **Does NOT deploy data services.** PostgreSQL/pgvector, Redis, and MinIO must
   already exist (managed service, or the raw manifests in `../../k8s/`). Wire
   their connection details in via `secrets.*` in `values.yaml`, or point at an
@@ -19,7 +23,9 @@ postgresql/redis subchart dependencies to `Chart.yaml`.
 ## Validation status
 
 - ✅ `helm lint helm/dharma` — passes (0 failures)
-- ✅ `helm template dharma helm/dharma` — renders 7 valid resources
+- ✅ `helm template dharma helm/dharma` — renders cleanly with default values
+  and with `networkPolicy.enabled=true` / `podDisruptionBudget.enabled=true`
+  (also enforced in CI by `.github/workflows/infra-validate.yml`)
 - ⚠️ **Not yet deployed to a real cluster.** No `helm install` / server-side
   validation has been run. Image references (`ghcr.io/securitywithhem/dharma*`)
   are placeholders — build & push real images first, or override at install.

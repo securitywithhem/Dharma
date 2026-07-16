@@ -4,6 +4,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { getServerSession, type Session } from "next-auth";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { trpcRequestDuration } from "@/lib/observability/metrics";
 import { authOptions } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { hasManagementAccess, isAdminRole } from "@/server/rbac";
@@ -95,6 +96,12 @@ const timingMiddleware = t.middleware(async ({ path, type, next }) => {
   const start = performance.now();
   const result = await next();
   const end = performance.now();
+
+  trpcRequestDuration.record(end - start, {
+    path,
+    type,
+    status: result.ok ? "ok" : "error",
+  });
 
   if (process.env.NODE_ENV === "development") {
     console.info(`[tRPC] ${type} ${path} ${Math.round(end - start)}ms`);

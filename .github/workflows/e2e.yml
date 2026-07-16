@@ -10,10 +10,8 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
 
-    services:
-      # We will start database and other services inside Docker Compose in the step below,
-      # since standard GHA services cannot easily link to our compose configuration.
-
+    # Database and other services are started via Docker Compose in the steps
+    # below, since standard GHA services cannot link to our compose config.
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,15 +27,18 @@ jobs:
 
       - name: Create Env File for Docker
         run: |
-          cp .env.example .env
-          # Replace secrets with CI defaults
-          sed -i 's/NEXTAUTH_SECRET=.*/NEXTAUTH_SECRET=replace-with-a-random-32-character-secret-in-ci/' .env
-          sed -i 's/DATABASE_URL=.*/DATABASE_URL=postgresql:\/\/dharma:password@localhost:5432\/dharma_db?schema=public/' .env
+          # docker-compose.yml hard-requires envs/.env.docker (env_file: on the
+          # nextjs/worker services, plus ${VAR:?} interpolation). Generate it
+          # from the committed template, filling every TODO_* placeholder with
+          # a CI-only value (>=32 chars to satisfy the NEXTAUTH_SECRET check).
+          sed -e 's/TODO_[A-Z0-9_]*/ci-only-secret-0123456789abcdef0123456789abcdef/g' \
+              -e 's|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:3000|' \
+              envs/.env.docker.example > envs/.env.docker
 
       - name: Start Docker Compose Stack
         run: |
-          docker compose up -d postgres redis minio ollama nextjs worker
-          docker compose ps
+          docker compose --env-file envs/.env.docker up -d postgres redis minio ollama nextjs worker
+          docker compose --env-file envs/.env.docker ps
 
       - name: Wait for Next.js Application to be Ready
         run: |

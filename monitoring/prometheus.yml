@@ -48,17 +48,15 @@ scrape_configs:
           component: 'cache'
     scrape_interval: 15s
 
-  # Next.js application – custom metrics via /api/metrics (if implemented)
-  # or basic HTTP probe
-  - job_name: 'nextjs'
-    metrics_path: '/api/metrics'
+  # Application metrics (Next.js app + worker) pushed via OTLP to the
+  # OpenTelemetry Collector, which re-exposes them here. Enable by setting
+  # OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 on nextjs/worker.
+  - job_name: 'otel-collector'
     static_configs:
-      - targets: ['nextjs:3000']
+      - targets: ['otel-collector:8889']
         labels:
           component: 'application'
-    scrape_interval: 30s
-    # Allow failure if /api/metrics isn't implemented yet
-    honor_timestamps: true
+    scrape_interval: 15s
 
   # MinIO metrics
   - job_name: 'minio'

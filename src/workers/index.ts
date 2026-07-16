@@ -8,6 +8,9 @@
  *          and generate-auditor-package workers.
  */
 
+// Must stay the first import: starts OTel before bullmq/ioredis/pg load so
+// auto-instrumentation can patch them. No-op unless OTEL_EXPORTER_OTLP_ENDPOINT.
+import "./instrumentation";
 import { startClassificationWorker } from "./classification";
 import { startPolicyWorker } from "./policy";
 import { startAnchorWorker } from "./anchor";
