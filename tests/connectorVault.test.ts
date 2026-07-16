@@ -1,6 +1,6 @@
 process.env.CONNECTOR_ENCRYPTION_KEY =
   process.env.CONNECTOR_ENCRYPTION_KEY ??
-  "d41829a3f639e0b691ca7ab133b091d0af70733eb2b1a9ff0a7ac66d44f84b7";
+  "63f0fdbfb1adecbbe70619602bbffd2243b78170bb71bb02225c6603f0edccc3";
 
 import {
   encryptConnectorConfig,

@@ -1,6 +1,6 @@
 process.env.WEBHOOK_ENCRYPTION_KEY =
   process.env.WEBHOOK_ENCRYPTION_KEY ??
-  "db4b123385e764d3ba36c585a895c339884dc4be8dd081e8fe9415c0d13ce89";
+  "2663fe6fbfc3ad8bccefdd22386906a66e7ed93d9433b7ed9de17fcbace9c4c6";
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import { PrismaClient, Role } from "@prisma/client";

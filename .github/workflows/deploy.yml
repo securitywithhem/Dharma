@@ -81,6 +81,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      # As a plain step (not a GHA service) because minio/minio needs the
+      # `server /data` command, which service containers can't pass.
+      # Credentials match the src/env.ts defaults the tests fall back to.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin_change_me \
+            minio/minio server /data
+          timeout 60s bash -c 'until curl -sf http://localhost:9000/minio/health/live; do sleep 2; done'
+
       - run: npm ci
       - run: npx prisma migrate deploy --schema packages/db/schema.prisma
       # --forceExit: suites that import routers pull in BullMQ queues whose

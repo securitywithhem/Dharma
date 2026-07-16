@@ -21,3 +21,8 @@ coverage/
 .playwright
 playwright-report
 test-results
+
+# Env files must never enter image build contexts: real secrets stay on the
+# host (compose env_file / k8s Secrets inject them at runtime), and builds
+# stay hermetic — identical locally and in CI checkouts.
+envs/
