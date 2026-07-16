@@ -1,0 +1,56 @@
+{{- if .Values.networkPolicy.enabled }}
+# Restricts INGRESS to the app pods (only the ingress controller namespace may
+# reach port 3000) and denies all ingress to worker pods. Egress is left open
+# by default because Postgres/Redis/MinIO are external to this chart — tighten
+# via .Values.networkPolicy.egress once their addresses are known.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dharma.fullname" . }}-app
+  labels:
+    {{- include "dharma.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dharma.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressControllerNamespace }}
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    {{- if .Values.networkPolicy.egress }}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    - {}
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dharma.fullname" . }}-worker
+  labels:
+    {{- include "dharma.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dharma.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    {{- if .Values.networkPolicy.egress }}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    - {}
+    {{- end }}
+{{- end }}

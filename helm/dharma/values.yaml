@@ -25,6 +25,11 @@ app:
   env:
     NODE_ENV: production
     NEXT_TELEMETRY_DISABLED: "1"
+    # To enable OpenTelemetry export (traces + metrics via OTLP/HTTP), point
+    # this at a collector, e.g.:
+    # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4318
+  # Extra pod annotations (e.g. prometheus.io/scrape) — applied verbatim.
+  podAnnotations: {}
   resources:
     requests:
       cpu: 250m
@@ -49,6 +54,8 @@ worker:
     pullPolicy: IfNotPresent
   env:
     NODE_ENV: production
+    # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4318
+  podAnnotations: {}
   resources:
     requests:
       cpu: 250m
@@ -56,6 +63,23 @@ worker:
     limits:
       cpu: "1"
       memory: 1Gi
+
+# ── NetworkPolicy (requires a CNI that enforces them, e.g. Calico/Cilium) ──
+# Disabled by default because the data services live outside this chart and
+# their location (in-cluster vs managed) determines the egress rules.
+networkPolicy:
+  enabled: false
+  ingressControllerNamespace: ingress-nginx
+  # Optional list of egress rules (NetworkPolicyEgressRule). Empty = allow all.
+  egress: []
+
+# ── PodDisruptionBudgets ──
+podDisruptionBudget:
+  enabled: true
+  app:
+    minAvailable: 1
+  worker:
+    minAvailable: 1
 
 # ── Secret values wired into both app and worker as env ──
 # For production, prefer providing these via an existing Secret (set
