@@ -75,6 +75,14 @@ jobs:
     env:
       DATABASE_URL: postgresql://dharma:password@localhost:5432/dharma_test?schema=public
       REDIS_URL: redis://localhost:6379
+      # Explicit MinIO creds: the codebase has TWO client modules with
+      # DIFFERENT secret-key fallbacks (src/server/minio.ts → "minioadmin",
+      # env.ts/minioClient.ts → "minioadmin_change_me"), so relying on
+      # defaults gives signature mismatches. Must match the Start MinIO step.
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      ANCHOR_STORAGE_ACCESS_KEY: minioadmin
+      ANCHOR_STORAGE_SECRET_KEY: minioadmin
 
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +97,7 @@ jobs:
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=minioadmin \
-            -e MINIO_ROOT_PASSWORD=minioadmin_change_me \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
             minio/minio server /data
           timeout 60s bash -c 'until curl -sf http://localhost:9000/minio/health/live; do sleep 2; done'
 
