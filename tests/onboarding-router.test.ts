@@ -5,7 +5,9 @@ import { Role } from '@prisma/client';
 // Mock the prisma context
 const mockPrisma = {
   organization: {
-    findUnique: jest.fn(),
+    // createAuditLog reads { lockKeyId } inside its $transaction; default to a
+    // truthy org so audit logging doesn't throw "Organization not found".
+    findUnique: jest.fn().mockResolvedValue({ lockKeyId: BigInt(1) }),
     update: jest.fn(),
   },
   framework: {
@@ -25,7 +27,15 @@ const mockPrisma = {
     create: jest.fn(),
     findFirst: jest.fn().mockResolvedValue(null),
   },
-};
+  // audit-log.ts (createAuditLog) wraps writes in prisma.$transaction(cb) and
+  // uses tx.$executeRaw for a pg advisory lock. Provide both so the mock tx
+  // behaves like the real client. $transaction runs the callback with mockPrisma
+  // itself, so assertions on mockPrisma.auditLog.create still see the calls.
+  $executeRaw: jest.fn(),
+} as any;
+(mockPrisma as any).$transaction = jest.fn(async (arg: any) =>
+  typeof arg === 'function' ? arg(mockPrisma) : Promise.all(arg),
+);
 
 describe('onboarding router', () => {
   let ctx: any;

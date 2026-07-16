@@ -67,6 +67,15 @@ jobs:
         ports:
           - 6379:6379
 
+    # Job-level env: lands in process.env so both the raw `prisma migrate deploy`
+    # step (no dotenv wrapper) AND `npm test` use these. dotenv (override:false)
+    # won't overwrite them, so envs/.env.test only supplies the OTHER vars
+    # (AUDIT_WRITER_MODE=sync, encryption keys, etc.). Values match the service
+    # containers above (db dharma_test / user dharma; redis has no password).
+    env:
+      DATABASE_URL: postgresql://dharma:password@localhost:5432/dharma_test?schema=public
+      REDIS_URL: redis://localhost:6379
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
