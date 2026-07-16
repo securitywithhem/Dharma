@@ -10,10 +10,8 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
 
-    services:
-      # We will start database and other services inside Docker Compose in the step below,
-      # since standard GHA services cannot easily link to our compose configuration.
-
+    # Database and other services are started via Docker Compose in the steps
+    # below, since standard GHA services cannot link to our compose config.
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

@@ -84,22 +84,31 @@ jobs:
       - run: npm ci
       - run: npx prisma migrate deploy --schema packages/db/schema.prisma
       - run: npm test
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
         with:
           files: ./coverage/lcov.info
 
   # ============================================================
   # STAGE 3: Build Container Image
   # ============================================================
+  # Builds BOTH images. The immutable "<branch>-<sha>" tag is what the deploy
+  # stages reference (computable from github context — matrix job outputs are
+  # last-writer-wins, so we never rely on them).
   build:
     runs-on: ubuntu-latest
     needs: [lint, test]
     permissions:
       contents: read
       packages: write
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
+    strategy:
+      matrix:
+        include:
+          - service: app
+            dockerfile: docker/nextjs/Dockerfile
+            suffix: ""
+          - service: worker
+            dockerfile: docker/worker/Dockerfile
+            suffix: "-worker"
     steps:
       - uses: actions/checkout@v4
 
@@ -114,9 +123,10 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
           tags: |
             type=ref,event=branch
+            type=raw,value={{branch}}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
@@ -126,7 +136,7 @@ jobs:
         id: build
         with:
           context: .
-          file: docker/nextjs/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -140,19 +150,30 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        include:
+          - service: app
+            suffix: ""
+          - service: worker
+            suffix: "-worker"
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build.outputs.image-tag }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
           format: "sarif"
           output: "trivy-results.sarif"
 
       - uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: "trivy-results.sarif"
+          category: trivy-${{ matrix.service }}
 
   # ============================================================
   # STAGE 5: Deploy to Kubernetes (Staging)
@@ -171,20 +192,24 @@ jobs:
 
       - name: Configure kubectl
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
 
-      - name: Update image in staging
+      - name: Update images in staging
         run: |
+          IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
           kubectl set image deployment/nextjs \
-            nextjs=${{ needs.build.outputs.image-tag }} \
-            -n dharma \
-            --record
+            "nextjs=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}" \
+            -n dharma
+          kubectl set image deployment/worker \
+            "worker=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker:${IMAGE_TAG}" \
+            -n dharma
 
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/nextjs -n dharma --timeout=5m
+          kubectl rollout status deployment/worker -n dharma --timeout=5m
 
   # ============================================================
   # STAGE 6: Deploy to Kubernetes (Production)
@@ -203,20 +228,24 @@ jobs:
 
       - name: Configure kubectl
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
 
-      - name: Update image in production
+      - name: Update images in production
         run: |
+          IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
           kubectl set image deployment/nextjs \
-            nextjs=${{ needs.build.outputs.image-tag }} \
-            -n dharma \
-            --record
+            "nextjs=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}" \
+            -n dharma
+          kubectl set image deployment/worker \
+            "worker=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker:${IMAGE_TAG}" \
+            -n dharma
 
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/nextjs -n dharma --timeout=5m
+          kubectl rollout status deployment/worker -n dharma --timeout=5m
 
       - name: Verify deployment
         run: |
