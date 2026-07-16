@@ -33,6 +33,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# openssl is required here too: `npm run build` re-runs `prisma generate`,
+# and without libssl Prisma's detection falls back to the openssl-1.1.x
+# engine, which cannot load on current Alpine (no libssl.so.1.1) and kills
+# next build's page-data collection on amd64.
+RUN apk add --no-cache libc6-compat openssl
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/db/schema.prisma ./packages/db/schema.prisma
 COPY . .
