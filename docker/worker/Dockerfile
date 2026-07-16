@@ -16,8 +16,13 @@ RUN apk add --no-cache \
 
 COPY package.json package-lock.json ./
 COPY packages/db/schema.prisma ./packages/db/schema.prisma
+COPY scripts/fix-readdir-glob-exports.js ./scripts/fix-readdir-glob-exports.js
 
 RUN npm ci --ignore-scripts
+
+# --ignore-scripts skips postinstall — run its steps explicitly (see
+# scripts/fix-readdir-glob-exports.js for why the exports fix is needed).
+RUN node scripts/fix-readdir-glob-exports.js
 RUN npx prisma generate --schema packages/db/schema.prisma
 
 # ── Production image ──────────────────────────────────────────
@@ -43,6 +48,7 @@ COPY --from=deps --chown=worker:nodejs /app/packages          ./packages
 COPY --chown=worker:nodejs package.json                        ./package.json
 COPY --chown=worker:nodejs src/workers                         ./src/workers
 COPY --chown=worker:nodejs src/server                          ./src/server
+COPY --chown=worker:nodejs src/lib                             ./src/lib
 COPY --chown=worker:nodejs src/env.ts                          ./src/env.ts
 COPY --chown=worker:nodejs tsconfig.json                       ./tsconfig.json
 

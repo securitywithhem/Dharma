@@ -83,7 +83,9 @@ jobs:
           node-version: "22"
       - run: npm ci
       - run: npx prisma migrate deploy --schema packages/db/schema.prisma
-      - run: npm test
+      # --forceExit: suites that import routers pull in BullMQ queues whose
+      # Redis connections keep the event loop alive, hanging jest forever.
+      - run: npm test -- --forceExit
       - uses: codecov/codecov-action@v5
         with:
           files: ./coverage/lcov.info

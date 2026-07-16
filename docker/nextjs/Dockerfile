@@ -18,10 +18,14 @@ RUN apk add --no-cache \
 
 COPY package.json package-lock.json ./
 COPY packages/db/schema.prisma ./packages/db/schema.prisma
+COPY scripts/fix-readdir-glob-exports.js ./scripts/fix-readdir-glob-exports.js
 
 RUN npm ci --ignore-scripts
 
-# Generate Prisma client in the deps stage
+# --ignore-scripts skips postinstall, so run its two steps explicitly:
+# the readdir-glob exports fix (webpack rejects archiver without it) and
+# the Prisma client generation.
+RUN node scripts/fix-readdir-glob-exports.js
 RUN npx prisma generate --schema packages/db/schema.prisma
 
 # ── Stage 2: Build the application ───────────────────────────
