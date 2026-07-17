@@ -3,6 +3,16 @@ import path from "path";
 import fs from "fs";
 
 test.describe("Evidence Upload Flow", () => {
+  // The direct-upload UI this spec drives (#evidence-upload-trigger in
+  // EvidenceUploadForm) is no longer mounted anywhere — the evidence page now
+  // links to the frameworks flow ("Upload proof from a requirement") and
+  // uploads happen from a control's detail view. Needs a rewrite against that
+  // flow; skipped rather than deleted so the coverage gap stays visible.
+  test.fixme(
+    true,
+    "Stale spec: evidence upload moved into the frameworks/control flow",
+  );
+
   test.beforeEach(async ({ page }) => {
     // Authenticate using the test backdoor
     await page.goto("/api/test-auth?email=admin@dharma.local");
