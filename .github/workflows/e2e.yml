@@ -16,6 +16,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # Standard runners have ~14GB free — not enough for two multi-stage image
+      # builds + service images + the node_modules/.next volume copies compose
+      # makes at container creation (round 5 died on "no space left on device").
+      # Dropping preinstalled toolchains frees ~25GB.
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af
+          df -h /
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -34,6 +45,14 @@ jobs:
           sed -e 's/TODO_[A-Z0-9_]*/ci-only-secret-0123456789abcdef0123456789abcdef/g' \
               -e 's|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:3000|' \
               envs/.env.docker.example > envs/.env.docker
+
+      - name: Build application images
+        run: |
+          docker compose --env-file envs/.env.docker build nextjs worker
+          # The BuildKit cache (intermediate stages) is dead weight once the
+          # images are tagged — reclaim it before containers copy volumes.
+          docker builder prune -af
+          df -h /
 
       - name: Start Docker Compose Stack
         run: |
