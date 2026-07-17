@@ -11,7 +11,9 @@ export default defineConfig({
   retries: 0,
   use: {
     baseURL: externalBaseURL ?? "http://localhost:3001",
-    trace: "on-first-retry"
+    // retries is 0, so on-first-retry would never record; keep full traces of
+    // CI failures (uploaded as artifacts) and stay light locally.
+    trace: externalBaseURL ? "retain-on-failure" : "on-first-retry"
   },
   ...(externalBaseURL
     ? {}

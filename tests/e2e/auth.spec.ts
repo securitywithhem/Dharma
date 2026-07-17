@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("landing page renders successfully", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Your compliance infrastructure.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Enter Workspace" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Compliance Status" })).toBeVisible();
 });
 
 test("dashboard redirects anonymous users to sign-in page", async ({ page }) => {

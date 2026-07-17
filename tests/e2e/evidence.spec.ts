@@ -13,7 +13,7 @@ test.describe("Evidence Upload Flow", () => {
     await page.goto("/dashboard/evidence");
 
     // Check header
-    await expect(page.getByText("Compliance Evidence")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Proof", exact: true })).toBeVisible();
 
     // Trigger upload dialog
     const uploadTrigger = page.locator("#evidence-upload-trigger");

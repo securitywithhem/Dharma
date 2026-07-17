@@ -84,6 +84,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages         ./packages
 COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Seed inputs: the entrypoint's SEED_DATABASE=true path runs `npm run seed:all`,
+# whose scripts live in scripts/ (seed-frameworks) and prisma/ (seed-templates).
+# The entrypoint is set -e, so missing files would crash the container.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts          ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/prisma           ./prisma
+
 USER nextjs
 
 EXPOSE 3000

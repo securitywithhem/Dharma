@@ -11,6 +11,7 @@ import { expect, test } from "@playwright/test";
  * not up (see webServer in playwright.config.ts).
  */
 test.describe("AI Advisor chat", () => {
+  test.skip(!!process.env.E2E_SKIP_AI, "Requires local Ollama models — not available on CI runners");
   test.beforeEach(async ({ page }) => {
     await page.goto("/api/test-auth?email=admin@dharma.local");
     await page.waitForURL("**/dashboard");
