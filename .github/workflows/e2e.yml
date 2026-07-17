@@ -45,6 +45,11 @@ jobs:
           sed -e 's/TODO_[A-Z0-9_]*/ci-only-secret-0123456789abcdef0123456789abcdef/g' \
               -e 's|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:3000|' \
               envs/.env.docker.example > envs/.env.docker
+          # The container runs NODE_ENV=production, which 403s the
+          # /api/test-auth and /api/test-seed-pentest backdoors Playwright
+          # logs in through — every spec then times out on waitForURL.
+          # CI-only flag; never set this in a real deployment.
+          echo "ENABLE_E2E_AUTH=true" >> envs/.env.docker
 
       - name: Build application images
         run: |
