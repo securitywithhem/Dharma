@@ -75,15 +75,37 @@ jobs:
     env:
       DATABASE_URL: postgresql://dharma:password@localhost:5432/dharma_test?schema=public
       REDIS_URL: redis://localhost:6379
+      # Explicit MinIO creds: the codebase has TWO client modules with
+      # DIFFERENT secret-key fallbacks (src/server/minio.ts → "minioadmin",
+      # env.ts/minioClient.ts → "minioadmin_change_me"), so relying on
+      # defaults gives signature mismatches. Must match the Start MinIO step.
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      ANCHOR_STORAGE_ACCESS_KEY: minioadmin
+      ANCHOR_STORAGE_SECRET_KEY: minioadmin
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      # As a plain step (not a GHA service) because minio/minio needs the
+      # `server /data` command, which service containers can't pass.
+      # Credentials match the src/env.ts defaults the tests fall back to.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data
+          timeout 60s bash -c 'until curl -sf http://localhost:9000/minio/health/live; do sleep 2; done'
+
       - run: npm ci
       - run: npx prisma migrate deploy --schema packages/db/schema.prisma
-      - run: npm test
+      # --forceExit: suites that import routers pull in BullMQ queues whose
+      # Redis connections keep the event loop alive, hanging jest forever.
+      - run: npm test -- --forceExit
       - uses: codecov/codecov-action@v5
         with:
           files: ./coverage/lcov.info
@@ -124,12 +146,15 @@ jobs:
         id: meta
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
+          # The two {{branch}}-based tags are push-only: {{branch}} is empty on
+          # pull_request (merge ref) and would render an invalid ":-<sha>" tag.
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=raw,value={{branch}}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - uses: docker/build-push-action@v5
@@ -264,8 +289,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-production, deploy-staging]
     if: failure()
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - name: Send Slack notification
+        # Skip (instead of erroring) when no webhook is configured — an unset
+        # secret must not turn the notifier itself into a failing check.
+        if: env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24
         with:
           payload: |

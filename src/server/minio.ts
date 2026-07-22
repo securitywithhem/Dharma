@@ -127,6 +127,22 @@ export async function initializeMinIOBucket(): Promise<void> {
 // ------------------------------------------------------------------
 
 /**
+ * Presigned URLs are signed against the INTERNAL endpoint (e.g. minio:9000
+ * inside compose/k8s), which browsers cannot resolve. Rewrite host/port to
+ * MINIO_PUBLIC_URL for anything handed to a client — same pattern as
+ * src/lib/storage/minioClient.ts. No-op when the var is unset (bare-host dev).
+ */
+function toPublicUrl(presignedUrl: string): string {
+  if (!process.env.MINIO_PUBLIC_URL) return presignedUrl;
+  const url = new URL(presignedUrl);
+  const publicUrl = new URL(process.env.MINIO_PUBLIC_URL);
+  url.protocol = publicUrl.protocol;
+  url.host = publicUrl.host;
+  url.port = publicUrl.port || "";
+  return url.toString();
+}
+
+/**
  * Generate a presigned PUT URL for direct browser → MinIO uploads.
  * The caller should PUT the file body directly to this URL.
  */
@@ -134,9 +150,10 @@ export async function generatePresignedUploadUrl(
   objectName: string,
   expirySeconds = PRESIGNED_EXPIRY_SECONDS,
 ): Promise<string> {
-  return withRetry(() =>
+  const url = await withRetry(() =>
     minioClient.presignedPutObject(BUCKET_NAME, objectName, expirySeconds),
   );
+  return toPublicUrl(url);
 }
 
 /**
@@ -146,9 +163,10 @@ export async function generatePresignedDownloadUrl(
   objectName: string,
   expirySeconds = PRESIGNED_EXPIRY_SECONDS,
 ): Promise<string> {
-  return withRetry(() =>
+  const url = await withRetry(() =>
     minioClient.presignedGetObject(BUCKET_NAME, objectName, expirySeconds),
   );
+  return toPublicUrl(url);
 }
 
 // ------------------------------------------------------------------

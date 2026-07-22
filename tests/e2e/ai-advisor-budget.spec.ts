@@ -9,6 +9,7 @@ import { expect, test } from "@playwright/test";
  * endpoint or fixture), mirrored from the pentest seed pattern.
  */
 test.describe("AI Advisor budget enforcement", () => {
+  test.skip(!!process.env.E2E_SKIP_AI, "Requires local Ollama models — not available on CI runners");
   test.beforeEach(async ({ page }) => {
     await page.goto("/api/test-auth?email=admin@dharma.local");
     await page.waitForURL("**/dashboard");

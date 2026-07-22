@@ -189,7 +189,9 @@ export const webhookRouter = createTRPCRouter({
 
       return ctx.prisma.webhookDelivery.findMany({
         where: { webhookId: input.webhookId },
-        orderBy: { createdAt: "desc" },
+        // id (cuid, time-prefixed) breaks createdAt ties — deliveries fired in
+        // the same millisecond would otherwise come back in arbitrary order.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: input.limit,
       });
     }),

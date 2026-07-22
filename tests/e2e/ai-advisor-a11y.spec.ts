@@ -10,6 +10,7 @@ import AxeBuilder from "@axe-core/playwright";
 const KNOWN_PRE_EXISTING_RULE_IDS = new Set(["color-contrast"]);
 
 test.describe("AI Advisor accessibility", () => {
+  test.skip(!!process.env.E2E_SKIP_AI, "Requires local Ollama models — not available on CI runners");
   test.beforeEach(async ({ page }) => {
     await page.goto("/api/test-auth?email=admin@dharma.local");
     await page.waitForURL("**/dashboard");

@@ -18,16 +18,26 @@ RUN apk add --no-cache \
 
 COPY package.json package-lock.json ./
 COPY packages/db/schema.prisma ./packages/db/schema.prisma
+COPY scripts/fix-readdir-glob-exports.js ./scripts/fix-readdir-glob-exports.js
 
 RUN npm ci --ignore-scripts
 
-# Generate Prisma client in the deps stage
+# --ignore-scripts skips postinstall, so run its two steps explicitly:
+# the readdir-glob exports fix (webpack rejects archiver without it) and
+# the Prisma client generation.
+RUN node scripts/fix-readdir-glob-exports.js
 RUN npx prisma generate --schema packages/db/schema.prisma
 
 # ── Stage 2: Build the application ───────────────────────────
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# openssl is required here too: `npm run build` re-runs `prisma generate`,
+# and without libssl Prisma's detection falls back to the openssl-1.1.x
+# engine, which cannot load on current Alpine (no libssl.so.1.1) and kills
+# next build's page-data collection on amd64.
+RUN apk add --no-cache libc6-compat openssl
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/db/schema.prisma ./packages/db/schema.prisma
@@ -73,6 +83,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages         ./packages
 # Copy entrypoint and scripts
 COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Seed inputs: the entrypoint's SEED_DATABASE=true path runs `npm run seed:all`,
+# whose scripts live in scripts/ (seed-frameworks) and prisma/ (seed-templates).
+# The entrypoint is set -e, so missing files would crash the container.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts          ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/prisma           ./prisma
 
 USER nextjs
 

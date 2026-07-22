@@ -8,6 +8,7 @@ import fs from "fs";
  * Requires a running app + ingestion worker + Ollama.
  */
 test.describe("AI Advisor document upload", () => {
+  test.skip(!!process.env.E2E_SKIP_AI, "Requires local Ollama models — not available on CI runners");
   test.beforeEach(async ({ page }) => {
     await page.goto("/api/test-auth?email=admin@dharma.local");
     await page.waitForURL("**/dashboard");

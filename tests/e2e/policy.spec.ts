@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("AI Policy Wizard Flow", () => {
+// Rewritten for the template-first builder (the old "AI Policy Wizard" UI this
+// spec originally drove no longer exists). The AI-audit step that follows
+// Step 3 needs local Ollama models, so the spec stops at the details step.
+test.describe("Template-first policy builder", () => {
   test.beforeEach(async ({ page }) => {
     // Authenticate using the test backdoor
     await page.goto("/api/test-auth?email=admin@dharma.local");
@@ -10,28 +13,30 @@ test.describe("AI Policy Wizard Flow", () => {
   test("policy generation wizard workflow", async ({ page }) => {
     await page.goto("/dashboard/policies/new");
 
-    // Verify page header
-    await expect(page.getByText("AI Policy Wizard")).toBeVisible();
-    await expect(page.getByText("Step 1: Select Policy Type")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Template-First Policy Builder" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Step 1: Choose a template" }),
+    ).toBeVisible();
 
-    // Select policy type
-    await page.locator("select").selectOption("PRIVACY_POLICY");
-    await page.getByRole("button", { name: "Next Step" }).click();
+    const continueBtn = page.getByRole("button", { name: "Continue" });
+    await expect(continueBtn).toBeDisabled();
 
-    // Verify step 2
-    await expect(page.getByText("Step 2: Organizational Context")).toBeVisible();
-    const textarea = page.locator("textarea");
-    await expect(textarea).toBeVisible();
+    // Template cards are buttons showing "<TYPE> · v<version>" — present only
+    // when the database is seeded (SEED_DATABASE=true in CI).
+    const firstTemplate = page
+      .getByRole("button")
+      .filter({ hasText: /· v\d/ })
+      .first();
+    await expect(firstTemplate).toBeVisible({ timeout: 10000 });
+    await firstTemplate.click();
 
-    // Fill organizational context
-    await textarea.fill("Dharma E2E test company context for data compliance policy drafting.");
+    await expect(continueBtn).toBeEnabled();
+    await continueBtn.click();
 
-    // Submit for generation
-    const generateBtn = page.getByRole("button", { name: "Generate Policy" });
-    await expect(generateBtn).toBeEnabled();
-    await generateBtn.click();
-
-    // Step 3 shows loading status initially
-    await expect(page.getByText("Drafting Policy...")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Step 2: Fill in your details/ }),
+    ).toBeVisible();
   });
 });

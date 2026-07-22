@@ -1,8 +1,15 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2026-06-24.dahlia',
-});
+// Placeholder fallback: the constructor must not throw at module import —
+// `next build` executes this module while collecting page data for routes
+// that (transitively) import the app router, in environments with no Stripe
+// config. Real billing calls fail with an auth error if the key is unset.
+const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY ?? 'sk_test_placeholder_module_import_only',
+  {
+    apiVersion: '2026-06-24.dahlia',
+  }
+);
 
 export default stripe;
 

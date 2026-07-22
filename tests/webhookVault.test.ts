@@ -1,9 +1,9 @@
 process.env.WEBHOOK_ENCRYPTION_KEY =
   process.env.WEBHOOK_ENCRYPTION_KEY ??
-  "db4b123385e764d3ba36c585a895c339884dc4be8dd081e8fe9415c0d13ce89";
+  "2663fe6fbfc3ad8bccefdd22386906a66e7ed93d9433b7ed9de17fcbace9c4c6";
 process.env.CONNECTOR_ENCRYPTION_KEY =
   process.env.CONNECTOR_ENCRYPTION_KEY ??
-  "d41829a3f639e0b691ca7ab133b091d0af70733eb2b1a9ff0a7ac66d44f84b7";
+  "63f0fdbfb1adecbbe70619602bbffd2243b78170bb71bb02225c6603f0edccc3";
 
 import {
   encryptWebhookSecret,
