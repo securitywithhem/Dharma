@@ -366,12 +366,12 @@ describe("evidence.getById", () => {
     // Mock MinIO presigned URL generation
     const { minioClient } = await import("@/server/minio");
     const mockedMinIO = jest.spyOn(minioClient, "presignedGetObject") as any;
-    mockedMinIO.mockResolvedValue("https://minio.local/presigned/mfa-screenshot.png?token=abc");
+    mockedMinIO.mockResolvedValue("http://localhost:9000/presigned/mfa-screenshot.png?token=abc");
 
     const result = await caller.evidence.getById({ id: evidenceId });
 
     expect(result.id).toBe(evidenceId);
-    expect(result.downloadUrl).toContain("minio.local");
+    expect(result.downloadUrl).toContain("localhost:9000/presigned");
     expect(result.control).toBeDefined();
     expect(result.control.title).toBeDefined();
 
