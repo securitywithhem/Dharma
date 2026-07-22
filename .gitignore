@@ -43,3 +43,6 @@ tsconfig.tsbuildinfo
 *.tfstate.*
 *.tfplan
 crash.log
+
+# Obsidian local UI state (open tabs, graph view position) — not project content
+**/.obsidian/
