@@ -27,7 +27,7 @@ export default function CrossWalkPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Cross-Walk Mapping</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Map equivalent controls between frameworks and see coverage overlap at a glance.
         </p>
       </div>
@@ -45,7 +45,7 @@ export default function CrossWalkPage() {
           />
 
           {bothSelected && (
-            <div className="flex rounded-md border border-border p-0.5" role="group" aria-label="Cross-walk view">
+            <div className="flex rounded-md border border-dharma-border p-0.5" role="group" aria-label="Cross-walk view">
               <Button
                 variant={view === "heatmap" ? "default" : "ghost"}
                 size="sm"
@@ -72,10 +72,10 @@ export default function CrossWalkPage() {
       </Card>
 
       {!bothSelected ? (
-        <div className="rounded-lg border border-dashed border-border py-16 text-center">
-          <Grid3x3 className="mx-auto h-8 w-8 text-muted-foreground/40" />
+        <div className="rounded-lg border border-dashed border-dharma-border py-16 text-center">
+          <Grid3x3 className="mx-auto h-8 w-8 text-dharma-ink-secondary" />
           <p className="mt-3 text-sm font-medium">Choose two frameworks to compare</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-dharma-ink-secondary">
             Select a Framework A and Framework B above to see their overlap and build mappings.
           </p>
         </div>
@@ -94,7 +94,7 @@ export default function CrossWalkPage() {
               )}
             </div>
             {drillDown && view === "picker" && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-dharma-ink-secondary">
                 Drilled in from the heatmap cell — showing the full mapping picker below.
               </p>
             )}

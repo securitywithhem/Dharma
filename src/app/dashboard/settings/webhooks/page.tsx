@@ -128,7 +128,7 @@ function SecretRevealDialog({ secret, onClose }: { secret: string; onClose: () =
         </DialogHeader>
 
         <div className="relative">
-          <pre className="text-xs bg-stone-950 text-stone-100 rounded-lg p-3 overflow-x-auto break-all whitespace-pre-wrap">
+          <pre className="text-xs bg-dharma-ink text-dharma-ink-inverse rounded-lg p-3 overflow-x-auto break-all whitespace-pre-wrap">
             {secret}
           </pre>
           <Button variant="ghost" size="sm" className="absolute top-1 right-1" onClick={handleCopy}>
@@ -184,7 +184,7 @@ export default function WebhooksSettingsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-          <p className="text-muted-foreground">
+          <p className="text-dharma-ink-secondary">
             Trigger external workflows when evidence is updated or a control fails.
           </p>
         </div>
@@ -198,7 +198,7 @@ export default function WebhooksSettingsPage() {
           ))}
         </div>
       ) : !webhooks || webhooks.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">
+        <p className="text-sm text-dharma-ink-secondary py-8 text-center">
           No webhooks configured yet. Add one to get started.
         </p>
       ) : (
@@ -210,7 +210,7 @@ export default function WebhooksSettingsPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
                     <CardTitle className="text-base font-mono">{webhook.url}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-dharma-ink-secondary mt-1">
                       Secret: {webhook.secretPreview} ·{' '}
                       {webhook.isActive ? 'Active' : 'Disabled'}
                     </p>
@@ -253,7 +253,7 @@ export default function WebhooksSettingsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(webhook.id)}
-                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      className="text-dharma-danger-text hover:bg-dharma-surface-hover"
                       title="Delete webhook"
                     >
                       <Trash2 className="w-4 h-4" />

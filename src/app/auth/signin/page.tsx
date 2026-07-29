@@ -37,23 +37,23 @@ export default function SignInPage() {
   const canSubmitEmail = emailEnabled && !isSubmitting && email.length > 0;
 
   return (
-    <main className="surface-paper relative flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <main className="surface-paper relative flex min-h-screen items-center justify-center bg-dharma-bg px-4 py-10">
       {/* A single soft indigo wash from the top, replacing the amber radials
           left over from the retired warm identity. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-dharma-radial" />
+      <div aria-hidden className="pointer-events-none absolute inset-0" />
 
       <div className="relative w-full max-w-[26rem]">
         <div className="mb-7 flex flex-col items-center text-center">
-          <DharmaMark className="h-9 w-9 text-primary" />
+          <DharmaMark className="h-9 w-9 text-dharma-accent-on-tint" />
           <h1 className="mt-3 font-display text-2xl font-semibold tracking-[-0.02em]">
             Sign in to Dharma
           </h1>
-          <p className="mt-1.5 text-data text-muted-foreground">
+          <p className="mt-1.5 text-data text-dharma-ink-secondary">
             Enter your compliance workspace.
           </p>
         </div>
 
-        <Card className="shadow-md">
+        <Card className="border border-dharma-border">
           <CardContent className="space-y-5 p-5">
             <Button
               size="lg"
@@ -67,7 +67,7 @@ export default function SignInPage() {
 
             <div className="flex items-center gap-3">
               <hr className="rule flex-1" />
-              <span className="text-micro uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="text-micro uppercase tracking-[0.12em] text-dharma-ink-secondary">
                 or
               </span>
               <hr className="rule flex-1" />
@@ -102,7 +102,7 @@ export default function SignInPage() {
                 </Button>
               </div>
               {!emailEnabled && (
-                <p id="email-help" className="text-micro text-muted-foreground">
+                <p id="email-help" className="text-micro text-dharma-ink-secondary">
                   Magic links activate once SMTP variables are set.
                 </p>
               )}
@@ -110,10 +110,10 @@ export default function SignInPage() {
           </CardContent>
         </Card>
 
-        <p className="mt-5 text-center text-micro text-muted-foreground">
+        <p className="mt-5 text-center text-micro text-dharma-ink-secondary">
           Trouble signing in?{" "}
           <Link
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            className="font-medium text-dharma-accent-on-tint underline-offset-4 hover:underline"
             href="/auth/error"
           >
             Review auth errors

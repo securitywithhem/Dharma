@@ -91,16 +91,21 @@ export default function OnboardingPage() {
                 key={step.id}
                 className="flex flex-col items-center z-10"
               >
-                <motion.div
-                  animate={{
-                    backgroundColor:
-                      index <= currentStepIndex ? '#D97706' : '#E7E5E4',
-                  }}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md"
+                {/* Step state is a class swap rather than an animated
+                    backgroundColor. The literal it replaced was the retired
+                    saffron primary, and Framer Motion cannot interpolate a
+                    hsl(var(--primary)) token, so animating the colour would
+                    have meant hardcoding a brand value here again. */}
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-150 ${
+                    index <= currentStepIndex
+                      ? 'bg-dharma-accent text-dharma-ink-inverse'
+                      : 'bg-dharma-surface-hover text-dharma-ink-secondary'
+                  }`}
                 >
                   {index + 1}
-                </motion.div>
-                <p className="text-xs mt-2 text-stone-600 dark:text-stone-400 text-center w-20">
+                </div>
+                <p className="text-xs mt-2 text-dharma-ink-secondary text-center w-20">
                   {step.label}
                 </p>
               </motion.div>
@@ -108,11 +113,11 @@ export default function OnboardingPage() {
           </div>
 
           {/* Progress Line */}
-          <div className="w-full h-1 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden -mt-16 mb-16 relative top-5 z-0">
+          <div className="w-full h-1 bg-dharma-surface-hover rounded-full overflow-hidden -mt-16 mb-16 relative top-5 z-0">
             <motion.div
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.5 }}
-              className="h-full bg-gradient-to-r from-amber-600 to-emerald-600"
+              className="h-full bg-dharma-accent"
             />
           </div>
         </motion.div>

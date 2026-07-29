@@ -3,9 +3,9 @@ import { extendTailwindMerge } from "tailwind-merge";
 
 // tailwind-merge must be taught this project's custom fontSize keys
 // (tailwind.config.ts: micro/meta/data/display-*). Without this it cannot tell
-// `text-data` (a size) from `text-primary-foreground` (a colour), classes them
+// `text-data` (a size) from `text-dharma-ink-inverse` (a colour), classes them
 // into the same group, and drops whichever came first — so
-// `cn("bg-primary text-primary-foreground", "text-data")` silently loses the
+// `cn("bg-dharma-accent text-dharma-ink-inverse", "text-data")` silently loses the
 // text colour.
 //
 // That is not hypothetical: it stripped the foreground from every

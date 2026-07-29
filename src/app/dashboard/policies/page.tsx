@@ -11,7 +11,7 @@ export default function PoliciesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Policies</h1>
-        <p className="text-muted-foreground">
+        <p className="text-dharma-ink-secondary">
           Keep the drafts your team needs for audits, customers, and internal reviews.
         </p>
       </div>
@@ -31,8 +31,8 @@ export default function PoliciesPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="line-clamp-3 text-sm text-muted-foreground">{policy.content}</p>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="line-clamp-3 text-sm text-dharma-ink-secondary">{policy.content}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-dharma-ink-secondary">
                 Version {policy.version}
               </p>
             </CardContent>

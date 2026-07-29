@@ -64,6 +64,23 @@
     --info: 231 48% 40%;
     --info-foreground: 40 45% 98%;
 
+    /* Text colour for TINTED treatments — the badge/chip pattern where the
+       role colour is washed over the card at ~12% and the label is set in the
+       same role. `-foreground` is the opposite case (text ON a solid fill).
+       Two different jobs, so two different tokens.
+       Most of these equal their base token; they exist as a complete set so
+       the component rule is uniform ("tinted text always uses -on-tint")
+       rather than a lookup of which roles happen to need an override.
+       Haldi is the reason this exists at all: at 46% lightness `text-warning`
+       on a 12% haldi wash reached only 2.71:1. Same root cause the file
+       already notes for --warning-foreground being ink rather than paper.
+       Machine-checked by scripts/validate-token-contrast.js. */
+    --success-on-tint: 145 30% 32%;
+    --warning-on-tint: 38 62% 34%;
+    --critical-on-tint: 8 62% 44%;
+    --info-on-tint: 231 48% 40%;
+    --accent-on-tint: 38 62% 34%;
+
     /* Severity ramp — one step per member of the Prisma `Severity` enum
        (NONE/LOW/MEDIUM/HIGH/CRITICAL, packages/db/schema.prisma). Distinct
        from the --success/--warning/--critical status tokens above: status
@@ -80,6 +97,15 @@
     --severity-medium: 44 88% 27%;
     --severity-high: 20 88% 39%;
     --severity-critical: 354 68% 38%;
+
+    /* Severity label colour on the 12% wash StatusBadge paints. The dot keeps
+       the base token above (a 2px dot is a graphical object at 3:1); only the
+       text steps darken, and only where the wash costs it AA. */
+    --severity-none-on-tint: 40 8% 40%;
+    --severity-low-on-tint: 145 34% 30%;
+    --severity-medium-on-tint: 44 88% 27%;
+    --severity-high-on-tint: 20 88% 38%;
+    --severity-critical-on-tint: 354 68% 38%;
 
     /* Categorical data ramp. Assign in this fixed order, never cycled — colour
        must follow the entity, not its rank, or filtering repaints the
@@ -145,6 +171,15 @@
     --info: 232 72% 70%;
     --info-foreground: 226 30% 10%;
 
+    /* Tinted-text set for ink mode. Here the wash darkens rather than lightens
+       the surface, so the corrections run the other way: --critical needs to
+       go UP in lightness, not down. */
+    --success-on-tint: 145 40% 52%;
+    --warning-on-tint: 38 70% 58%;
+    --critical-on-tint: 6 65% 61%;
+    --info-on-tint: 232 72% 70%;
+    --accent-on-tint: 38 70% 58%;
+
     /* Severity keeps its HUE across modes — an auditor moving between the
        console and an exported light-mode report must not have to relearn the
        ramp. Only lightness moves, and only as far as the dark card surface
@@ -154,6 +189,12 @@
     --severity-medium: 44 78% 55%;
     --severity-high: 22 84% 62%;
     --severity-critical: 354 76% 68%;
+
+    --severity-none-on-tint: 40 6% 54%;
+    --severity-low-on-tint: 145 48% 60%;
+    --severity-medium-on-tint: 44 78% 55%;
+    --severity-high-on-tint: 22 84% 62%;
+    --severity-critical-on-tint: 354 76% 68%;
 
     /* Dark-mode chart steps are SELECTED, not an automatic lightening of the
        light ramp — separately validated against the dark card surface. */
@@ -166,12 +207,20 @@
     --seq-1: 230 24% 22%;
     --seq-2: 230 34% 32%;
     --seq-3: 230 46% 44%;
-    --seq-4: 230 56% 56%;
+    /* 54%, not 56%: the crosswalk OverlapHeatmap sets a numeric label directly
+       on this step, and at 56% the label reached only 4.38:1 against
+       --foreground — just under AA. 54% gives 4.78:1 and keeps the ramp
+       monotonic. */
+    --seq-4: 230 56% 54%;
     --seq-5: 230 66% 70%;
   }
 
+  /* Warm Paper (2026-07-29): the base layer paints from --dharma-* now, so the
+     whole app grounds on paper even where a component has not been retokened.
+     The HSL tokens above are retained for the chart/sequential ramps, which
+     Warm Paper supplies no replacement for — see 0_DESIGN_SYSTEM.md. */
   * {
-    @apply border-border;
+    @apply border-dharma-border;
   }
 
   html {
@@ -180,8 +229,9 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply bg-dharma-bg text-dharma-ink;
+    /* Public Sans has no cv02/cv03/cv04/cv11 stylistic sets — those were Inter
+       Tight's. Kept `ss01` off deliberately; the default forms are correct. */
     text-rendering: optimizeLegibility;
   }
 
@@ -196,20 +246,23 @@
 
   /* One visible, high-contrast focus ring for keyboard users across the whole
      app — never removed, only restyled. */
+  /* Accent, not a border token: neither --dharma-surface-border (1.35:1) nor
+     -border-strong (1.53:1) clears the 3:1 WCAG 1.4.11 floor, so neither may
+     be the sole indicator of focus. */
   :focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-dharma-accent ring-offset-2 ring-offset-dharma-bg;
   }
 
   ::selection {
-    background-color: hsl(var(--accent) / 0.28);
-    color: hsl(var(--foreground));
+    background-color: var(--dharma-accent-tint-bg);
+    color: var(--dharma-accent-on-tint);
   }
 
   /* Thin, surface-coloured scrollbars — the default chrome ones read as
      unfinished against a warm paper background. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: var(--dharma-surface-border) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -222,14 +275,14 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--border));
+    background-color: var(--dharma-surface-border);
     border: 3px solid transparent;
     background-clip: content-box;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--muted-foreground) / 0.5);
+    background-color: var(--dharma-surface-border-strong);
   }
 }
 
@@ -258,12 +311,12 @@
   /* Section label — small caps tracking used to title dense data regions
      without spending a heading level on them. */
   .label-eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-dharma-ink-secondary;
   }
 
   /* Hairline rule that matches the border token at sub-pixel weight. */
   .rule {
-    @apply h-px w-full border-0 bg-border;
+    @apply h-px w-full border-0 bg-dharma-border;
   }
 }
 

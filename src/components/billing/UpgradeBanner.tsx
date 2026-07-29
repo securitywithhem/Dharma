@@ -23,10 +23,10 @@ export function UpgradeBanner() {
 
   return (
     <div
-      className={`rounded-lg p-4 flex items-center justify-between shadow-sm mb-6 ${
+      className={`rounded-lg p-4 flex items-center justify-between border border-dharma-border mb-6 ${
         isOverLimit
-          ? "bg-destructive/10 text-destructive border border-destructive/20"
-          : "bg-amber-500/10 text-amber-700 border border-amber-500/20 dark:text-amber-400"
+          ? "bg-dharma-danger-bg text-dharma-danger-text border border-dharma-danger"
+          : "bg-dharma-warning-bg text-dharma-ink border border-dharma-warning"
       }`}
     >
       <div className="flex items-center gap-3">

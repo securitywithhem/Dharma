@@ -223,19 +223,19 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
             className={cn(
               'relative rounded-lg border-2 border-dashed p-8 text-center transition-colors',
               isDragActive
-                ? 'border-primary bg-primary/5'
-                : 'border-border bg-card hover:border-border/80'
+                ? 'border-dharma-accent bg-dharma-accent-tint'
+                : 'border-dharma-border bg-dharma-surface hover:border-dharma-border'
             )}
           >
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-lg bg-muted p-3">
-                <Upload className="h-6 w-6 text-muted-foreground" />
+              <div className="rounded-lg bg-dharma-surface-hover p-3">
+                <Upload className="h-6 w-6 text-dharma-ink-secondary" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-dharma-ink">
                   Drag and drop files here
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-dharma-ink-secondary">
                   or click to browse (Images, PDFs, JSON, TXT, LOG — up to 50MB)
                 </p>
               </div>
@@ -258,9 +258,9 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
           </div>
 
           {error && (
-            <div className="mt-4 flex gap-2 rounded-lg border border-critical/30 bg-critical/5 p-3">
-              <AlertCircle className="h-4 w-4 flex-shrink-0 text-critical" />
-              <p className="text-sm text-critical">{error}</p>
+            <div className="mt-4 flex gap-2 rounded-lg border border-dharma-danger bg-dharma-danger-bg p-3">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 text-dharma-danger-text" />
+              <p className="text-sm text-dharma-danger-text">{error}</p>
             </div>
           )}
         </CardContent>
@@ -283,15 +283,15 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
+              <span className="text-dharma-ink-secondary">
                 {state === 'uploading' ? 'Uploading file' : 'Analyzing with AI'}
               </span>
-              <span className="font-medium text-foreground">{uploadProgress}%</span>
+              <span className="font-medium text-dharma-ink">{uploadProgress}%</span>
             </div>
             <Progress value={uploadProgress} className="h-2" />
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-dharma-ink-secondary">
             {state === 'uploading'
               ? 'Transferring your file to secure storage...'
               : 'Analyzing evidence and matching to compliance frameworks...'}
@@ -315,13 +315,13 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* File badge */}
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-3">
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 rounded-lg border border-dharma-border bg-dharma-surface-hover p-3">
+            <FileText className="h-4 w-4 text-dharma-ink-secondary" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">
+              <p className="truncate text-sm font-medium text-dharma-ink">
                 {evidence.fileName}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-dharma-ink-secondary">
                 {(evidence.size / 1024 / 1024).toFixed(2)}MB
               </p>
             </div>
@@ -329,7 +329,7 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
 
           {/* Suggestions */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">
+            <p className="text-sm font-medium text-dharma-ink">
               Suggested controls ({evidence.suggestions.length})
             </p>
             <div className="space-y-2">
@@ -340,29 +340,29 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
                   className={cn(
                     'w-full rounded-lg border p-3 text-left transition-colors',
                     selectedSuggestion?.control === suggestion.control
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border bg-card hover:bg-muted/50'
+                      ? 'border-dharma-accent bg-dharma-accent-tint'
+                      : 'border-dharma-border bg-dharma-surface hover:bg-dharma-surface-hover'
                   )}
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-dharma-ink">
                           {suggestion.framework}
                         </p>
                         <Badge variant="secondary" className="ml-auto flex-shrink-0">
                           {suggestion.confidence}%
                         </Badge>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                      <p className="mt-1 text-xs text-dharma-ink-secondary line-clamp-2">
                         {suggestion.control}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-dharma-ink-secondary">
                         {suggestion.description}
                       </p>
                     </div>
                     {selectedSuggestion?.control === suggestion.control && (
-                      <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-primary mt-0.5" />
+                      <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-dharma-accent-on-tint mt-0.5" />
                     )}
                   </div>
                 </button>
@@ -371,7 +371,7 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-3 justify-end border-t border-border pt-4">
+          <div className="flex gap-3 justify-end border-t border-dharma-border pt-4">
             <Button type="button" variant="outline" onClick={handleReset} size="sm">
               Cancel
             </Button>
@@ -397,57 +397,57 @@ export function EvidenceUploadFlow({ onSuccess }: EvidenceUploadFlowProps) {
       <Card>
         <CardHeader>
           <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-success/10 p-2.5">
-              <CheckCircle2 className="h-5 w-5 text-success" />
+            <div className="rounded-lg bg-dharma-success-bg p-2.5">
+              <CheckCircle2 className="h-5 w-5 text-dharma-success-text" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-success">Evidence uploaded</CardTitle>
+              <CardTitle className="text-dharma-success-text">Evidence uploaded</CardTitle>
               <CardDescription>Successfully assigned to compliance framework</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Uploaded file summary */}
-          <div className="rounded-lg border border-border bg-muted/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">File</p>
-            <p className="mt-1 text-sm font-medium text-foreground">{evidence.fileName}</p>
+          <div className="rounded-lg border border-dharma-border bg-dharma-surface-hover p-3">
+            <p className="text-xs font-medium text-dharma-ink-secondary">File</p>
+            <p className="mt-1 text-sm font-medium text-dharma-ink">{evidence.fileName}</p>
           </div>
 
           {/* Assigned control summary */}
-          <div className="rounded-lg border border-success/30 bg-success/5 p-3">
-            <p className="text-xs font-medium text-success">Assigned to</p>
-            <p className="mt-1 text-sm font-medium text-foreground">
+          <div className="rounded-lg border border-dharma-success bg-dharma-success-bg p-3">
+            <p className="text-xs font-medium text-dharma-success-text">Assigned to</p>
+            <p className="mt-1 text-sm font-medium text-dharma-ink">
               {selectedSuggestion.framework}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+            <p className="mt-1 text-xs text-dharma-ink-secondary line-clamp-2">
               {selectedSuggestion.control}
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-dharma-ink-secondary">
               {selectedSuggestion.description}
             </p>
           </div>
 
           {/* Next steps */}
-          <div className="rounded-lg border border-border bg-muted/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Next steps</p>
-            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+          <div className="rounded-lg border border-dharma-border bg-dharma-surface-hover p-3">
+            <p className="text-xs font-medium text-dharma-ink-secondary">Next steps</p>
+            <ul className="mt-2 space-y-1 text-xs text-dharma-ink-secondary">
               <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                <span className="h-1 w-1 rounded-full bg-dharma-surface-hover-foreground" />
                 Review similar controls in the same framework
               </li>
               <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                <span className="h-1 w-1 rounded-full bg-dharma-surface-hover-foreground" />
                 Upload additional evidence for comprehensive coverage
               </li>
               <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                <span className="h-1 w-1 rounded-full bg-dharma-surface-hover-foreground" />
                 Check your readiness dashboard for updated compliance score
               </li>
             </ul>
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-3 justify-end border-t border-border pt-4">
+          <div className="flex gap-3 justify-end border-t border-dharma-border pt-4">
             <Button type="button" variant="outline" onClick={handleReset} size="sm">
               Upload another
             </Button>

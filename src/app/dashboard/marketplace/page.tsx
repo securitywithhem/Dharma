@@ -39,7 +39,7 @@ export default function MarketplacePage() {
     <div className="space-y-6">
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Marketplace</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-dharma-ink-secondary mt-2">
           Browse and import compliance frameworks, templates, and connectors.
         </p>
       </div>
@@ -60,7 +60,7 @@ export default function MarketplacePage() {
             {/* Featured Section (on page 1) */}
             {filters.page === 1 && !filters.category && !filters.type && featured && featured.length > 0 && (
               <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-4">
+                <h2 className="text-2xl font-semibold text-dharma-ink mb-4">
                   ⭐ Featured
                 </h2>
                 <MarketplaceGrid items={featured as any} />
@@ -70,11 +70,11 @@ export default function MarketplacePage() {
             {/* Search Results */}
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold text-foreground">
+                <h2 className="text-2xl font-semibold text-dharma-ink">
                   All Items
                 </h2>
                 {itemsData && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-dharma-ink-secondary">
                     {itemsData.total} results
                   </p>
                 )}
@@ -82,14 +82,14 @@ export default function MarketplacePage() {
 
               {isLoading ? (
                 <div className="flex justify-center items-center py-20">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <Loader2 className="h-8 w-8 animate-spin text-dharma-accent-on-tint" />
                 </div>
               ) : itemsData?.items && itemsData.items.length > 0 ? (
                 <>
                   <MarketplaceGrid items={itemsData.items as any} />
 
                   {/* Pagination */}
-                  <div className="mt-10 flex justify-between items-center border-t border-border pt-6">
+                  <div className="mt-10 flex justify-between items-center border-t border-dharma-border pt-6">
                     <button
                       onClick={() =>
                         handleFilterChange({
@@ -98,12 +98,12 @@ export default function MarketplacePage() {
                         })
                       }
                       disabled={filters.page === 1}
-                      className="px-4 py-2 border border-input rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 border border-dharma-border-strong rounded-md text-sm font-medium transition-colors hover:bg-dharma-accent hover:text-dharma-ink-inverse disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       &larr; Previous
                     </button>
 
-                    <span className="text-sm text-muted-foreground font-medium">
+                    <span className="text-sm text-dharma-ink-secondary font-medium">
                       Page {filters.page} of {Math.max(1, Math.ceil((itemsData.count || 0) / 20))}
                     </span>
 
@@ -115,16 +115,16 @@ export default function MarketplacePage() {
                         })
                       }
                       disabled={filters.page >= Math.ceil((itemsData.count || 0) / 20)}
-                      className="px-4 py-2 border border-input rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 border border-dharma-border-strong rounded-md text-sm font-medium transition-colors hover:bg-dharma-accent hover:text-dharma-ink-inverse disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next &rarr;
                     </button>
                   </div>
                 </>
               ) : (
-                <div className="text-center py-20 bg-card rounded-xl border border-dashed border-border">
-                  <p className="text-muted-foreground text-lg mb-2">No items found</p>
-                  <p className="text-sm text-muted-foreground">Try adjusting your filters to see more results.</p>
+                <div className="text-center py-20 bg-dharma-surface rounded-xl border border-dashed border-dharma-border">
+                  <p className="text-dharma-ink-secondary text-lg mb-2">No items found</p>
+                  <p className="text-sm text-dharma-ink-secondary">Try adjusting your filters to see more results.</p>
                 </div>
               )}
             </div>

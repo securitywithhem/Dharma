@@ -116,7 +116,7 @@ export function ControlDetailModal({
 
         {isError && (
           <div role="alert" className="py-8 text-center space-y-2">
-            <p className="text-destructive font-medium">Failed to load control details.</p>
+            <p className="text-dharma-danger-text font-medium">Failed to load control details.</p>
             <Button variant="outline" size="sm" onClick={onClose}>
               Close
             </Button>
@@ -127,15 +127,15 @@ export function ControlDetailModal({
           <>
             <DialogHeader>
               <div className="flex items-start gap-3 pr-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <BookOpen className="h-4 w-4 text-primary" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-dharma-accent-tint">
+                  <BookOpen className="h-4 w-4 text-dharma-accent-on-tint" />
                 </div>
                 <div className="min-w-0">
                   <DialogTitle id="control-detail-title" className="text-base leading-tight">
                     {control.title}
                   </DialogTitle>
                   <DialogDescription className="mt-0.5">
-                    <span className="text-xs font-medium text-primary/70">
+                    <span className="text-xs font-medium text-dharma-accent-on-tint">
                       {control.framework.name}
                     </span>
                     {" · "}
@@ -147,7 +147,7 @@ export function ControlDetailModal({
 
             <div className="space-y-6">
               {/* Status selector */}
-              <div className="rounded-lg border border-border/70 p-4 space-y-3">
+              <div className="rounded-lg border border-dharma-border p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <label
@@ -156,7 +156,7 @@ export function ControlDetailModal({
                     >
                       Compliance Status
                     </label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-dharma-ink-secondary mt-0.5">
                       Changes are logged in the audit trail
                     </p>
                   </div>
@@ -182,7 +182,7 @@ export function ControlDetailModal({
                     {STATUS_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         <span className="font-medium">{opt.label}</span>
-                        <span className="ml-1.5 text-xs text-muted-foreground">
+                        <span className="ml-1.5 text-xs text-dharma-ink-secondary">
                           — {opt.description}
                         </span>
                       </SelectItem>
@@ -191,12 +191,12 @@ export function ControlDetailModal({
                 </Select>
 
                 {updateMutation.isSuccess && (
-                  <p role="status" className="text-xs text-emerald-600 dark:text-emerald-400">
+                  <p role="status" className="text-xs text-dharma-success-text">
                     ✓ Status updated successfully
                   </p>
                 )}
                 {updateMutation.isError && (
-                  <p role="alert" className="text-xs text-destructive">
+                  <p role="alert" className="text-xs text-dharma-danger-text">
                     Failed to update status: {updateMutation.error?.message}
                   </p>
                 )}
@@ -205,21 +205,21 @@ export function ControlDetailModal({
               {/* Description */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-1.5">
-                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <Info className="h-4 w-4 text-dharma-ink-secondary" />
                   Description
                 </h4>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-dharma-ink-secondary leading-relaxed">
                   {control.description}
                 </p>
               </div>
 
               {/* Implementation guidance */}
               {control.guidance && (
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-2">
-                  <h4 className="text-sm font-semibold text-primary">
+                <div className="rounded-lg bg-dharma-accent-tint border border-dharma-accent p-4 space-y-2">
+                  <h4 className="text-sm font-semibold text-dharma-accent-on-tint">
                     Implementation Guidance
                   </h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-dharma-ink-secondary leading-relaxed">
                     {control.guidance}
                   </p>
                 </div>
@@ -229,7 +229,7 @@ export function ControlDetailModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold flex items-center gap-1.5">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <FileText className="h-4 w-4 text-dharma-ink-secondary" />
                     Linked Evidence
                   </h4>
                   <Badge variant="outline" className="text-xs">
@@ -239,12 +239,12 @@ export function ControlDetailModal({
                 </div>
 
                 {control.evidence.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border py-6 text-center">
-                    <FileText className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-dashed border-dharma-border py-6 text-center">
+                    <FileText className="h-6 w-6 text-dharma-ink-secondary mx-auto mb-2" />
+                    <p className="text-sm text-dharma-ink-secondary">
                       No evidence linked yet
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-dharma-ink-secondary mt-0.5">
                       Upload evidence from the Evidence section
                     </p>
                   </div>
@@ -256,16 +256,16 @@ export function ControlDetailModal({
                     {control.evidence.map((ev) => (
                       <li
                         key={ev.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5"
+                        className="flex items-center justify-between gap-3 rounded-lg border border-dharma-border bg-dharma-surface-hover px-3 py-2.5"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <FileText className="h-4 w-4 text-dharma-ink-secondary shrink-0" />
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">
                               {ev.fileName}
                             </p>
                             {ev.summary && (
-                              <p className="text-xs text-muted-foreground truncate">
+                              <p className="text-xs text-dharma-ink-secondary truncate">
                                 {ev.summary}
                               </p>
                             )}
@@ -281,8 +281,8 @@ export function ControlDetailModal({
               </div>
 
               {/* Metadata footer */}
-              <div className="border-t border-border/50 pt-4 flex flex-wrap gap-x-6 gap-y-1">
-                <p className="text-xs text-muted-foreground">
+              <div className="border-t border-dharma-border pt-4 flex flex-wrap gap-x-6 gap-y-1">
+                <p className="text-xs text-dharma-ink-secondary">
                   Created{" "}
                   {new Date(control.createdAt).toLocaleDateString("en-IN", {
                     day: "numeric",
@@ -290,7 +290,7 @@ export function ControlDetailModal({
                     year: "numeric",
                   })}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-dharma-ink-secondary">
                   Last updated{" "}
                   {new Date(control.updatedAt).toLocaleDateString("en-IN", {
                     day: "numeric",

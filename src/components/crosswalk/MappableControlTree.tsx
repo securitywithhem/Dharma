@@ -51,8 +51,8 @@ export function MappableControlTree({ roots, mappedIds, selectedId, onSelect }: 
           style={{ paddingLeft: depth * INDENT + 4 }}
           onClick={() => onSelect(node)}
           className={cn(
-            "flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-left hover:bg-muted/50",
-            isSelected && "bg-primary/10 ring-1 ring-primary/40",
+            "flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-left hover:bg-dharma-surface-hover",
+            isSelected && "bg-dharma-accent-tint ring-1 ring-dharma-accent",
           )}
         >
           {hasChildren ? (
@@ -62,7 +62,7 @@ export function MappableControlTree({ roots, mappedIds, selectedId, onSelect }: 
                 toggle(node.id);
               }}
               aria-label={isCollapsed ? "Expand" : "Collapse"}
-              className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted"
+              className="shrink-0 rounded p-0.5 text-dharma-ink-secondary hover:bg-dharma-surface-hover"
             >
               <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", !isCollapsed && "rotate-90")} />
             </button>
@@ -75,12 +75,12 @@ export function MappableControlTree({ roots, mappedIds, selectedId, onSelect }: 
           </Badge>
 
           <span className="min-w-0 flex-1 truncate text-sm">
-            {node.code && <span className="mr-1.5 font-mono text-xs text-muted-foreground">{node.code}</span>}
+            {node.code && <span className="mr-1.5 font-mono text-xs text-dharma-ink-secondary">{node.code}</span>}
             {node.title}
           </span>
 
           {isMapped && (
-            <Link2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-label="Has existing mapping(s)" />
+            <Link2 className="h-3.5 w-3.5 shrink-0 text-dharma-success-text" aria-label="Has existing mapping(s)" />
           )}
         </div>
 
@@ -90,7 +90,7 @@ export function MappableControlTree({ roots, mappedIds, selectedId, onSelect }: 
   };
 
   if (roots.length === 0) {
-    return <p className="py-6 text-center text-xs text-muted-foreground">No controls in this framework yet.</p>;
+    return <p className="py-6 text-center text-xs text-dharma-ink-secondary">No controls in this framework yet.</p>;
   }
 
   return (

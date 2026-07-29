@@ -9,11 +9,12 @@ import {
 } from '@react-pdf/renderer';
 import { ReportData } from '@/lib/services/reportGenerator';
 import { format } from 'date-fns';
+import { pdfPalette } from '@/lib/pdf/palette';
 
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: pdfPalette.surface,
     padding: 40,
     fontFamily: 'Helvetica',
     fontSize: 11,
@@ -22,17 +23,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 10,
     borderBottomWidth: 2,
-    borderBottomColor: '#D97706',
+    borderBottomColor: pdfPalette.primary,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1C1917',
+    color: pdfPalette.text,
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 12,
-    color: '#78716C',
+    color: pdfPalette.textMuted,
     marginBottom: 10,
   },
   section: {
@@ -42,21 +43,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#D97706',
+    color: pdfPalette.primary,
     marginBottom: 10,
     paddingBottom: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#E7E5E4',
+    borderBottomColor: pdfPalette.border,
   },
   table: {
     marginVertical: 10,
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: pdfPalette.border,
   },
   tableHeader: {
-    backgroundColor: '#F5F5F4',
+    backgroundColor: pdfPalette.surfaceMuted,
     fontWeight: 'bold',
-    color: '#1C1917',
+    color: pdfPalette.text,
     paddingVertical: 5,
     paddingHorizontal: 8,
   },
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRightWidth: 1,
-    borderRightColor: '#E7E5E4',
+    borderRightColor: pdfPalette.border,
   },
   tableCellLast: {
     borderRightWidth: 0,
@@ -73,9 +74,9 @@ const styles = StyleSheet.create({
     marginTop: 30,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#E7E5E4',
+    borderTopColor: pdfPalette.border,
     fontSize: 9,
-    color: '#78716C',
+    color: pdfPalette.textMuted,
     textAlign: 'center',
   },
   badge: {
@@ -86,32 +87,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   badgeCompliant: {
-    backgroundColor: '#D1FAE5',
-    color: '#065F46',
+    backgroundColor: pdfPalette.successTint,
+    color: pdfPalette.success,
   },
   badgeInProgress: {
-    backgroundColor: '#FEF3C7',
-    color: '#92400E',
+    backgroundColor: pdfPalette.warningTint,
+    color: pdfPalette.warning,
   },
   badgeNotStarted: {
-    backgroundColor: '#F3F4F6',
-    color: '#374151',
+    backgroundColor: pdfPalette.surfaceMuted,
+    color: pdfPalette.textSecondary,
   },
   scoreCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: pdfPalette.surfaceMuted,
     padding: 15,
     marginBottom: 15,
     borderLeftWidth: 4,
-    borderLeftColor: '#D97706',
+    borderLeftColor: pdfPalette.primary,
   },
   scoreValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#D97706',
+    color: pdfPalette.primary,
   },
   scoreLabel: {
     fontSize: 12,
-    color: '#78716C',
+    color: pdfPalette.textMuted,
     marginTop: 5,
   },
 });
@@ -189,7 +190,7 @@ export function ReportDocument({ data }: ReportDocumentProps) {
                     style={{
                       flexDirection: 'row',
                       borderBottomWidth: 1,
-                      borderBottomColor: '#E7E5E4',
+                      borderBottomColor: pdfPalette.border,
                     }}
                   >
                     <Text
@@ -221,7 +222,7 @@ export function ReportDocument({ data }: ReportDocumentProps) {
                   {domain.controls.map((control) => (
                     <View
                       key={control.id}
-                      style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E7E5E4' }}
+                      style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: pdfPalette.border }}
                     >
                       <Text style={[styles.tableCell, { flex: 2 }]}>
                         {control.title}

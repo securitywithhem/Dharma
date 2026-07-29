@@ -28,7 +28,7 @@ export function TopNav() {
   const name = session?.user?.name ?? null;
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-dharma-border bg-dharma-bg">
       <div className="flex h-14 items-center justify-between gap-4 px-5">
         {/* The bar previously restated the page title the page itself already
             renders. A breadcrumb earns the space instead: it tells you where
@@ -42,20 +42,20 @@ export function TopNav() {
                   {index > 0 && (
                     <ChevronRight
                       aria-hidden
-                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50"
+                      className="h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary"
                     />
                   )}
                   {last ? (
                     <span
                       aria-current="page"
-                      className="truncate font-medium text-foreground"
+                      className="truncate font-medium text-dharma-ink"
                     >
                       {crumb.label}
                     </span>
                   ) : (
                     <Link
                       href={crumb.href as Route}
-                      className="truncate rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="truncate rounded-sm text-dharma-ink-secondary transition-colors duration-150 hover:text-dharma-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
                     >
                       {crumb.label}
                     </Link>
@@ -72,7 +72,7 @@ export function TopNav() {
           </Badge>
           <ThemeToggle />
           <div
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/12 text-[11px] font-semibold text-primary"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-dharma-accent-tint text-[11px] font-semibold text-dharma-accent-on-tint"
             title={email ?? undefined}
           >
             {initialsFor(name, email)}

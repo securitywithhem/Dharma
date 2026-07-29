@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/select";
 
 function scoreTone(score: number | null) {
-  if (score === null) return "text-muted-foreground";
-  if (score >= 80) return "text-emerald-500";
-  if (score >= 50) return "text-amber-500";
-  return "text-red-500";
+  if (score === null) return "text-dharma-ink-secondary";
+  if (score >= 80) return "text-dharma-success-text";
+  if (score >= 50) return "text-dharma-ink";
+  return "text-dharma-danger-text";
 }
 
 export default function MsspDashboardPage() {
@@ -53,9 +53,9 @@ export default function MsspDashboardPage() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-          <ShieldAlert className="h-8 w-8 text-muted-foreground" />
+          <ShieldAlert className="h-8 w-8 text-dharma-ink-secondary" />
           <p className="font-medium">No client access grants</p>
-          <p className="max-w-md text-sm text-muted-foreground">
+          <p className="max-w-md text-sm text-dharma-ink-secondary">
             You need an active MSSP grant to view client organizations. An admin of your
             organization can create one under MSSP → Grants.
           </p>
@@ -72,7 +72,7 @@ export default function MsspDashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Client overview</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Aggregated compliance across your managed client organizations.
           </p>
         </div>
@@ -117,10 +117,10 @@ export default function MsspDashboardPage() {
               key={client.organizationId}
               href={`/dashboard/mssp/${client.organizationId}?grantId=${activeGrantId}` as never}
             >
-              <Card className="transition-colors hover:border-primary/50">
+              <Card className="transition-colors hover:border-dharma-accent">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <Building2 className="h-4 w-4 text-dharma-ink-secondary" />
                     {client.organizationName}
                   </CardTitle>
                 </CardHeader>
@@ -129,7 +129,7 @@ export default function MsspDashboardPage() {
                     <span className={`text-3xl font-bold ${scoreTone(client.complianceScore)}`}>
                       {client.complianceScore === null ? "—" : `${client.complianceScore}%`}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-dharma-ink-secondary">
                       {client.compliantControls}/{client.totalControls} controls
                     </span>
                   </div>
@@ -139,7 +139,7 @@ export default function MsspDashboardPage() {
                     >
                       {client.openVulnerabilities} open vulns
                     </Badge>
-                    <span className="text-muted-foreground">
+                    <span className="text-dharma-ink-secondary">
                       Last audit:{" "}
                       {client.lastAuditAt
                         ? new Date(client.lastAuditAt).toLocaleDateString()

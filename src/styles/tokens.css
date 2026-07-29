@@ -1,0 +1,184 @@
+/* ============================================================================
+   Dharma design tokens — "Warm Paper".
+
+   Approved 2026-07-29. Canonical source: Dharma-Knowledge-OS/0_DESIGN_SYSTEM.md
+   Governs: every surface in src/app and src/components.
+
+   ---------------------------------------------------------------------------
+   FORMAT NOTE — READ BEFORE EDITING
+
+   These tokens are HEX by explicit instruction. This is a deliberate,
+   signed-off departure from the previous HSL-channel encoding, and it has one
+   known consequence that is not a bug to be "fixed" later:
+
+     src/lib/theme/getTenantTheme.ts -> hexToHslChannels() injects "H S% L%"
+     triplets to override --primary / --ring per tenant at runtime. Hex tokens
+     cannot receive a channel triplet. Per-tenant white-label colour override
+     is therefore INERT against these tokens.
+
+   See 0_DESIGN_SYSTEM.md § "Accepted costs" before changing this.
+   ---------------------------------------------------------------------------
+
+   USAGE RULES ARE LOAD-BEARING. Three of them are accessibility requirements,
+   not preferences, and are marked [WCAG] below.
+   ========================================================================= */
+
+:root {
+  /* --------------------------------------------------------------------
+     Surfaces. Flat only. There is no elevation scale and no shadow token
+     in this system by design — depth is carried by the hairline border.
+     Do not add box-shadow, backdrop-filter, or linear-gradient.
+     -------------------------------------------------------------------- */
+  --dharma-surface-bg: #efebe2;          /* page canvas */
+  --dharma-surface-surface: #f8f6f0;     /* cards, panels, table headers */
+  --dharma-surface-hover: #f1ece1;       /* row/nav hover only */
+  --dharma-surface-border: #ddd5c4;      /* hairline, 1px, default rule */
+  --dharma-surface-border-strong: #c9bfa8;
+
+  /* [WCAG 1.4.11] Neither border token reaches 3:1 against its surface
+     (border 1.35:1, border-strong 1.53:1). They are DECORATIVE separators.
+     A border that is the sole indicator of an interactive boundary — input
+     idle state, checkbox outline, focus ring — must NOT use these. Use
+     --dharma-text-secondary (5.54:1 on surface) or --dharma-accent-base. */
+
+  /* --------------------------------------------------------------------
+     Text
+     -------------------------------------------------------------------- */
+  --dharma-text-primary: #231c1b;        /* 15.50:1 on surface — AAA */
+  --dharma-text-secondary: #6e6156;      /*  5.54:1 on surface — AA  */
+  --dharma-text-muted: #9c9186;
+  --dharma-text-inverse: #fbeee6;
+
+  /* [WCAG 1.4.3] --dharma-text-muted is 2.85:1 on surface and 2.59:1 on bg.
+     It FAILS AA for text of any size. Permitted uses: disabled control
+     labels (exempt, 1.4.3), decorative glyphs, and non-essential ornament
+     that is duplicated elsewhere. Any string a user must read to operate
+     the product — placeholder, helper text, table meta, timestamp, empty
+     state — uses --dharma-text-secondary. */
+
+  /* --------------------------------------------------------------------
+     Accent — terracotta. ONE per screen. Not one per component, not one
+     per card: one accent-filled element per rendered view.
+
+     Permitted: the primary CTA, OR the active nav item, OR a single hero
+     metric. Choosing two on one screen is a design defect — see the
+     one-accent audit in docs/theme-migration-checklist.md.
+     -------------------------------------------------------------------- */
+  --dharma-accent-base: #b2481d;         /* 4.81:1 vs inverse text — AA */
+  --dharma-accent-hover: #9a3d18;        /* 6.05:1 vs inverse text — AA */
+  --dharma-accent-tint-bg: #f1e1d6;
+  --dharma-accent-on-tint: #7c3218;      /* 7.08:1 on tint — AAA */
+
+  /* --------------------------------------------------------------------
+     Semantic roles — earthy family, deliberately a different hue from the
+     accent so "this is important" never reads as "this is branded".
+
+     PAIRING RULE (mandatory): a status treatment is
+         background: var(--dharma-{role}-bg);
+         color:      var(--dharma-{role}-text);
+     Never a saturated fill with white text. The -base value is for
+     non-text marks only — dot indicators, chart series, progress fills,
+     1px rules. Setting label text in -base is what produced the six
+     sub-AA badges found in the previous migration.
+     -------------------------------------------------------------------- */
+  --dharma-success-base: #4f7a5c;
+  --dharma-success-bg: #e4ebe3;
+  --dharma-success-text: #3c5e45;        /* 6.01:1 on its bg — AA */
+
+  --dharma-warning-base: #b87f2e;
+  --dharma-warning-bg: #f1e4cd;
+  --dharma-warning-text: #8c5e1f;        /* 4.48:1 on its bg */
+
+  /* [WCAG 1.4.3] The warning pair lands at 4.48:1 — 0.02 short of the 4.5
+     normal-text threshold, and passing only under the large-text rule
+     (3:1). Warning chips and warning helper text MUST therefore render at
+     >=18.66px/14pt bold or >=24px regular. At the default .text-micro chip
+     size this pair is non-conforming. Enforced in the Badge primitive. */
+
+  --dharma-danger-base: #a8483a;
+  --dharma-danger-bg: #f0deda;
+  --dharma-danger-text: #7c3529;         /* 6.74:1 on its bg — AA */
+
+  --dharma-info-base: #5c6e7d;
+  --dharma-info-bg: #e6eaed;
+  --dharma-info-text: #445561;           /* 6.39:1 on its bg — AA */
+
+  /* --------------------------------------------------------------------
+     Typography. The serif is a VOICE, not a UI face: wordmark, h1, h2.
+     It must not appear in table headers, buttons, labels, or body copy.
+     Mono is reserved for strings compared character-by-character —
+     audit log entries, control IDs (A.8.1.1), hashes, ARNs, CVEs.
+     -------------------------------------------------------------------- */
+  --dharma-font-voice: var(--font-display), Newsreader, Fraunces, Georgia, serif;
+  --dharma-font-sans: var(--font-sans), "Public Sans", system-ui, sans-serif;
+  --dharma-font-mono: var(--font-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  /* --------------------------------------------------------------------
+     Motion — capped. 120ms for colour/opacity, 150ms for anything that
+     moves. Nothing in this product animates longer than 150ms, and
+     nothing loops except a genuine indeterminate-progress indicator.
+     -------------------------------------------------------------------- */
+  --dharma-motion-fast: 120ms;
+  --dharma-motion-base: 150ms;
+  --dharma-motion-ease: cubic-bezier(0, 0, 0.2, 1); /* ease-out */
+
+  /* Squared, not pilled. A compliance console reads as a record. */
+  --dharma-radius-sm: 2px;
+  --dharma-radius-md: 4px;
+  --dharma-radius-lg: 6px;
+}
+
+/* ============================================================================
+   Dark Warm Paper.
+
+   NOT part of the approved 2026-07-29 spec — that spec defines light values
+   only. These were authored 2026-07-29 to keep the existing ThemeToggle
+   working (owner decision) and are the one part of this file open to taste.
+   Every value is measured; ratios are in-line.
+
+   Principle: the ground inverts to warm ink, never to cold slate. The accent
+   lightens because terracotta at #B2481D carries only 2.9:1 on a dark ground.
+   Hue families are preserved so the two modes read as one system.
+   ========================================================================= */
+.dark {
+  --dharma-surface-bg: #1a1513;
+  --dharma-surface-surface: #241e1b;
+  --dharma-surface-hover: #2e2723;
+  --dharma-surface-border: #3d342e;
+  --dharma-surface-border-strong: #574b43;
+
+  --dharma-text-primary: #f2eae0;        /* 13.80:1 on surface — AAA */
+  --dharma-text-secondary: #bcaea0;      /*  7.60:1 on surface — AAA */
+  --dharma-text-muted: #8a7f74;          /*  4.21:1 — same restriction as light */
+  --dharma-text-inverse: #231c1b;        /* ink, for text ON a light accent fill */
+
+  --dharma-accent-base: #d2653a;         /* 4.52:1 with inverse text — AA */
+  --dharma-accent-hover: #e07a4f;        /* 5.64:1 with inverse text — AA */
+  --dharma-accent-tint-bg: #3a231a;
+  --dharma-accent-on-tint: #f0a883;      /* 7.41:1 on tint — AAA */
+
+  --dharma-success-base: #6e9c7b;
+  --dharma-success-bg: #1e2a22;
+  --dharma-success-text: #9bc4a6;        /* 7.69:1 — AAA */
+
+  --dharma-warning-base: #c08f3e;
+  --dharma-warning-bg: #2b2318;
+  --dharma-warning-text: #e0b36a;        /* 7.98:1 — AAA. Note: unlike the
+                                            light pair (4.48:1), this one has
+                                            no large-text restriction. */
+
+  --dharma-danger-base: #c2604f;
+  --dharma-danger-bg: #2e1d1a;
+  --dharma-danger-text: #e8a093;         /* 7.56:1 — AAA */
+
+  --dharma-info-base: #7c90a0;
+  --dharma-info-bg: #1e262b;
+  --dharma-info-text: #a8bccb;           /* 7.84:1 — AAA */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dharma-motion-fast: 1ms;
+    --dharma-motion-base: 1ms;
+  }
+}

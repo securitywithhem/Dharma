@@ -9,7 +9,7 @@ export default function AuthCallbackPage() {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl">
-            <MailCheck className="h-6 w-6 text-primary" />
+            <MailCheck className="h-6 w-6 text-dharma-accent-on-tint" />
             Check your inbox
           </CardTitle>
           <CardDescription>

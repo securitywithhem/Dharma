@@ -22,10 +22,10 @@ interface RecommendationsListProps {
 }
 
 const TYPE_META: Record<RecommendationType, { label: string; icon: typeof AlertTriangle; className: string }> = {
-  FAMILY_LOW_COVERAGE: { label: "Low Family Coverage", icon: AlertTriangle, className: "border-red-500/30 text-red-600 dark:text-red-400" },
-  MISSING_EVIDENCE: { label: "Missing Evidence", icon: FileWarning, className: "border-amber-500/30 text-amber-600 dark:text-amber-400" },
-  STALE_EVIDENCE: { label: "Stale Evidence", icon: Clock, className: "border-blue-500/30 text-blue-600 dark:text-blue-400" },
-  UNMAPPED_HIGH_VALUE_CONTROL: { label: "Weak Cross-Walk", icon: Link2Off, className: "border-violet-500/30 text-violet-600 dark:text-violet-400" },
+  FAMILY_LOW_COVERAGE: { label: "Low Family Coverage", icon: AlertTriangle, className: "border-dharma-danger text-dharma-danger-text" },
+  MISSING_EVIDENCE: { label: "Missing Evidence", icon: FileWarning, className: "border-dharma-warning text-dharma-ink" },
+  STALE_EVIDENCE: { label: "Stale Evidence", icon: Clock, className: "border-dharma-accent text-dharma-accent-on-tint" },
+  UNMAPPED_HIGH_VALUE_CONTROL: { label: "Weak Cross-Walk", icon: Link2Off, className: "border-chart-5/30 text-chart-5" },
 };
 
 export function RecommendationsList({ frameworkId }: RecommendationsListProps) {
@@ -47,7 +47,7 @@ export function RecommendationsList({ frameworkId }: RecommendationsListProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed border-dharma-border py-10 text-center text-sm text-dharma-ink-secondary">
         No open recommendations — great shape!
       </div>
     );
@@ -72,11 +72,11 @@ export function RecommendationsList({ frameworkId }: RecommendationsListProps) {
             </h4>
             <div className="space-y-2">
               {recs.map((rec) => (
-                <Card key={rec.id} className="border-border/70">
+                <Card key={rec.id} className="border-dharma-border">
                   <CardContent className="flex items-start justify-between gap-3 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{rec.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{rec.description}</p>
+                      <p className="mt-0.5 text-xs text-dharma-ink-secondary">{rec.description}</p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       {rec.potentialScoreGain != null && (
@@ -95,7 +95,7 @@ export function RecommendationsList({ frameworkId }: RecommendationsListProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          className="h-7 w-7 p-0 text-dharma-ink-secondary hover:text-dharma-danger-text"
                           aria-label="Dismiss recommendation"
                           disabled={dismissMutation.isPending}
                           onClick={() => dismissMutation.mutate({ id: rec.id })}

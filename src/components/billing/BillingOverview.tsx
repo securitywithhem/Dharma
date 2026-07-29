@@ -34,7 +34,7 @@ export function BillingOverview() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <p className="text-sm text-muted-foreground">Plan Name</p>
+            <p className="text-sm text-dharma-ink-secondary">Plan Name</p>
             <p className="text-2xl font-bold">{plan.displayName}</p>
           </div>
 
@@ -50,22 +50,22 @@ export function BillingOverview() {
           {subscription?.currentPeriodEnd && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Renews on</span>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-dharma-ink-secondary">
                 {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(subscription.currentPeriodEnd))}
               </span>
             </div>
           )}
           
           <div className="pt-4 border-t">
-            <p className="text-sm text-muted-foreground mb-1">Price per month</p>
+            <p className="text-sm text-dharma-ink-secondary mb-1">Price per month</p>
             <p className="text-xl font-bold">
               ${(plan.price || 0).toFixed(2)}
-              <span className="text-sm font-normal text-muted-foreground">/mo</span>
+              <span className="text-sm font-normal text-dharma-ink-secondary">/mo</span>
             </p>
           </div>
         </CardContent>
         {plan.name !== "enterprise" && (
-          <CardFooter className="bg-muted/50 py-4 border-t flex gap-3 flex-col sm:flex-row">
+          <CardFooter className="bg-dharma-surface-hover py-4 border-t flex gap-3 flex-col sm:flex-row">
             <Link href={"/dashboard/settings/billing?tab=plans" as any} className="w-full">
               <Button className="w-full">
                 Upgrade Plan
@@ -86,16 +86,16 @@ export function BillingOverview() {
             {plan.features ? (
               Object.entries(plan.features).map(([key, enabled]) => (
                 <li key={key} className="flex items-center space-x-3">
-                  <div className={`p-1 rounded-full ${enabled ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                  <div className={`p-1 rounded-full ${enabled ? "bg-dharma-success-bg text-dharma-success-text" : "bg-dharma-surface-hover text-dharma-ink-secondary"}`}>
                     {enabled ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                   </div>
-                  <span className={`text-sm ${enabled ? "text-foreground font-medium" : "text-muted-foreground line-through"}`}>
+                  <span className={`text-sm ${enabled ? "text-dharma-ink font-medium" : "text-dharma-ink-secondary line-through"}`}>
                     {formatFeatureName(key)}
                   </span>
                 </li>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No features data available.</p>
+              <p className="text-sm text-dharma-ink-secondary">No features data available.</p>
             )}
           </ul>
         </CardContent>

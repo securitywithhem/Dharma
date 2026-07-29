@@ -44,7 +44,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
+        <p className="text-dharma-ink-secondary">
           Manage your workspace, team access, and auditor sharing.
         </p>
       </div>
@@ -85,7 +85,7 @@ export default function SettingsPage() {
           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-amber-500" />
+                <ShieldCheck className="h-5 w-5 text-dharma-accent-on-tint" />
                 Share with Auditor
               </CardTitle>
               <CardDescription>
@@ -115,7 +115,7 @@ export default function SettingsPage() {
                   <Button
                     onClick={handleGenerateKey}
                     disabled={createAuditorKeyMutation.isPending}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-amber-600 dark:hover:bg-amber-700"
+                    className="w-full bg-dharma-accent hover:bg-dharma-accent-hover"
                   >
                     {createAuditorKeyMutation.isPending ? "Generating..." : "Generate Auditor Link"}
                   </Button>
@@ -128,17 +128,17 @@ export default function SettingsPage() {
                           readOnly
                           type="text"
                           value={generatedLink}
-                          className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-xs shadow-sm transition-colors"
+                          className="flex h-9 w-full rounded-md border border-dharma-border-strong bg-dharma-surface-hover px-3 py-1 text-xs border border-dharma-border transition-colors"
                         />
                         <Button size="icon" variant="outline" onClick={handleCopyLink}>
                           {copied ? (
-                            <Check className="h-4 w-4 text-green-600" />
+                            <Check className="h-4 w-4 text-dharma-success-text" />
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <p className="text-xs text-dharma-ink-secondary flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         This link will automatically expire after {duration === "1d" ? "24 hours" : duration === "7d" ? "7 days" : "30 days"}.
                       </p>
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                   )}
                 </div>
               ) : (
-                <div className="bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 p-4 rounded-lg text-sm border border-red-100 dark:border-red-950">
+                <div className="bg-dharma-danger-bg text-dharma-danger-text p-4 rounded-lg text-sm border border-dharma-danger">
                   You must hold the <strong>ADMIN</strong> role to generate external auditor keys. Please contact your administrator.
                 </div>
               )}

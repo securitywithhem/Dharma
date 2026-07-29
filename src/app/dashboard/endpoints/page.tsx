@@ -58,7 +58,7 @@ export default function EndpointsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Endpoints</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Continuous compliance monitoring agents on your devices (EDR-lite).
           </p>
         </div>
@@ -76,9 +76,9 @@ export default function EndpointsPage() {
       ) : (listQuery.data?.items ?? []).length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-            <MonitorSmartphone className="h-8 w-8 text-muted-foreground" />
+            <MonitorSmartphone className="h-8 w-8 text-dharma-ink-secondary" />
             <p className="font-medium">No endpoints enrolled</p>
-            <p className="max-w-md text-sm text-muted-foreground">
+            <p className="max-w-md text-sm text-dharma-ink-secondary">
               Enroll a device to start collecting disk-encryption, patch-level, screen-lock,
               and firewall posture checks that map to your controls.
             </p>
@@ -90,23 +90,23 @@ export default function EndpointsPage() {
             <Card
               key={endpoint.id}
               data-testid={`endpoint-card-${endpoint.id}`}
-              className="transition-colors hover:border-primary/50"
+              className="transition-colors hover:border-dharma-accent"
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <MonitorSmartphone className="h-4 w-4 text-muted-foreground" />
+                    <MonitorSmartphone className="h-4 w-4 text-dharma-ink-secondary" />
                     {endpoint.hostname}
                   </CardTitle>
                   <EndpointStatusDot status={endpoint.status} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-dharma-ink-secondary">
                   {endpoint.os} {endpoint.osVersion} · agent {endpoint.agentVersion}
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
+                  <span className="text-dharma-ink-secondary">
                     {endpoint._count.checks} checks ·{" "}
                     {endpoint.lastHeartbeatAt
                       ? `last seen ${new Date(endpoint.lastHeartbeatAt).toLocaleString()}`
@@ -181,7 +181,7 @@ export default function EndpointsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <div className="rounded-md border border-dharma-warning bg-dharma-warning-bg p-3">
                 <p className="mb-2 flex items-center gap-2 text-xs font-medium">
                   <CheckCircle2 className="h-3 w-3" /> Copy this now — it is shown only once.
                 </p>

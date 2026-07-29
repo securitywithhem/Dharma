@@ -53,14 +53,14 @@ function DashboardSkeleton() {
 function LoadFailure({ message }: { message?: string }) {
   return (
     <div className="mx-auto max-w-[88rem]">
-      <Card className="border-critical/30">
+      <Card className="border-dharma-danger">
         <CardContent className="flex items-start gap-3 p-5">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-critical" aria-hidden />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-dharma-danger-text" aria-hidden />
           <div>
-            <p className="text-data font-medium text-foreground">
+            <p className="text-data font-medium text-dharma-ink">
               Could not load your compliance status
             </p>
-            <p className="mt-1 text-data text-muted-foreground">
+            <p className="mt-1 text-data text-dharma-ink-secondary">
               {message ?? 'The dashboard data request did not complete. Refresh to try again.'}
             </p>
           </div>
@@ -92,10 +92,10 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-[88rem] space-y-6">
       <header>
-        <h1 className="font-display text-display-sm font-semibold text-foreground">
+        <h1 className="font-display text-display-sm font-semibold text-dharma-ink">
           Compliance status
         </h1>
-        <p className="mt-1 text-data text-muted-foreground">
+        <p className="mt-1 text-data text-dharma-ink-secondary">
           Your current readiness across frameworks, recent activity, and immediate action items.
         </p>
       </header>
@@ -114,20 +114,20 @@ export default function DashboardPage() {
             const progress = framework.progress;
 
             // Determine status color based on progress
-            let statusColor = 'bg-success';
+            let statusColor = 'bg-dharma-success-bg';
             let statusLabel = 'On track';
             if (progress < 50) {
-              statusColor = 'bg-critical';
+              statusColor = 'bg-dharma-danger-bg';
               statusLabel = 'At risk';
             } else if (progress < 80) {
-              statusColor = 'bg-warning';
+              statusColor = 'bg-dharma-warning-bg';
               statusLabel = 'Needs work';
             }
 
             return (
               <Card
                 key={framework.id}
-                className="group relative overflow-hidden border-l-4 transition-shadow duration-150 hover:shadow-md"
+                className="group relative overflow-hidden border-l-4 transition-shadow duration-150 hover:border border-dharma-border"
                 style={{
                   borderLeftColor:
                     progress >= 80
@@ -142,23 +142,23 @@ export default function DashboardPage() {
                     <div className="min-w-0 flex-1">
                       <Link
                         href={'/dashboard/frameworks' as Route}
-                        className="flex items-center gap-2 rounded-sm font-medium tracking-[-0.01em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="flex items-center gap-2 rounded-sm font-medium tracking-[-0.01em] text-dharma-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
                       >
                         <span className="truncate">{framework.name}</span>
-                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
                       </Link>
-                      <p className="mt-1 font-mono text-micro text-muted-foreground">
+                      <p className="mt-1 font-mono text-micro text-dharma-ink-secondary">
                         v{framework.version}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="font-display text-2xl font-semibold leading-none tabular-nums text-foreground">
+                      <p className="font-display text-2xl font-semibold leading-none tabular-nums text-dharma-ink">
                         {progress}%
                       </p>
                       <p className={cn('mt-1 text-micro font-medium', {
-                        'text-success': progress >= 80,
-                        'text-warning': progress >= 50 && progress < 80,
-                        'text-critical': progress < 50,
+                        'text-dharma-success-text': progress >= 80,
+                        'text-dharma-ink': progress >= 50 && progress < 80,
+                        'text-dharma-danger-text': progress < 50,
                       })}>
                         {statusLabel}
                       </p>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                 <CardContent className="space-y-3">
                   {/* Progress bar */}
                   <div
-                    className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                    className="h-1.5 w-full overflow-hidden rounded-full bg-dharma-surface-hover"
                     role="meter"
                     aria-valuenow={progress}
                     aria-valuemin={0}
@@ -178,30 +178,30 @@ export default function DashboardPage() {
                   >
                     <div
                       className={cn('h-full rounded-full', {
-                        'bg-success': progress >= 80,
-                        'bg-warning': progress >= 50 && progress < 80,
-                        'bg-critical': progress < 50,
+                        'bg-dharma-success-bg': progress >= 80,
+                        'bg-dharma-warning-bg': progress >= 50 && progress < 80,
+                        'bg-dharma-danger-bg': progress < 50,
                       })}
                       style={{ width: `${progress}%` }}
                     />
                   </div>
 
                   {/* Control count */}
-                  <p data-numeric className="text-micro tabular-nums text-muted-foreground">
+                  <p data-numeric className="text-micro tabular-nums text-dharma-ink-secondary">
                     {compliant} of {total} controls
                   </p>
 
                   {/* Gap summary - key findings */}
                   {progress < 100 && (
-                    <div className="space-y-1.5 border-t border-border pt-2">
-                      <p className="text-micro font-medium text-foreground">Key gaps:</p>
-                      <p className="text-micro text-muted-foreground">
+                    <div className="space-y-1.5 border-t border-dharma-border pt-2">
+                      <p className="text-micro font-medium text-dharma-ink">Key gaps:</p>
+                      <p className="text-micro text-dharma-ink-secondary">
                         {total - compliant} control{total - compliant === 1 ? '' : 's'} incomplete
                       </p>
                       {gapCounts.critical > 0 && (
                         <p className="flex items-center gap-1.5 text-micro">
-                          <AlertCircle className="h-3 w-3 shrink-0 text-critical" />
-                          <span className="text-critical font-medium">{gapCounts.critical} critical gap{gapCounts.critical === 1 ? '' : 's'}</span>
+                          <AlertCircle className="h-3 w-3 shrink-0 text-dharma-danger-text" />
+                          <span className="text-dharma-danger-text font-medium">{gapCounts.critical} critical gap{gapCounts.critical === 1 ? '' : 's'}</span>
                         </p>
                       )}
                     </div>
@@ -219,19 +219,19 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardHeader>
-              <h2 className="text-base font-semibold text-foreground">
+              <h2 className="text-base font-semibold text-dharma-ink">
                 Top action items
               </h2>
-              <p className="mt-1 text-data text-muted-foreground">
+              <p className="mt-1 text-data text-dharma-ink-secondary">
                 Priority tasks to improve your compliance posture
               </p>
             </CardHeader>
             <CardContent>
               {nextActions.length === 0 ? (
                 <div className="py-8 text-center">
-                  <CheckCircle2 className="mx-auto h-7 w-7 text-success" aria-hidden />
-                  <p className="mt-2 text-data font-medium text-foreground">All set!</p>
-                  <p className="mt-1 text-micro text-muted-foreground">
+                  <CheckCircle2 className="mx-auto h-7 w-7 text-dharma-success-text" aria-hidden />
+                  <p className="mt-2 text-data font-medium text-dharma-ink">All set!</p>
+                  <p className="mt-1 text-micro text-dharma-ink-secondary">
                     No priority actions. Review your compliance status regularly.
                   </p>
                 </div>
@@ -241,24 +241,24 @@ export default function DashboardPage() {
                     <Link
                       key={control.id}
                       href={'/dashboard/controls' as Route}
-                      className="group block rounded-lg border border-border bg-muted/30 p-3.5 transition-all duration-150 hover:border-primary/30 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group block rounded-lg border border-dharma-border bg-dharma-surface-hover p-3.5 transition-all duration-150 hover:border-dharma-accent hover:bg-dharma-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
                     >
                       <div className="flex items-start gap-3">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/10 font-mono text-micro font-semibold text-primary">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-dharma-accent-tint font-mono text-micro font-semibold text-dharma-accent-on-tint">
                           {index + 1}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-data font-medium text-foreground">
+                          <p className="line-clamp-2 text-data font-medium text-dharma-ink">
                             {control.title}
                           </p>
-                          <p className="mt-0.5 flex items-center gap-1 truncate text-micro text-muted-foreground">
+                          <p className="mt-0.5 flex items-center gap-1 truncate text-micro text-dharma-ink-secondary">
                             <span>{control.frameworkName}</span>
                             <span>·</span>
                             <span>{control.domain}</span>
                           </p>
-                          <p className="mt-1 text-micro text-muted-foreground">
+                          <p className="mt-1 text-micro text-dharma-ink-secondary">
                             {control.evidenceCount === 0 ? (
-                              <span className="font-medium text-critical">No evidence yet</span>
+                              <span className="font-medium text-dharma-danger-text">No evidence yet</span>
                             ) : (
                               <span data-numeric>
                                 {control.evidenceCount} evidence item{control.evidenceCount === 1 ? '' : 's'}
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                             )}
                           </p>
                         </div>
-                        <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+                        <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
                       </div>
                     </Link>
                   ))}

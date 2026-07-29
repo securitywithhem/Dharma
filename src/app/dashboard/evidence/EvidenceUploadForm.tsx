@@ -273,9 +273,9 @@ export function EvidenceUploadForm({
               className={`
                 relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed
                 p-8 text-center transition-colors cursor-pointer select-none
-                ${isDragReject ? "border-destructive bg-destructive/5" : ""}
-                ${isDragActive && !isDragReject ? "border-primary bg-primary/5" : ""}
-                ${!isDragActive && !isDragReject ? "border-border hover:border-primary/50 hover:bg-muted/30" : ""}
+                ${isDragReject ? "border-dharma-danger bg-dharma-danger-bg" : ""}
+                ${isDragActive && !isDragReject ? "border-dharma-accent bg-dharma-accent-tint" : ""}
+                ${!isDragActive && !isDragReject ? "border-dharma-border hover:border-dharma-accent hover:bg-dharma-surface-hover" : ""}
                 ${isUploading ? "pointer-events-none opacity-60" : ""}
               `}
             >
@@ -283,14 +283,14 @@ export function EvidenceUploadForm({
 
               {currentFile ? (
                 <>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <File className="h-6 w-6 text-primary" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-dharma-accent-tint">
+                    <File className="h-6 w-6 text-dharma-accent-on-tint" />
                   </div>
                   <div className="space-y-0.5">
                     <p className="font-medium text-sm truncate max-w-xs">
                       {currentFile.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-dharma-ink-secondary">
                       {(currentFile.size / 1024).toFixed(1)} KB ·{" "}
                       {currentFile.type || "unknown type"}
                     </p>
@@ -299,7 +299,7 @@ export function EvidenceUploadForm({
                     <button
                       type="button"
                       aria-label="Remove selected file"
-                      className="absolute right-3 top-3 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-3 rounded-full p-0.5 text-dharma-ink-secondary hover:text-dharma-ink"
                       onClick={(e) => {
                         e.stopPropagation();
                         setUploadState({ phase: "idle" });
@@ -311,8 +311,8 @@ export function EvidenceUploadForm({
                 </>
               ) : (
                 <>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-                    <Cloud className="h-6 w-6 text-muted-foreground" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-dharma-surface-hover">
+                    <Cloud className="h-6 w-6 text-dharma-ink-secondary" />
                   </div>
                   <div>
                     <p className="font-medium text-sm">
@@ -320,7 +320,7 @@ export function EvidenceUploadForm({
                         ? "Drop it here!"
                         : "Drag & drop or click to browse"}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-dharma-ink-secondary mt-0.5">
                       Max 50 MB
                     </p>
                   </div>
@@ -351,7 +351,7 @@ export function EvidenceUploadForm({
                   {EVIDENCE_TYPES.map((et) => (
                     <SelectItem key={et.value} value={et.value}>
                       <span className="font-medium">{et.label}</span>
-                      <span className="ml-1.5 text-xs text-muted-foreground">
+                      <span className="ml-1.5 text-xs text-dharma-ink-secondary">
                         — {et.description}
                       </span>
                     </SelectItem>
@@ -364,7 +364,7 @@ export function EvidenceUploadForm({
             {isUploading && (
               <div className="space-y-2" role="status" aria-live="polite">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-dharma-ink-secondary">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Uploading…
                   </span>
@@ -384,10 +384,10 @@ export function EvidenceUploadForm({
             {uploadState.phase === "success" && (
               <div
                 role="status"
-                className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950"
+                className="flex items-center gap-2.5 rounded-lg border border-dharma-success bg-dharma-success-bg px-4 py-3"
               >
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                <CheckCircle2 className="h-5 w-5 text-dharma-success-text shrink-0" />
+                <p className="text-sm font-medium text-dharma-success-text">
                   Evidence uploaded and linked successfully.
                 </p>
               </div>
@@ -397,14 +397,14 @@ export function EvidenceUploadForm({
             {uploadState.phase === "error" && (
               <div
                 role="alert"
-                className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
+                className="flex items-start gap-2.5 rounded-lg border border-dharma-danger bg-dharma-danger-bg px-4 py-3"
               >
-                <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-dharma-danger-text shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-destructive">
+                  <p className="text-sm font-medium text-dharma-danger-text">
                     Upload failed
                   </p>
-                  <p className="text-xs text-destructive/80 mt-0.5">
+                  <p className="text-xs text-dharma-danger-text mt-0.5">
                     {uploadState.message}
                   </p>
                 </div>

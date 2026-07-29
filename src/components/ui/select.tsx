@@ -107,7 +107,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full items-center justify-between rounded-md border border-dharma-border-strong bg-dharma-bg px-3 py-2 text-sm ring-offset-dharma-bg placeholder:text-dharma-ink-secondary focus:outline-none focus:ring-2 focus:ring-dharma-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
         onClick={() => setOpen(!open)}
@@ -116,7 +116,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
         {children}
         <ChevronDown
           className={cn(
-            "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            "ml-2 h-4 w-4 shrink-0 text-dharma-ink-secondary transition-transform duration-150 ease-out",
             open && "rotate-180",
           )}
         />
@@ -139,7 +139,7 @@ function SelectValue({ placeholder, className }: SelectValueProps) {
   const { value, labels } = React.useContext(SelectContext);
   const label = value ? (labels[value] ?? value) : "";
   return (
-    <span className={cn("block truncate", !value && "text-muted-foreground", className)}>
+    <span className={cn("block truncate", !value && "text-dharma-ink-secondary", className)}>
       {label || placeholder}
     </span>
   );
@@ -162,7 +162,7 @@ const SelectContent = React.forwardRef<HTMLUListElement, SelectContentProps>(
         ref={ref}
         role="listbox"
         className={cn(
-          "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-card py-1 shadow-lg",
+          "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-dharma-border bg-dharma-surface py-1 border border-dharma-border",
           "animate-in fade-in-0 zoom-in-95 duration-100",
           className,
         )}
@@ -199,8 +199,8 @@ const SelectItem = React.forwardRef<HTMLLIElement, SelectItemProps>(
         aria-selected={isSelected}
         className={cn(
           "relative flex cursor-pointer select-none items-center px-3 py-2 text-sm outline-none transition-colors",
-          "hover:bg-accent hover:text-accent-foreground",
-          isSelected && "bg-accent/70 font-medium text-accent-foreground",
+          "hover:bg-dharma-accent hover:text-dharma-ink-inverse",
+          isSelected && "bg-dharma-accent-tint font-medium text-dharma-ink-inverse",
           className,
         )}
         onClick={() => onValueChange(value)}

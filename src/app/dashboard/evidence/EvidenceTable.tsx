@@ -101,8 +101,8 @@ function DeleteConfirmDialog({
       >
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-              <Trash2 className="h-5 w-5 text-destructive" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dharma-danger-bg">
+              <Trash2 className="h-5 w-5 text-dharma-danger-text" />
             </div>
             <div>
               <DialogTitle id="delete-evidence-title">
@@ -114,9 +114,9 @@ function DeleteConfirmDialog({
             </div>
           </div>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Are you sure you want to permanently delete{" "}
-          <span className="font-semibold text-foreground">{fileName}</span>? The
+          <span className="font-semibold text-dharma-ink">{fileName}</span>? The
           file will be removed from storage and the audit log will record this
           deletion.
         </p>
@@ -223,9 +223,9 @@ export function EvidenceTable({
 
   if (listQuery.isError) {
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
+      <Card className="border-dharma-danger bg-dharma-danger-bg">
         <CardHeader>
-          <div className="flex items-center gap-2 text-destructive">
+          <div className="flex items-center gap-2 text-dharma-danger-text">
             <AlertCircle className="h-5 w-5" />
             <CardTitle className="text-base">Failed to load evidence</CardTitle>
           </div>
@@ -249,10 +249,10 @@ export function EvidenceTable({
 
   if (allItems.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
-        <ShieldOff className="h-8 w-8 text-muted-foreground mb-3" />
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dharma-border py-16 text-center">
+        <ShieldOff className="h-8 w-8 text-dharma-ink-secondary mb-3" />
         <h3 className="font-semibold text-sm">No evidence uploaded yet</h3>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-dharma-ink-secondary mt-1">
           Upload files using the button above to link them to controls.
         </p>
       </div>
@@ -268,7 +268,7 @@ export function EvidenceTable({
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-dharma-ink-secondary" />
           <Input
             placeholder="Search evidence…"
             value={search}
@@ -293,13 +293,13 @@ export function EvidenceTable({
       </div>
 
       {search && (
-        <p className="text-xs text-muted-foreground mb-3">
+        <p className="text-xs text-dharma-ink-secondary mb-3">
           Showing {filteredItems.length} of {allItems.length} files
         </p>
       )}
 
       {filteredItems.length === 0 ? (
-        <div className="py-8 text-center text-sm text-muted-foreground rounded-lg border border-dashed border-border">
+        <div className="py-8 text-center text-sm text-dharma-ink-secondary rounded-lg border border-dashed border-dharma-border">
           No evidence matches your search.
         </div>
       ) : (
@@ -330,7 +330,7 @@ export function EvidenceTable({
                 >
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <FileText className="h-4 w-4 text-dharma-ink-secondary shrink-0" />
                       <div className="min-w-0">
                         <p
                           className="text-sm font-medium truncate max-w-[240px]"
@@ -339,7 +339,7 @@ export function EvidenceTable({
                           {evidence.fileName}
                         </p>
                         {evidence.summary && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[240px]">
+                          <p className="text-xs text-dharma-ink-secondary truncate max-w-[240px]">
                             {evidence.summary}
                           </p>
                         )}
@@ -370,7 +370,7 @@ export function EvidenceTable({
                         >
                           {evidence.control.title}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-dharma-ink-secondary">
                           {evidence.control.domain}
                         </p>
                       </div>
@@ -380,7 +380,7 @@ export function EvidenceTable({
                   <TableCell>
                     <time
                       dateTime={new Date(evidence.createdAt).toISOString()}
-                      className="text-xs text-muted-foreground"
+                      className="text-xs text-dharma-ink-secondary"
                     >
                       {new Date(evidence.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -409,7 +409,7 @@ export function EvidenceTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        className="h-8 w-8 p-0 text-dharma-danger-text hover:text-dharma-danger-text"
                         aria-label={`Delete ${evidence.fileName}`}
                         onClick={() => setDeleteTargetId(evidence.id)}
                       >

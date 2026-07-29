@@ -8,9 +8,9 @@ import React from "react";
 export type SsoStatus = "NOT_CONFIGURED" | "CONFIGURED" | "ENFORCED";
 
 const STATUS_STYLES: Record<SsoStatus, { dot: string; label: string; pulse?: boolean }> = {
-  NOT_CONFIGURED: { dot: "bg-stone-400", label: "Not configured" },
-  CONFIGURED: { dot: "bg-emerald-500", label: "Configured", pulse: true },
-  ENFORCED: { dot: "bg-blue-500", label: "SSO-only enforced", pulse: true },
+  NOT_CONFIGURED: { dot: "bg-dharma-surface-hover-foreground", label: "Not configured" },
+  CONFIGURED: { dot: "bg-dharma-success-bg", label: "Configured", pulse: true },
+  ENFORCED: { dot: "bg-dharma-info-bg", label: "SSO-only enforced", pulse: true },
 };
 
 export function SsoStatusBadge({ status }: { status: SsoStatus }) {

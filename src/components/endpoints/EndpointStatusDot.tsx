@@ -6,10 +6,10 @@
 import React from "react";
 
 const STATUS_STYLES: Record<string, { dot: string; label: string; pulse?: boolean }> = {
-  PENDING: { dot: "bg-amber-500", label: "Pending enrollment", pulse: true },
-  ACTIVE: { dot: "bg-emerald-500", label: "Active", pulse: true },
-  STALE: { dot: "bg-stone-400", label: "Stale" },
-  REVOKED: { dot: "bg-red-500", label: "Revoked" },
+  PENDING: { dot: "bg-dharma-warning-bg", label: "Pending enrollment", pulse: true },
+  ACTIVE: { dot: "bg-dharma-success-bg", label: "Active", pulse: true },
+  STALE: { dot: "bg-dharma-surface-hover-foreground", label: "Stale" },
+  REVOKED: { dot: "bg-dharma-danger-bg", label: "Revoked" },
 };
 
 export function EndpointStatusDot({ status }: { status: string }) {
@@ -24,7 +24,7 @@ export function EndpointStatusDot({ status }: { status: string }) {
         )}
         <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${style.dot}`} />
       </span>
-      <span className="text-xs text-muted-foreground">{style.label}</span>
+      <span className="text-xs text-dharma-ink-secondary">{style.label}</span>
     </span>
   );
 }

@@ -87,7 +87,7 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
         role="dialog"
         aria-modal="true"
         aria-label="Compliance Advisor"
-        className="fixed right-0 top-0 z-50 flex h-full flex-col border-l border-border bg-card shadow-xl"
+        className="fixed right-0 top-0 z-50 flex h-full flex-col border-l border-dharma-border bg-dharma-surface border border-dharma-border"
         style={{ width }}
       >
         <div
@@ -100,15 +100,15 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
             if (e.key === "ArrowLeft") setWidth((w) => Math.min(MAX_WIDTH, w + 20));
             if (e.key === "ArrowRight") setWidth((w) => Math.max(MIN_WIDTH, w - 20));
           }}
-          className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/30 focus-visible:bg-primary/40 focus-visible:outline-none"
+          className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-dharma-accent-hover focus-visible:bg-dharma-accent-tint focus-visible:outline-none"
         />
 
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
+        <header className="flex items-center justify-between border-b border-dharma-border px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">Compliance Advisor</h2>
-            <p className="text-xs text-muted-foreground">Grounded in your compliance data</p>
+            <p className="text-xs text-dharma-ink-secondary">Grounded in your compliance data</p>
           </div>
-          <button onClick={onClose} aria-label="Close advisor" className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+          <button onClick={onClose} aria-label="Close advisor" className="rounded-md p-1 text-dharma-ink-secondary hover:bg-dharma-accent hover:text-dharma-ink-inverse">
             ✕
           </button>
         </header>
@@ -118,7 +118,7 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
 
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
           {messages.length === 0 && (
-            <p className="mt-8 text-center text-sm text-muted-foreground">
+            <p className="mt-8 text-center text-sm text-dharma-ink-secondary">
               Ask about your controls, evidence, or request a gap analysis.
             </p>
           )}

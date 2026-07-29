@@ -91,7 +91,7 @@ export function DocumentUploadPanel({ onIngested }: { onIngested?: (documentId: 
   };
 
   return (
-    <div className="border-b border-border p-3">
+    <div className="border-b border-dharma-border p-3">
       <label className="flex cursor-pointer items-center justify-between gap-2">
         <span className="text-sm font-medium">Add a document to context</span>
         <input
@@ -113,8 +113,8 @@ export function DocumentUploadPanel({ onIngested }: { onIngested?: (documentId: 
       {documentId && status && (
         <div className="mt-2" role="status" aria-live="polite">
           <div className="mb-1 flex items-center justify-between text-xs">
-            <span className={status === "FAILED" ? "text-destructive" : "text-muted-foreground"}>{ingestionStatusLabel(status)}</span>
-            <span className="text-muted-foreground">{ingestionProgressPercent(status)}%</span>
+            <span className={status === "FAILED" ? "text-dharma-danger-text" : "text-dharma-ink-secondary"}>{ingestionStatusLabel(status)}</span>
+            <span className="text-dharma-ink-secondary">{ingestionProgressPercent(status)}%</span>
           </div>
           <Progress value={ingestionProgressPercent(status)} />
         </div>

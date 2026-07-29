@@ -12,13 +12,13 @@ export default function ConnectorsSettingsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Connectors</h2>
-          <p className="text-muted-foreground">
+          <p className="text-dharma-ink-secondary">
             Manage your automated evidence collection integrations.
           </p>
         </div>
         <button
           onClick={() => setIsWizardOpen(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md"
+          className="bg-dharma-accent text-dharma-ink-inverse hover:bg-dharma-accent-hover h-10 px-4 py-2 rounded-md"
         >
           Add Connector
         </button>

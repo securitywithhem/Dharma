@@ -37,7 +37,7 @@ function DiffSection({
       </div>
       <ul className="ml-4 space-y-0.5">
         {entries.map((e) => (
-          <li key={e.key} className="text-xs text-muted-foreground">
+          <li key={e.key} className="text-xs text-dharma-ink-secondary">
             <code className="text-[10px]">{e.key}</code> — {e.title}
             {e.changedFields && e.changedFields.length > 0 && (
               <span className="ml-1 italic">({e.changedFields.join(", ")})</span>
@@ -76,7 +76,7 @@ export default function RegulatoryAlertsPage() {
         <Bell className="h-6 w-6" />
         <div>
           <h1 className="text-2xl font-semibold">Regulatory alerts</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Changes to frameworks your organization has imported.
           </p>
         </div>
@@ -87,7 +87,7 @@ export default function RegulatoryAlertsPage() {
 
       {alerts.length === 0 ? (
         <Card>
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">
+          <CardContent className="py-16 text-center text-sm text-dharma-ink-secondary">
             No regulatory alerts. You&apos;ll be notified here when an imported framework updates.
           </CardContent>
         </Card>
@@ -99,7 +99,7 @@ export default function RegulatoryAlertsPage() {
             const totalChanges =
               (diff.added?.length ?? 0) + (diff.removed?.length ?? 0) + (diff.modified?.length ?? 0);
             return (
-              <Card key={alert.id} className={alert.status === "UNREAD" ? "border-primary/40" : ""}>
+              <Card key={alert.id} className={alert.status === "UNREAD" ? "border-dharma-accent" : ""}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div>
@@ -109,7 +109,7 @@ export default function RegulatoryAlertsPage() {
                         {alert.status === "UNREAD" && <Badge>New</Badge>}
                         {alert.status === "DISMISSED" && <Badge variant="outline">Dismissed</Badge>}
                       </CardTitle>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-dharma-ink-secondary">
                         Published {new Date(alert.frameworkVersion.publishedAt).toLocaleString()} ·{" "}
                         {totalChanges} control change{totalChanges === 1 ? "" : "s"}
                       </p>
@@ -133,7 +133,7 @@ export default function RegulatoryAlertsPage() {
                     <p className="mb-2 text-sm">{alert.frameworkVersion.changelog}</p>
                   )}
                   <button
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="flex items-center gap-1 text-xs text-dharma-ink-secondary hover:text-dharma-ink"
                     onClick={() => setExpanded({ ...expanded, [alert.id]: !isOpen })}
                   >
                     {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -141,11 +141,11 @@ export default function RegulatoryAlertsPage() {
                   </button>
                   {isOpen && (
                     <div className="mt-2 space-y-3 rounded-md border p-3">
-                      <DiffSection label="Added" icon={<Plus className="h-3 w-3" />} tone="text-emerald-600" entries={diff.added ?? []} />
-                      <DiffSection label="Removed" icon={<Minus className="h-3 w-3" />} tone="text-red-600" entries={diff.removed ?? []} />
-                      <DiffSection label="Modified" icon={<Pencil className="h-3 w-3" />} tone="text-amber-600" entries={diff.modified ?? []} />
+                      <DiffSection label="Added" icon={<Plus className="h-3 w-3" />} tone="text-dharma-success-text" entries={diff.added ?? []} />
+                      <DiffSection label="Removed" icon={<Minus className="h-3 w-3" />} tone="text-dharma-danger-text" entries={diff.removed ?? []} />
+                      <DiffSection label="Modified" icon={<Pencil className="h-3 w-3" />} tone="text-dharma-ink" entries={diff.modified ?? []} />
                       {totalChanges === 0 && (
-                        <p className="text-xs text-muted-foreground">No control-level changes recorded.</p>
+                        <p className="text-xs text-dharma-ink-secondary">No control-level changes recorded.</p>
                       )}
                     </div>
                   )}

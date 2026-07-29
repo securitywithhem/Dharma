@@ -30,6 +30,42 @@ brass `#C9A227`); it was assessed and declined — its stated basis was that
 does not do. What survives from that brief is adopted here: the severity scale,
 `StatusBadge`, `DharmaRing`, and `resetTheme`.
 
+> [!important] SUPERSEDED for colour, type, and motion — 2026-07-29
+> "Warm Paper" was declined (below), then **adopted by explicit owner override**
+> the same day. The palette, typography, and motion rules in this file are no
+> longer what ships. See **[[0_DESIGN_SYSTEM]]** in the vault root, with
+> `src/styles/tokens.css` and `tailwind.config.dharma.js`.
+>
+> This file remains authoritative for **component contracts** and for the
+> history below — the objections were overruled, not withdrawn, and two of them
+> came true: per-tenant white-label theming is now inert, and the five-step
+> severity ramp is gone. Both are logged in
+> [[0_DESIGN_SYSTEM]] § Accepted costs and in
+> `docs/theme-migration-checklist.md` § Migration 2.
+
+A 2026-07-29 brief proposed a fourth direction — "Warm Paper": terracotta
+`#B2481D` on `#EFEBE2`, Newsreader + Public Sans, supplied as
+`0_DESIGN_SYSTEM.md` + `tokens.css` + `tailwind.config.dharma.js`. It was
+**initially declined** — the assessment is kept below because it is what the
+override was made against — for the same reason as the third: it cited
+`4_UI_UX_DESIGN.md`'s "dark theme, green/blue accents" as the line it was
+superseding, which is the `UI:UX.md` placeholder, in a file retired two commits
+earlier. Its concrete costs were:
+
+- **White-label would break silently.** Its tokens are hex. `hexToHslChannels()`
+  in `src/lib/theme/getTenantTheme.ts` injects `H S% L%` channel triplets to
+  override `--primary`/`--ring` per tenant; hex tokens cannot receive them.
+- **It has four flat semantic colours** and no severity ramp or chart ramps —
+  dropping the CVD-validated five-step scale the Pentest views depend on.
+- **Every shadcn primitive reads `hsl(var(--background))`**, so `dharma-*`
+  utilities would have meant rewriting `src/components/ui/`, not reskinning it.
+
+What was adopted from it is its one genuinely better idea: the `{role}-bg` +
+`{role}-text` pairing rule for tinted badges, which landed here as the
+`--*-on-tint` tokens (see *Component contracts*). The migration it triggered
+retokened 68 files onto the *existing* palette — see
+`docs/theme-migration-checklist.md`.
+
 What remains binding from the old docs is the *structure*, not the colour:
 `UI:UX.md`'s Key Screens & Components (Marketplace, Connectors, Pentest, AI
 Chat, Enterprise Settings, MSSP) are re-skinned, not restructured.
@@ -118,6 +154,41 @@ separation ≥45, CVD separation ≥12). **Re-run it after any edit to the ramp.
   `total` supplies a fixed denominator for gauge use (a score of 62 must leave
   38% as unresolved track).
 - **`Badge`** (`src/components/ui/badge.tsx`) — non-severity states only.
+
+### Two foregrounds, two jobs: `-foreground` vs `-on-tint`
+
+Every semantic role and every severity step carries two text tokens, and using
+the wrong one is a contrast bug rather than a taste question:
+
+| Token | Means | Example |
+|---|---|---|
+| `--{role}-foreground` | Text on a **solid fill** of that role | white-ish label on `bg-critical` |
+| `--{role}-on-tint` | Text on a **~12% wash** of that role over the card | `text-warning-on-tint` on `bg-warning/12` |
+
+Haldi is why this exists. `--warning` sits at 46% lightness, so setting a badge
+label in `text-warning` on its own 12% wash measured **2.71:1** — the same root
+cause already documented for `--warning-foreground` being ink rather than paper.
+The `-on-tint` set darkens (light mode) or lightens (dark mode) only the *text*;
+dots, bars, and solid fills keep the base token, so nothing else shifts.
+
+Most `-on-tint` values equal their base token. The complete set exists so the
+component rule is uniform — *tinted text always uses `-on-tint`* — instead of
+requiring a lookup of which roles happen to need the correction.
+
+**Gates.** `scripts/validate-token-contrast.js` checks every pair in both
+modes, compositing washes over the card the way they actually paint (measuring
+against the pure token reports a contrast the user never sees).
+`scripts/audit-theme-drift.py` fails the build if a component reaches past the
+tokens for a raw Tailwind palette class, a hex literal, or a `dark:` override on
+a legacy value. Both run without a browser or a database, so they cover states
+an axe-core pass over a few screens would never reach — use them alongside axe,
+not instead of it.
+
+**Exemptions** are narrow and enumerated in the audit script itself: PDF report
+documents (`@react-pdf/renderer` has no custom properties — shared values live
+in `src/lib/pdf/palette.ts`), the standalone auditor HTML export, transactional
+email, and the marketing page's fixed ink palette. Each mirrors the light-mode
+token values as hex and must be updated by hand when a token moves.
 
 ## Motion
 

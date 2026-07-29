@@ -93,7 +93,7 @@ export default function RolesSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Roles & permissions</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Built-in roles mirror the legacy access levels; custom roles get an explicit
             permission set.
           </p>
@@ -200,7 +200,7 @@ export default function RolesSettingsPage() {
               <div className="max-h-80 space-y-4 overflow-y-auto pr-2">
                 {Object.entries(groups).map(([resource, keys]) => (
                   <div key={resource}>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-dharma-ink-secondary">
                       {resource}
                     </p>
                     <div className="grid grid-cols-2 gap-2">

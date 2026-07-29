@@ -59,11 +59,34 @@ describe("StatusBadge", () => {
   it("gives HIGH and CRITICAL visually distinct classes", () => {
     // The old SeverityBadge mapped both to the `destructive` variant, making
     // the two levels an auditor most needs to separate nearly identical.
+    //
+    // Warm Paper (2026-07-29) dropped the five-step --severity-* ramp for four
+    // semantic roles, so HIGH and CRITICAL now legitimately SHARE a hue — this
+    // no longer asserts distinct colour tokens, because there are none to
+    // assert. What must still hold is that the two are not interchangeable:
+    // CRITICAL carries the heavier weight and the inset rule.
+    // See 0_DESIGN_SYSTEM.md § Accepted costs (2).
     const high = render(<StatusBadge severity="HIGH" />).container.firstElementChild;
     const critical = render(<StatusBadge severity="CRITICAL" />).container.firstElementChild;
     expect(high?.className).not.toEqual(critical?.className);
-    expect(high?.className).toContain("severity-high");
-    expect(critical?.className).toContain("severity-critical");
+    expect(high?.className).toContain("font-medium");
+    expect(critical?.className).toContain("font-semibold");
+    expect(critical?.className).toContain("ring-dharma-danger");
+  });
+
+  it("keeps the severity label as a non-colour channel (WCAG 1.4.1)", () => {
+    // Load-bearing since the ramp collapsed: with HIGH and CRITICAL sharing a
+    // hue, the text label is the only channel that separates them for a user
+    // who cannot rely on colour. It must never become icon-only.
+    for (const [severity, label] of [
+      ["HIGH", "High"],
+      ["CRITICAL", "Critical"],
+    ] as const) {
+      const { container, unmount } = render(<StatusBadge severity={severity} />);
+      container.querySelector('[aria-hidden="true"]')?.remove();
+      expect(container.textContent).toContain(label);
+      unmount();
+    }
   });
 
   it("falls back to NONE for an unrecognised value rather than rendering unstyled", () => {

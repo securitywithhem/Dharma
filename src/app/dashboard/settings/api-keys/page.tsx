@@ -64,7 +64,7 @@ export default function ApiKeysPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">API keys</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Programmatic access to your compliance data for third-party integrations.
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function ApiKeysPage() {
             href="/api/v1/openapi.json"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-dharma-surface-hover"
           >
             <Code2 className="mr-2 h-4 w-4" /> OpenAPI spec
             <ExternalLink className="ml-1 h-3 w-3" />
@@ -91,8 +91,8 @@ export default function ApiKeysPage() {
         <CardContent>
           {keys.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <KeyRound className="h-7 w-7 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No API keys yet.</p>
+              <KeyRound className="h-7 w-7 text-dharma-ink-secondary" />
+              <p className="text-sm text-dharma-ink-secondary">No API keys yet.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -108,7 +108,7 @@ export default function ApiKeysPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{k.name}</span>
-                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{k.keyPrefix}…</code>
+                        <code className="rounded bg-dharma-surface-hover px-1.5 py-0.5 text-xs">{k.keyPrefix}…</code>
                         {revoked ? (
                           <Badge variant="destructive">Revoked</Badge>
                         ) : (
@@ -120,7 +120,7 @@ export default function ApiKeysPage() {
                           <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
                         ))}
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-dharma-ink-secondary">
                         {k.lastUsedAt ? `Last used ${new Date(k.lastUsedAt).toLocaleString()}` : "Never used"}
                       </p>
                     </div>
@@ -181,7 +181,7 @@ export default function ApiKeysPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+            <div className="rounded-md border border-dharma-warning bg-dharma-warning-bg p-3 space-y-2">
               <p className="flex items-center gap-2 text-xs font-medium">
                 <CheckCircle2 className="h-3 w-3" /> Copy now — it will not be shown again.
               </p>

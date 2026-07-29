@@ -110,13 +110,13 @@ export function ExportReportCard() {
                     key={report.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800"
+                    className="flex items-center justify-between p-3 rounded-lg bg-dharma-surface-hover border border-dharma-border"
                   >
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      <CheckCircle className="w-5 h-5 text-dharma-success-text" />
                       <div className="flex-1">
                         <p className="text-sm font-medium">{report.fileName}</p>
-                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                        <p className="text-xs text-dharma-ink-secondary">
                           {new Date(report.timestamp).toLocaleDateString()}
                         </p>
                       </div>

@@ -40,19 +40,19 @@ export function ReviewSection({ itemId, reviews }: ReviewSectionProps) {
 
   return (
     <Card className="p-6 mt-8">
-      <h2 className="text-xl font-semibold text-foreground mb-4">Reviews</h2>
+      <h2 className="text-xl font-semibold text-dharma-ink mb-4">Reviews</h2>
 
       {/* Existing Reviews */}
       <div className="space-y-6 mb-6">
         {reviews && reviews.length > 0 ? (
           reviews.map((review) => (
-            <div key={review.id} className="pb-6 border-b border-border last:border-0 last:pb-0">
+            <div key={review.id} className="pb-6 border-b border-dharma-border last:border-0 last:pb-0">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="font-semibold text-foreground">
+                  <p className="font-semibold text-dharma-ink">
                     {review.title}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-dharma-ink-secondary mt-1">
                     By {review.reviewer?.name || "Anonymous User"}
                   </p>
                 </div>
@@ -61,17 +61,17 @@ export function ReviewSection({ itemId, reviews }: ReviewSectionProps) {
                     <Star
                       key={i}
                       className={`h-4 w-4 ${
-                        i < review.rating ? "fill-yellow-400 text-yellow-400" : "fill-muted text-muted"
+                        i < review.rating ? "fill-dharma-warning text-dharma-ink" : "fill-dharma-ink-muted text-dharma-ink-secondary"
                       }`}
                     />
                   ))}
                 </div>
               </div>
-              <p className="text-foreground text-sm mt-3">{review.content}</p>
+              <p className="text-dharma-ink text-sm mt-3">{review.content}</p>
             </div>
           ))
         ) : (
-          <p className="text-muted-foreground text-sm">No reviews yet. Be the first to review this item!</p>
+          <p className="text-dharma-ink-secondary text-sm">No reviews yet. Be the first to review this item!</p>
         )}
       </div>
 
@@ -85,9 +85,9 @@ export function ReviewSection({ itemId, reviews }: ReviewSectionProps) {
           Write a Review
         </Button>
       ) : (
-        <div className="space-y-4 border-t border-border pt-6">
+        <div className="space-y-4 border-t border-dharma-border pt-6">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-dharma-ink mb-2">
               Rating
             </label>
             <div className="flex gap-1">
@@ -99,7 +99,7 @@ export function ReviewSection({ itemId, reviews }: ReviewSectionProps) {
                 >
                   <Star
                     className={`h-6 w-6 ${
-                      r <= rating ? "fill-yellow-400 text-yellow-400" : "fill-muted text-muted"
+                      r <= rating ? "fill-dharma-warning text-dharma-ink" : "fill-dharma-ink-muted text-dharma-ink-secondary"
                     }`}
                   />
                 </button>
@@ -108,7 +108,7 @@ export function ReviewSection({ itemId, reviews }: ReviewSectionProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-dharma-ink mb-2">
               Title
             </label>
             <Input
@@ -119,7 +119,7 @@ export function ReviewSection({ itemId, reviews }: ReviewSectionProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-dharma-ink mb-2">
               Review
             </label>
             <Textarea

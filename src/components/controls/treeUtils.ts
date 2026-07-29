@@ -182,16 +182,16 @@ export function controlTypeForDepth(depth: number): {
   if (depth === 0)
     return {
       label: "Family",
-      className: "border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-500/5",
+      className: "border-dharma-accent text-dharma-accent-on-tint bg-dharma-accent-tint",
     };
   if (depth === 1)
     return {
       label: "Control",
       className:
-        "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5",
+        "border-dharma-success text-dharma-success-text bg-dharma-success-bg",
     };
   return {
     label: "Enhancement",
-    className: "border-border text-muted-foreground",
+    className: "border-dharma-border text-dharma-ink-secondary",
   };
 }

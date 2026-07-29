@@ -50,11 +50,11 @@ export function QuickStartStep({ onNext, onBack }: QuickStartStepProps) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="p-4 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800"
+              className="p-4 rounded-lg bg-dharma-surface-hover border border-dharma-border"
             >
               <div className="text-2xl mb-2">{tip.icon}</div>
               <h4 className="font-semibold text-sm mb-1">{tip.title}</h4>
-              <p className="text-xs text-stone-600 dark:text-stone-400">
+              <p className="text-xs text-dharma-ink-secondary">
                 {tip.description}
               </p>
             </motion.div>

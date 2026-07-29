@@ -346,7 +346,7 @@ export default async function LandingPage() {
 function LedgerVisual({ dense = false }: { dense?: boolean }) {
   return (
     <div
-      className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-5"
+      className="relative rounded-2xl border border-white/[0.08] bg-dharma-surface from-white/[0.04] to-transparent p-5"
       style={{ boxShadow: "0 30px 80px -40px rgba(93,111,216,0.5)" }}
     >
       <div className="mb-4 flex items-center justify-between px-1">

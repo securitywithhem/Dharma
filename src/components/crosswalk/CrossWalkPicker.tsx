@@ -177,30 +177,30 @@ export function CrossWalkPicker({ frameworkAId, frameworkBId, frameworkAName, fr
       </div>
 
       {selected && (
-        <Card className="mt-4 border-primary/30 bg-primary/5">
+        <Card className="mt-4 border-dharma-accent bg-dharma-accent-tint">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-1.5 text-sm">
-                <Sparkles className="h-4 w-4 text-primary" />
+                <Sparkles className="h-4 w-4 text-dharma-accent-on-tint" />
                 AI Suggestions for &ldquo;{selected.control.title}&rdquo;
               </CardTitle>
               <button
                 onClick={() => setSelected(null)}
                 aria-label="Cancel selection"
-                className="text-muted-foreground hover:text-foreground"
+                className="text-dharma-ink-secondary hover:text-dharma-ink"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="mb-2 text-xs text-muted-foreground">
+            <p className="mb-2 text-xs text-dharma-ink-secondary">
               Select a control on the other side to map manually, or accept a suggestion below.
             </p>
             {suggestions.isLoading ? (
               <Skeleton className="h-16 w-full" />
             ) : (suggestions.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-dharma-ink-secondary">
                 No AI suggestions available — this control may not be embedded yet.
               </p>
             ) : (
@@ -208,11 +208,11 @@ export function CrossWalkPicker({ frameworkAId, frameworkBId, frameworkAName, fr
                 {suggestions.data!.map((s) => (
                   <li
                     key={s.controlId}
-                    className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-1.5"
+                    className="flex items-center justify-between gap-3 rounded-md border border-dharma-border bg-dharma-bg px-3 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium">
-                        {s.code && <span className="mr-1 font-mono text-muted-foreground">{s.code}</span>}
+                        {s.code && <span className="mr-1 font-mono text-dharma-ink-secondary">{s.code}</span>}
                         {s.title}
                       </p>
                     </div>
@@ -276,7 +276,7 @@ function ConfirmMappingDialog({
           <DialogDescription>
             {pending.source.control.title} ↔ {pending.target.control.title}
             {pending.suggestedByAI && (
-              <span className="ml-2 inline-flex items-center gap-1 text-primary">
+              <span className="ml-2 inline-flex items-center gap-1 text-dharma-accent-on-tint">
                 <Sparkles className="h-3 w-3" />
                 AI-suggested ({Math.round((pending.confidenceScore ?? 0) * 100)}% match)
               </span>
@@ -286,7 +286,7 @@ function ConfirmMappingDialog({
 
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Mapping strength</label>
+            <label className="mb-1 block text-xs font-medium text-dharma-ink-secondary">Mapping strength</label>
             <Select value={strength} onValueChange={(v) => setStrength(v as MappingStrength)}>
               <SelectTrigger className="h-9">
                 <SelectValue />
@@ -299,10 +299,10 @@ function ConfirmMappingDialog({
             </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Rationale (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-dharma-ink-secondary">Rationale (optional)</label>
             <Input value={rationale} onChange={(e) => setRationale(e.target.value)} placeholder="Why these controls map…" />
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p className="text-xs text-dharma-danger-text">{error}</p>}
         </div>
 
         <div className="mt-2 flex justify-end gap-2">

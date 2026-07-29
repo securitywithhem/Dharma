@@ -59,9 +59,9 @@ export default function VulnerabilityDetailPage({ params }: VulnerabilityDetailP
 
   if (vulnQuery.isError || !vulnQuery.data) {
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
+      <Card className="border-dharma-danger bg-dharma-danger-bg">
         <CardHeader>
-          <div className="flex items-center gap-2 text-destructive">
+          <div className="flex items-center gap-2 text-dharma-danger-text">
             <ShieldAlert className="h-5 w-5" />
             <CardTitle className="text-base">Vulnerability not found</CardTitle>
           </div>
@@ -86,7 +86,7 @@ export default function VulnerabilityDetailPage({ params }: VulnerabilityDetailP
       <div className="flex items-center gap-3">
         <Link
           href={"/dashboard/vulnerabilities" as Route}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-dharma-border text-dharma-ink-secondary hover:text-dharma-ink"
           aria-label="Back to vulnerabilities"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -107,20 +107,20 @@ export default function VulnerabilityDetailPage({ params }: VulnerabilityDetailP
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-1">Description</h2>
+            <h2 className="text-sm font-semibold text-dharma-ink-secondary mb-1">Description</h2>
             <p className="text-sm">{vuln.description}</p>
           </div>
 
           {vuln.remediation && (
             <div>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-1">Remediation</h2>
+              <h2 className="text-sm font-semibold text-dharma-ink-secondary mb-1">Remediation</h2>
               <p className="text-sm">{vuln.remediation}</p>
             </div>
           )}
 
           {vuln.cvssVector && (
             <div>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-1">CVSS Vector</h2>
+              <h2 className="text-sm font-semibold text-dharma-ink-secondary mb-1">CVSS Vector</h2>
               <p className="text-sm font-mono">{vuln.cvssVector}</p>
             </div>
           )}
@@ -143,7 +143,7 @@ export default function VulnerabilityDetailPage({ params }: VulnerabilityDetailP
                 </SelectContent>
               </Select>
               {vuln.status === "WONT_FIX" && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-dharma-ink-secondary">
                   Changing status away from WONT_FIX will reopen this finding.
                 </p>
               )}

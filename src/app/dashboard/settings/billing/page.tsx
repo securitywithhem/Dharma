@@ -37,13 +37,13 @@ export default function BillingPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Billing & Subscription</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-dharma-ink-secondary mt-2">
           Manage your plan, view usage, and invoices.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border">
+      <div className="border-b border-dharma-border">
         <nav className="flex space-x-8" aria-label="Billing tabs">
           {[
             { id: "overview", label: "Overview" },
@@ -56,8 +56,8 @@ export default function BillingPage() {
               onClick={() => handleTabChange(tab.id as any)}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                  ? "border-dharma-accent text-dharma-accent-on-tint"
+                  : "border-transparent text-dharma-ink-secondary hover:text-dharma-ink hover:border-dharma-border"
               }`}
               aria-current={activeTab === tab.id ? "page" : undefined}
             >

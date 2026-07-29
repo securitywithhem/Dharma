@@ -30,9 +30,9 @@ interface FrameworkDetailPageProps {
 }
 
 function getProgressStatus(pct: number) {
-  if (pct >= 80) return { label: "On Track", colour: "text-emerald-600 dark:text-emerald-400", bar: "[&>div]:bg-emerald-500" };
-  if (pct >= 40) return { label: "In Progress", colour: "text-amber-600 dark:text-amber-400", bar: "[&>div]:bg-amber-500" };
-  return { label: "Needs Attention", colour: "text-rose-500 dark:text-rose-400", bar: "[&>div]:bg-rose-500" };
+  if (pct >= 80) return { label: "On Track", colour: "text-dharma-success-text", bar: "[&>div]:bg-dharma-success-bg" };
+  if (pct >= 40) return { label: "In Progress", colour: "text-dharma-ink", bar: "[&>div]:bg-dharma-warning-bg" };
+  return { label: "Needs Attention", colour: "text-dharma-danger-text", bar: "[&>div]:bg-dharma-danger-bg" };
 }
 
 export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps) {
@@ -66,14 +66,14 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-        <ShieldAlert className="h-12 w-12 text-destructive" />
+        <ShieldAlert className="h-12 w-12 text-dharma-danger-text" />
         <h1 className="text-xl font-semibold">Framework not found</h1>
-        <p className="text-sm text-muted-foreground max-w-sm">
+        <p className="text-sm text-dharma-ink-secondary max-w-sm">
           {error?.message ?? "This framework does not exist or you do not have access to it."}
         </p>
         <Link
             href="/dashboard/frameworks"
-            className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-md border border-dharma-border px-4 py-2 text-sm font-medium hover:bg-dharma-surface-hover transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Frameworks
@@ -112,7 +112,7 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
         <nav aria-label="Breadcrumb">
           <Link
             href="/dashboard/frameworks"
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-dharma-ink-secondary hover:text-dharma-ink hover:bg-dharma-surface-hover transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Compliance Frameworks
@@ -121,8 +121,8 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-dharma-accent-tint">
+              <Shield className="h-5 w-5 text-dharma-accent-on-tint" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -130,7 +130,7 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
                 <Badge variant="outline">v{framework.version}</Badge>
               </div>
               {framework.description && (
-                <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">
+                <p className="text-sm text-dharma-ink-secondary mt-0.5 max-w-2xl">
                   {framework.description}
                 </p>
               )}
@@ -150,7 +150,7 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
         <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/70">
           {/* Big percentage */}
           <div className="p-6 flex flex-col justify-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-wider text-dharma-ink-secondary">
               Overall Compliance
             </p>
             <div className="flex items-end gap-3 mt-2">
@@ -177,39 +177,39 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
           <div className="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-border/70">
             {[
               {
-                icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+                icon: <CheckCircle2 className="h-4 w-4 text-dharma-success-text" />,
                 label: "Compliant",
                 value: framework.compliantCount,
-                colour: "text-emerald-600 dark:text-emerald-400",
+                colour: "text-dharma-success-text",
               },
               {
-                icon: <Clock className="h-4 w-4 text-amber-500" />,
+                icon: <Clock className="h-4 w-4 text-dharma-ink" />,
                 label: "In Progress",
                 value: inProgressCount,
-                colour: "text-amber-600 dark:text-amber-400",
+                colour: "text-dharma-ink",
               },
               {
-                icon: <Circle className="h-4 w-4 text-muted-foreground" />,
+                icon: <Circle className="h-4 w-4 text-dharma-ink-secondary" />,
                 label: "Not Started",
                 value: notStarted,
-                colour: "text-foreground",
+                colour: "text-dharma-ink",
               },
               {
-                icon: <Circle className="h-4 w-4 text-muted-foreground/50" />,
+                icon: <Circle className="h-4 w-4 text-dharma-ink-secondary" />,
                 label: "N/A",
                 value: notApplicableCount,
-                colour: "text-muted-foreground",
+                colour: "text-dharma-ink-secondary",
               },
             ].map(({ icon, label, value, colour }) => (
               <div key={label} className="flex flex-col justify-center p-5">
                 <div className="flex items-center gap-1.5 mb-1">
                   {icon}
-                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="text-xs text-dharma-ink-secondary">{label}</p>
                 </div>
                 <p className={cn("text-3xl font-bold tabular-nums", colour)}>
                   {value}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-dharma-ink-secondary mt-0.5">
                   of {framework.controlCount}
                 </p>
               </div>
@@ -235,7 +235,7 @@ export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps
             <CardTitle className="text-base">Controls</CardTitle>
             <div className="flex items-center gap-2">
               {/* Tree / Flat toggle */}
-              <div className="flex rounded-md border border-border p-0.5" role="group" aria-label="Control view">
+              <div className="flex rounded-md border border-dharma-border p-0.5" role="group" aria-label="Control view">
                 <Button
                   variant={controlView === "tree" ? "default" : "ghost"}
                   size="sm"

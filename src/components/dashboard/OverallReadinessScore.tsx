@@ -20,8 +20,8 @@ function bandFor(score: number) {
     return {
       label: 'On track',
       icon: CheckCircle2,
-      fill: 'bg-success',
-      text: 'text-success',
+      fill: 'bg-dharma-success-bg',
+      text: 'text-dharma-success-text',
       note: 'Readiness is at audit-ready level.',
     } as const;
   }
@@ -29,16 +29,16 @@ function bandFor(score: number) {
     return {
       label: 'Needs work',
       icon: CircleDot,
-      fill: 'bg-warning',
-      text: 'text-warning',
+      fill: 'bg-dharma-warning-bg',
+      text: 'text-dharma-ink',
       note: 'Close the open gaps before booking an audit.',
     } as const;
   }
   return {
     label: 'At risk',
     icon: AlertTriangle,
-    fill: 'bg-critical',
-    text: 'text-critical',
+    fill: 'bg-dharma-danger-bg',
+    text: 'text-dharma-danger-text',
     note: 'Significant control coverage is missing.',
   } as const;
 }
@@ -62,7 +62,7 @@ export function OverallReadinessScore({
   return (
     <section
       aria-label="Overall readiness"
-      className="rounded-lg border border-border bg-card p-5 shadow-xs"
+      className="rounded-lg border border-dharma-border bg-dharma-surface p-5 border border-dharma-border"
     >
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div>
@@ -70,17 +70,17 @@ export function OverallReadinessScore({
           <div className="mt-2 flex items-baseline gap-2.5">
             <span
               data-numeric
-              className="font-display text-display-lg font-semibold leading-none text-foreground"
+              className="font-display text-display-lg font-semibold leading-none text-dharma-ink"
             >
               {pct}
-              <span className="text-display-sm text-muted-foreground">%</span>
+              <span className="text-display-sm text-dharma-ink-secondary">%</span>
             </span>
             <span className={cn('inline-flex items-center gap-1.5 text-data font-medium', band.text)}>
               <Icon className="h-4 w-4" aria-hidden />
               {band.label}
             </span>
           </div>
-          <p className="mt-1.5 text-data text-muted-foreground">{band.note}</p>
+          <p className="mt-1.5 text-data text-dharma-ink-secondary">{band.note}</p>
         </div>
 
         {/* Supporting counts sit to the side, at a clearly lower weight than
@@ -88,19 +88,19 @@ export function OverallReadinessScore({
         <dl className="flex gap-6">
           <div>
             <dt className="label-eyebrow">Compliant</dt>
-            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-dharma-ink">
               {compliantControls}
             </dd>
           </div>
           <div>
             <dt className="label-eyebrow">Outstanding</dt>
-            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-dharma-ink">
               {outstanding}
             </dd>
           </div>
           <div>
             <dt className="label-eyebrow">Total</dt>
-            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-muted-foreground">
+            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-dharma-ink-secondary">
               {totalControls}
             </dd>
           </div>
@@ -108,7 +108,7 @@ export function OverallReadinessScore({
       </div>
 
       <div
-        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-dharma-surface-hover"
         role="meter"
         aria-valuenow={pct}
         aria-valuemin={0}

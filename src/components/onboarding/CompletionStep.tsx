@@ -41,7 +41,7 @@ export function CompletionStep() {
           animate={{ rotate: [0, 10, -10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <CheckCircle className="w-24 h-24 text-emerald-600 mx-auto mb-6" />
+          <CheckCircle className="w-24 h-24 text-dharma-success-text mx-auto mb-6" />
         </motion.div>
       </motion.div>
 
@@ -49,7 +49,7 @@ export function CompletionStep() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="text-3xl font-bold text-stone-900 dark:text-stone-50 mb-2 text-center"
+        className="text-3xl font-bold text-dharma-ink mb-2 text-center"
       >
         You're ready to go!
       </motion.h2>
@@ -58,7 +58,7 @@ export function CompletionStep() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="text-stone-600 dark:text-stone-400 text-center mb-8 max-w-md"
+        className="text-dharma-ink-secondary text-center mb-8 max-w-md"
       >
         Your workspace is set up. Taking you to Compliance Status...
       </motion.p>

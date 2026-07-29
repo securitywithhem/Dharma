@@ -12,21 +12,42 @@ import { cn } from "@/lib/utils";
 export const SEVERITIES = ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
-// Tinted treatment (12% wash + full-strength text) rather than a solid fill:
-// these sit in dense tables, and five saturated blocks per row would fight the
-// data for attention. Colours resolve from --severity-* only — never raw
-// Tailwind palette values, so a white-label tenant recolouring the brand
-// cannot shift what a severity means.
+// Tinted treatment rather than a solid fill: these sit in dense tables, and
+// five saturated blocks per row would fight the data for attention.
+//
+// ---------------------------------------------------------------------------
+// RAMP COMPRESSION — accepted cost, recorded 2026-07-29
+//
+// This previously resolved from a CVD-validated five-step --severity-* ramp,
+// one step per Prisma `Severity` member. Warm Paper ships four flat semantic
+// roles and no severity ramp, so five steps now map onto four roles:
+//
+//     NONE -> neutral   LOW -> info   MEDIUM -> warning
+//     HIGH -> danger    CRITICAL -> danger
+//
+// HIGH and CRITICAL therefore share a hue. They are separated by border and
+// weight only, which is a weaker signal than the ramp gave. The text label is
+// what keeps this conforming — colour is not the sole channel (WCAG 1.4.1) —
+// and it is now load-bearing rather than merely belt-and-braces, so it must
+// never become icon-only.
+//
+// See 0_DESIGN_SYSTEM.md § Accepted costs (2).
+// ---------------------------------------------------------------------------
 const statusBadgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-micro font-medium transition-colors duration-150",
+  "inline-flex items-center gap-1.5 rounded-dharma-sm border px-2 py-0.5 text-micro transition-colors duration-dharma-fast ease-dharma",
   {
     variants: {
       severity: {
-        NONE: "border-severity-none/25 bg-severity-none/[0.12] text-severity-none",
-        LOW: "border-severity-low/25 bg-severity-low/[0.12] text-severity-low",
-        MEDIUM: "border-severity-medium/25 bg-severity-medium/[0.12] text-severity-medium",
-        HIGH: "border-severity-high/25 bg-severity-high/[0.12] text-severity-high",
-        CRITICAL: "border-severity-critical/30 bg-severity-critical/[0.14] text-severity-critical",
+        NONE: "border-dharma-border-strong bg-dharma-surface-hover text-dharma-ink-secondary font-medium",
+        LOW: "border-dharma-info bg-dharma-info-bg text-dharma-info-text font-medium",
+        // Ink label, not --dharma-warning-text: at 11px the specified warning
+        // pair is 4.48:1 and conforms only as large text. Same reasoning as
+        // the Badge `warning` variant.
+        MEDIUM: "border-dharma-warning bg-dharma-warning-bg text-dharma-ink font-medium",
+        HIGH: "border-dharma-danger bg-dharma-danger-bg text-dharma-danger-text font-medium",
+        // Same hue as HIGH — carries the weight and the heavier rule instead.
+        CRITICAL:
+          "border-dharma-danger bg-dharma-danger-bg text-dharma-danger-text font-semibold ring-1 ring-inset ring-dharma-danger",
       },
     },
     defaultVariants: { severity: "NONE" },
@@ -34,11 +55,11 @@ const statusBadgeVariants = cva(
 );
 
 const DOT_CLASS: Record<Severity, string> = {
-  NONE: "bg-severity-none",
-  LOW: "bg-severity-low",
-  MEDIUM: "bg-severity-medium",
-  HIGH: "bg-severity-high",
-  CRITICAL: "bg-severity-critical",
+  NONE: "bg-dharma-ink-muted",
+  LOW: "bg-dharma-info",
+  MEDIUM: "bg-dharma-warning",
+  HIGH: "bg-dharma-danger",
+  CRITICAL: "bg-dharma-danger",
 };
 
 // Sentence case reads as prose in a table cell; SCREAMING_CASE shouts five

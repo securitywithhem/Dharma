@@ -244,7 +244,7 @@ export function ControlTree({ frameworkId }: ControlTreeProps) {
 
   if (isError) {
     return (
-      <div className="rounded-lg border border-dashed border-destructive/40 py-10 text-center text-sm text-destructive">
+      <div className="rounded-lg border border-dashed border-dharma-danger py-10 text-center text-sm text-dharma-danger-text">
         {error?.message ?? "Failed to load the control hierarchy."}
       </div>
     );
@@ -253,7 +253,7 @@ export function ControlTree({ frameworkId }: ControlTreeProps) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs text-dharma-ink-secondary">
           <ListTree className="h-3.5 w-3.5" />
           Drag to reorder or re-parent · arrow keys to navigate
         </p>
@@ -284,10 +284,10 @@ export function ControlTree({ frameworkId }: ControlTreeProps) {
       )}
 
       {roots.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border py-12 text-center">
-          <ListTree className="mx-auto h-8 w-8 text-muted-foreground/40" />
+        <div className="rounded-lg border border-dashed border-dharma-border py-12 text-center">
+          <ListTree className="mx-auto h-8 w-8 text-dharma-ink-secondary" />
           <p className="mt-3 text-sm font-medium">No controls yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-dharma-ink-secondary">
             Add a root control to start building this framework&apos;s hierarchy.
           </p>
           <Button variant="outline" size="sm" className="mt-4 h-8 text-xs" onClick={() => openAdd(null)}>
@@ -366,13 +366,13 @@ function AddControlForm({
         e.preventDefault();
         if (values.title.trim()) void onSubmit(values);
       }}
-      className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3"
+      className="mb-3 rounded-lg border border-dharma-success bg-dharma-success-bg p-3"
     >
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-medium">
           {isRoot ? "New root control" : `New sub-control under “${target.parentTitle}”`}
         </p>
-        <button type="button" onClick={onCancel} aria-label="Cancel" className="text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={onCancel} aria-label="Cancel" className="text-dharma-ink-secondary hover:text-dharma-ink">
           <X className="h-4 w-4" />
         </button>
       </div>

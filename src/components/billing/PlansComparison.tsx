@@ -62,10 +62,10 @@ export function PlansComparison() {
           const limits = plan.limits as Record<string, number>;
           
           return (
-            <Card key={plan.id} className={`relative flex flex-col ${isCurrent ? "border-primary shadow-md" : ""}`}>
+            <Card key={plan.id} className={`relative flex flex-col ${isCurrent ? "border-dharma-accent border border-dharma-border" : ""}`}>
               {isCurrent && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
+                  <span className="bg-dharma-accent text-dharma-ink-inverse px-3 py-1 rounded-full text-xs font-semibold border border-dharma-border">
                     Current Plan
                   </span>
                 </div>
@@ -74,7 +74,7 @@ export function PlansComparison() {
                 <CardTitle className="text-xl">{plan.displayName}</CardTitle>
                 <div className="mt-4 flex items-baseline">
                   <span className="text-4xl font-bold tracking-tight">${(plan.price || 0).toFixed(0)}</span>
-                  <span className="text-muted-foreground ml-1 text-sm font-medium">/month</span>
+                  <span className="text-dharma-ink-secondary ml-1 text-sm font-medium">/month</span>
                 </div>
               </CardHeader>
               <CardContent className="flex-1">
@@ -86,27 +86,27 @@ export function PlansComparison() {
                       .slice(0, 4) // Show only up to 4 top features in card
                       .map(([key]) => (
                         <li key={key} className="flex items-start gap-3">
-                          <CheckCircle className="w-5 h-5 text-primary shrink-0" />
-                          <span className="text-sm text-muted-foreground">{formatFeatureName(key)}</span>
+                          <CheckCircle className="w-5 h-5 text-dharma-accent-on-tint shrink-0" />
+                          <span className="text-sm text-dharma-ink-secondary">{formatFeatureName(key)}</span>
                         </li>
                       ))
                     }
                   </ul>
 
-                  <div className="mt-6 pt-6 border-t border-border space-y-3">
+                  <div className="mt-6 pt-6 border-t border-dharma-border space-y-3">
                     <p className="text-sm font-semibold">Usage Limits</p>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
+                    <ul className="space-y-2 text-sm text-dharma-ink-secondary">
                       <li className="flex justify-between">
                         <span>Users</span>
-                        <span className="font-medium text-foreground">{limits?.users || "Unlimited"}</span>
+                        <span className="font-medium text-dharma-ink">{limits?.users || "Unlimited"}</span>
                       </li>
                       <li className="flex justify-between">
                         <span>Frameworks</span>
-                        <span className="font-medium text-foreground">{limits?.frameworks || "Unlimited"}</span>
+                        <span className="font-medium text-dharma-ink">{limits?.frameworks || "Unlimited"}</span>
                       </li>
                       <li className="flex justify-between">
                         <span>Storage (MB)</span>
-                        <span className="font-medium text-foreground">{limits?.storageMb || "Unlimited"}</span>
+                        <span className="font-medium text-dharma-ink">{limits?.storageMb || "Unlimited"}</span>
                       </li>
                     </ul>
                   </div>
@@ -157,9 +157,9 @@ export function PlansComparison() {
                     return (
                       <TableCell key={plan.id} className="text-center">
                         {hasFeature ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto" />
+                          <CheckCircle className="w-5 h-5 text-dharma-success-text mx-auto" />
                         ) : (
-                          <XCircle className="w-5 h-5 text-muted-foreground/30 mx-auto" />
+                          <XCircle className="w-5 h-5 text-dharma-ink-secondary mx-auto" />
                         )}
                       </TableCell>
                     );

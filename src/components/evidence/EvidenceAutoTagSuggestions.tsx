@@ -48,8 +48,8 @@ export function EvidenceAutoTagSuggestions({ evidenceId, suggestions, onChange }
   const busy = accept.isPending || reject.isPending;
 
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-3" aria-label="AI-suggested control tags">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">AI-suggested controls for this evidence</p>
+    <div className="rounded-md border border-dharma-border bg-dharma-surface-hover p-3" aria-label="AI-suggested control tags">
+      <p className="mb-2 text-xs font-medium text-dharma-ink-secondary">AI-suggested controls for this evidence</p>
       <ul className="space-y-2">
         {suggestions.map((s) => (
           <li key={s.controlId} className="flex items-center justify-between gap-2">

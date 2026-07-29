@@ -28,7 +28,7 @@ import { SsoStatusBadge } from "@/components/enterprise/SsoStatusBadge";
 function CopyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label className="text-xs text-dharma-ink-secondary">{label}</Label>
       <div className="flex items-center gap-2">
         <Input readOnly value={value} className="font-mono text-xs" />
         <Button
@@ -137,7 +137,7 @@ export default function SsoSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Single Sign-On</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Connect your identity provider via SAML 2.0 or OIDC.
           </p>
         </div>
@@ -151,8 +151,8 @@ export default function SsoSettingsPage() {
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === t
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-dharma-accent text-dharma-accent-on-tint"
+                : "border-transparent text-dharma-ink-secondary hover:text-dharma-ink"
             }`}
           >
             {t}
@@ -271,7 +271,7 @@ export default function SsoSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground max-w-xl">
+          <p className="text-sm text-dharma-ink-secondary max-w-xl">
             When enforced, password and Google sign-in are blocked for every member of this
             organization — only your identity provider can start a session.
           </p>
@@ -292,14 +292,14 @@ export default function SsoSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Let Okta or Azure AD create, update, and deactivate members automatically.
           </p>
           {config?.urls && config.scimEnabled && (
             <CopyField label="SCIM base URL" value={config.urls.scimBase} />
           )}
           {scimToken && (
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+            <div className="rounded-md border border-dharma-warning bg-dharma-warning-bg p-3 space-y-2">
               <p className="text-xs font-medium">
                 Copy this bearer token now — it is shown only once.
               </p>

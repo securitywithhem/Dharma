@@ -58,15 +58,21 @@ function getRoleFromToken(value: unknown): Role {
   return "VIEWER";
 }
 
+// Inline literal hex, and inline styles rather than classes: mail clients strip
+// <style> blocks and do not resolve CSS custom properties, so the tokens in
+// globals.css cannot reach here. Values are the light-mode --foreground and
+// --primary resolved to hex; keep them in step. The button was #d97706, the
+// saffron primary retired with the old UI docs, which meant the first thing a
+// new user saw was a colour that appears nowhere in the product.
 function buildMagicLinkHtml(url: string, host: string) {
   return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1c1917;">
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #181c2a;">
       <h1 style="font-size: 20px;">Sign in to Dharma</h1>
       <p>Use the secure link below to access your compliance workspace.</p>
       <p>
         <a
           href="${url}"
-          style="display: inline-block; padding: 12px 18px; border-radius: 10px; background: #d97706; color: #fffaf0; text-decoration: none; font-weight: 700;"
+          style="display: inline-block; padding: 12px 18px; border-radius: 10px; background: #2d3a80; color: #f8f6f1; text-decoration: none; font-weight: 700;"
         >
           Sign in
         </a>

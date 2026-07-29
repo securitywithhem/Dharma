@@ -75,12 +75,12 @@ export function EvidenceList({ controlId }: EvidenceListProps) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="p-4 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex gap-3 items-start"
+        className="p-4 rounded-lg bg-dharma-danger-bg border border-dharma-danger flex gap-3 items-start"
       >
-        <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+        <AlertCircle className="w-5 h-5 text-dharma-danger-text flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-red-900 dark:text-red-100">Error loading evidence</p>
-          <p className="text-sm text-red-700 dark:text-red-300">{error.message}</p>
+          <p className="font-medium text-dharma-danger-text">Error loading evidence</p>
+          <p className="text-sm text-dharma-danger-text">{error.message}</p>
         </div>
       </motion.div>
     );
@@ -93,8 +93,8 @@ export function EvidenceList({ controlId }: EvidenceListProps) {
         animate={{ opacity: 1 }}
         className="text-center py-8"
       >
-        <FileText className="w-12 h-12 text-stone-300 dark:text-stone-700 mx-auto mb-3" />
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <FileText className="w-12 h-12 text-dharma-ink-secondary mx-auto mb-3" />
+        <p className="text-sm text-dharma-ink-secondary">
           No evidence uploaded yet. Start by uploading a file.
         </p>
       </motion.div>
@@ -129,7 +129,7 @@ export function EvidenceList({ controlId }: EvidenceListProps) {
                   {item.type.toLowerCase().replace(/_/g, ' ')}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm text-stone-500 dark:text-stone-400">
+              <TableCell className="text-sm text-dharma-ink-secondary">
                 {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
               </TableCell>
               <TableCell className="text-right">
@@ -149,7 +149,7 @@ export function EvidenceList({ controlId }: EvidenceListProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => setDeleteId(item.id)}
-                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                    className="text-dharma-danger-text hover:bg-dharma-surface-hover"
                     title="Delete"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -174,7 +174,7 @@ export function EvidenceList({ controlId }: EvidenceListProps) {
             <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
             <Button
               onClick={() => deleteId && handleDelete(deleteId)}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-dharma-danger-bg hover:bg-dharma-surface-hover text-dharma-danger-text"
             >
               Delete
             </Button>

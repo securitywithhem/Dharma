@@ -47,7 +47,7 @@ export default function EndpointDetailPage() {
 
       <div>
         <h1 className="text-2xl font-semibold">Posture checks</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Timeline of agent-reported checks, mapped to your controls where possible.
         </p>
       </div>
@@ -60,9 +60,9 @@ export default function EndpointDetailPage() {
           {checksQuery.isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : checksQuery.error ? (
-            <p className="py-8 text-center text-sm text-red-500">{checksQuery.error.message}</p>
+            <p className="py-8 text-center text-sm text-dharma-danger-text">{checksQuery.error.message}</p>
           ) : (checksQuery.data?.items ?? []).length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-8 text-center text-sm text-dharma-ink-secondary">
               No checks reported yet — they appear after the agent's first heartbeat.
             </p>
           ) : (
@@ -74,7 +74,7 @@ export default function EndpointDetailPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       {pass ? (
                         <Badge variant="secondary" className="gap-1">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Pass
+                          <CheckCircle2 className="h-3 w-3 text-dharma-success-text" /> Pass
                         </Badge>
                       ) : (
                         <Badge variant="destructive" className="gap-1">
@@ -82,7 +82,7 @@ export default function EndpointDetailPage() {
                         </Badge>
                       )}
                       <span className="text-sm font-medium">{checkLabel(check.checkType)}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-dharma-ink-secondary">
                         {new Date(check.collectedAt).toLocaleString()}
                       </span>
                     </div>
@@ -90,12 +90,12 @@ export default function EndpointDetailPage() {
                       {check.control ? (
                         <Link
                           href={`/dashboard/controls/${check.control.id}` as never}
-                          className="text-primary hover:underline"
+                          className="text-dharma-accent-on-tint hover:underline"
                         >
                           {check.control.domain} — {check.control.title}
                         </Link>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 text-dharma-ink-secondary">
                           <Link2Off className="h-3 w-3" /> Unmapped check (no matching control)
                         </span>
                       )}

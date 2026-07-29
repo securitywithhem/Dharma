@@ -16,7 +16,7 @@ function RegulatoryBadge() {
   });
   if (!data || data <= 0) return null;
   return (
-    <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-critical px-1 text-[10px] font-semibold tabular-nums text-critical-foreground">
+    <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-dharma-danger-bg px-1 text-[10px] font-semibold tabular-nums text-dharma-danger-text">
       {data > 99 ? "99+" : data}
     </span>
   );
@@ -32,10 +32,10 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       className={cn(
         "group relative flex items-center gap-2.5 rounded-md py-1.5 pl-3 pr-2 text-data font-medium",
         "transition-[background-color,color] duration-150 ease-out",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent focus-visible:ring-offset-1 focus-visible:ring-offset-dharma-bg",
         active
-          ? "bg-primary/8 text-primary"
-          : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+          ? "bg-dharma-accent-tint text-dharma-accent-on-tint"
+          : "text-dharma-ink-secondary hover:bg-dharma-surface-hover hover:text-dharma-ink",
       )}
     >
       {/* A left marker rule rather than a filled button. The filled state made
@@ -43,14 +43,14 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       <span
         aria-hidden
         className={cn(
-          "absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-primary transition-opacity duration-150",
+          "absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-dharma-accent transition-opacity duration-150",
           active ? "opacity-100" : "opacity-0",
         )}
       />
       <Icon
         className={cn(
           "h-4 w-4 shrink-0 transition-colors duration-150",
-          active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+          active ? "text-dharma-accent-on-tint" : "text-dharma-ink-secondary group-hover:text-dharma-ink",
         )}
       />
       <span className="truncate">{label}</span>
@@ -64,14 +64,14 @@ export function Sidebar() {
   const pathname = usePathname() ?? "/dashboard";
 
   return (
-    <aside className="surface-paper hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
+    <aside className="surface-paper hidden w-60 shrink-0 flex-col border-r border-dharma-border bg-dharma-surface md:flex">
       <div className="flex items-center gap-2.5 px-4 py-4">
-        <DharmaMark className="h-7 w-7 text-primary" />
+        <DharmaMark className="h-7 w-7 text-dharma-accent-on-tint" />
         <div className="min-w-0">
           <p className="font-display text-[15px] font-semibold leading-none tracking-[-0.01em]">
             Dharma
           </p>
-          <p className="mt-1 text-micro leading-none text-muted-foreground">
+          <p className="mt-1 text-micro leading-none text-dharma-ink-secondary">
             Compliance workspace
           </p>
         </div>
@@ -99,9 +99,9 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex w-full items-center gap-2.5 rounded-md py-1.5 pl-3 pr-2 text-data font-medium text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex w-full items-center gap-2.5 rounded-md py-1.5 pl-3 pr-2 text-data font-medium text-dharma-ink-secondary transition-colors duration-150 hover:bg-dharma-surface-hover hover:text-dharma-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
         >
-          <LogOut className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+          <LogOut className="h-4 w-4 shrink-0 text-dharma-ink-secondary" />
           Sign out
         </button>
       </div>

@@ -8,7 +8,7 @@ const Table = React.forwardRef<
   // text-data (13px) rather than text-sm: compliance tables carry long control
   // titles and framework references, and the extra column width matters more
   // than the extra pixel of type.
-  <div className="relative w-full overflow-auto rounded-lg border border-border">
+  <div className="relative w-full overflow-auto rounded-lg border border-dharma-border">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-data", className)}
@@ -28,7 +28,7 @@ const TableHeader = React.forwardRef<
     // viewport, and losing the column headers mid-scroll is the top complaint
     // pattern for audit tables.
     className={cn(
-      "sticky top-0 z-10 bg-muted/70 backdrop-blur-sm [&_tr]:border-b [&_tr]:border-border",
+      "sticky top-0 z-10 bg-dharma-surface-hover [&_tr]:border-b [&_tr]:border-dharma-border",
       className,
     )}
     {...props}
@@ -58,7 +58,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-border/70 bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-dharma-border bg-dharma-surface-hover font-medium [&>tr]:last:border-b-0",
       className,
     )}
     {...props}
@@ -73,7 +73,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted",
+      "transition-colors hover:bg-dharma-surface-hover data-[state=selected]:bg-dharma-surface-hover",
       className,
     )}
     {...props}
@@ -88,7 +88,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 px-3 text-left align-middle text-micro font-semibold uppercase tracking-[0.08em] text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-9 px-3 text-left align-middle text-micro font-semibold uppercase tracking-[0.08em] text-dharma-ink-secondary [&:has([role=checkbox])]:pr-0",
       className,
     )}
     {...props}
@@ -117,7 +117,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    className={cn("mt-4 text-sm text-dharma-ink-secondary", className)}
     {...props}
   />
 ));

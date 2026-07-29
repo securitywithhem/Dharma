@@ -61,19 +61,19 @@ export function DomainGapHeatmap({ domains }: DomainGapHeatmapProps) {
 
         {/* Sequential legend — required whenever colour carries a value. */}
         <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
-          <span className="text-micro text-muted-foreground">0%</span>
+          <span className="text-micro text-dharma-ink-secondary">0%</span>
           <div className="flex overflow-hidden rounded-sm">
             {['bg-seq-1', 'bg-seq-2', 'bg-seq-3', 'bg-seq-4', 'bg-seq-5'].map((step) => (
               <span key={step} className={cn('h-2 w-4', step)} aria-hidden />
             ))}
           </div>
-          <span className="text-micro text-muted-foreground">100%</span>
+          <span className="text-micro text-dharma-ink-secondary">100%</span>
         </div>
       </CardHeader>
 
       <CardContent>
         {sortedDomains.length === 0 ? (
-          <p className="py-6 text-center text-data text-muted-foreground">
+          <p className="py-6 text-center text-data text-dharma-ink-secondary">
             No domains scored yet. Add a certification goal to begin.
           </p>
         ) : (
@@ -86,25 +86,25 @@ export function DomainGapHeatmap({ domains }: DomainGapHeatmapProps) {
               >
                 <div className="min-w-0">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-data font-medium text-foreground">
+                    <span className="truncate text-data font-medium text-dharma-ink">
                       {domain.name}
                     </span>
                     <span
                       data-numeric
-                      className="shrink-0 text-data font-semibold tabular-nums text-foreground"
+                      className="shrink-0 text-data font-semibold tabular-nums text-dharma-ink"
                     >
                       {domain.completionPercentage}%
                     </span>
                   </div>
 
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-dharma-surface-hover">
                     <div
                       className={cn('h-full rounded-full', seqStep(domain.completionPercentage))}
                       style={{ width: `${Math.min(Math.max(domain.completionPercentage, 0), 100)}%` }}
                     />
                   </div>
 
-                  <p className="mt-1 text-micro text-muted-foreground">
+                  <p className="mt-1 text-micro text-dharma-ink-secondary">
                     <span data-numeric className="tabular-nums">
                       {domain.compliantCount}/{domain.controlCount}
                     </span>{' '}

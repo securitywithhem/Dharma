@@ -54,8 +54,8 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
       <CardContent>
         {activities.length === 0 ? (
           <div className="py-10 text-center">
-            <Inbox className="mx-auto h-7 w-7 text-muted-foreground/40" aria-hidden />
-            <p className="mt-2 text-data text-muted-foreground">No recent activity</p>
+            <Inbox className="mx-auto h-7 w-7 text-dharma-ink-secondary" aria-hidden />
+            <p className="mt-2 text-data text-dharma-ink-secondary">No recent activity</p>
           </div>
         ) : (
           /* A timeline rule instead of a stack of bordered boxes: the events
@@ -66,16 +66,16 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
               const Icon = actionIcons[activity.action] ?? Clock;
               return (
                 <li key={activity.id} className="relative flex gap-3 py-2 pl-0">
-                  <span className="relative z-10 mt-0.5 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full border border-border bg-card">
-                    <Icon className="h-3 w-3 text-muted-foreground" aria-hidden />
+                  <span className="relative z-10 mt-0.5 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full border border-dharma-border bg-dharma-surface">
+                    <Icon className="h-3 w-3 text-dharma-ink-secondary" aria-hidden />
                   </span>
 
                   <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-data font-medium text-foreground">
+                      <p className="truncate text-data font-medium text-dharma-ink">
                         {labelFor(activity.action)}
                       </p>
-                      <p className="truncate text-micro text-muted-foreground">
+                      <p className="truncate text-micro text-dharma-ink-secondary">
                         {activity.entity}
                         {activity.userName ? ` · ${activity.userName}` : ''}
                       </p>
@@ -83,7 +83,7 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
                     <time
                       dateTime={new Date(activity.timestamp).toISOString()}
                       title={new Date(activity.timestamp).toLocaleString()}
-                      className="shrink-0 whitespace-nowrap text-micro tabular-nums text-muted-foreground"
+                      className="shrink-0 whitespace-nowrap text-micro tabular-nums text-dharma-ink-secondary"
                     >
                       {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                     </time>

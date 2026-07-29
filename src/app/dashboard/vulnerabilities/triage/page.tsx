@@ -37,16 +37,16 @@ export default function VulnerabilitiesTriagePage() {
         <div className="flex items-center gap-3">
           <Link
             href={'/dashboard/vulnerabilities' as Route}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-dharma-border text-dharma-ink-secondary hover:text-dharma-ink"
             aria-label="Back to vulnerabilities list"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-semibold tracking-tight text-dharma-ink">
               Triage Board
             </h1>
-            <p className="mt-0.5 text-data text-muted-foreground">
+            <p className="mt-0.5 text-data text-dharma-ink-secondary">
               Swimlane view for managing remediation workflow
             </p>
           </div>

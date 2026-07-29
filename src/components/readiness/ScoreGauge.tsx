@@ -28,11 +28,11 @@ function bandFor(score: number): { severity: Severity; label: string } {
 }
 
 const TEXT_CLASS: Record<Severity, string> = {
-  NONE: "text-severity-none",
-  LOW: "text-severity-low",
-  MEDIUM: "text-severity-medium",
-  HIGH: "text-severity-high",
-  CRITICAL: "text-severity-critical",
+  NONE: "text-dharma-ink-muted",
+  LOW: "text-dharma-info",
+  MEDIUM: "text-dharma-warning",
+  HIGH: "text-dharma-danger",
+  CRITICAL: "text-dharma-danger",
 };
 
 export function ScoreGauge({
@@ -67,7 +67,7 @@ export function ScoreGauge({
         >
           {rounded}
         </span>
-        {!compact && <span className="text-micro text-muted-foreground">/ 100</span>}
+        {!compact && <span className="text-micro text-dharma-ink-secondary">/ 100</span>}
       </DharmaRing>
       {!compact && (
         <span className={cn("mt-1.5 text-meta font-medium", TEXT_CLASS[band.severity])}>

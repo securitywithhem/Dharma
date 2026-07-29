@@ -18,10 +18,10 @@ export default function AuthErrorPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-lg border-destructive/20">
+      <Card className="w-full max-w-lg border-dharma-danger">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl">
-            <AlertTriangle className="h-6 w-6 text-destructive" />
+            <AlertTriangle className="h-6 w-6 text-dharma-danger-text" />
             Authentication error
           </CardTitle>
           <CardDescription>
@@ -32,7 +32,7 @@ export default function AuthErrorPage({
           <Link href="/auth/signin">
             <Button>Return to sign in</Button>
           </Link>
-          <span className="text-sm text-muted-foreground">Error code: {errorCode}</span>
+          <span className="text-sm text-dharma-ink-secondary">Error code: {errorCode}</span>
         </CardContent>
       </Card>
     </main>

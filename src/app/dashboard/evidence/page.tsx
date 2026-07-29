@@ -27,9 +27,9 @@ function StatCard({
 }) {
   return (
     <Card className="py-4 px-5">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs text-dharma-ink-secondary">{label}</p>
       <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-dharma-ink-secondary mt-0.5">{sub}</p>}
     </Card>
   );
 }
@@ -71,7 +71,7 @@ export default function EvidencePage() {
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground max-w-xl">
+          <p className="text-sm text-dharma-ink-secondary max-w-xl">
             Upload screenshots, policy documents, API responses, and certificates
             to prove you meet each requirement. Files stay in your secure vault.
           </p>
@@ -92,7 +92,7 @@ export default function EvidencePage() {
           </Button>
           <Link
             href="/dashboard/frameworks"
-            className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex h-9 items-center justify-center rounded-md border border-dharma-border bg-dharma-bg px-4 text-sm font-semibold hover:bg-dharma-accent hover:text-dharma-ink-inverse"
           >
             Upload proof from a requirement
           </Link>
@@ -120,15 +120,15 @@ export default function EvidencePage() {
               sub="Need renewal"
             />
           ) : (
-            <Card className="py-4 px-5 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950">
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+            <Card className="py-4 px-5 border-dharma-success bg-dharma-success-bg">
+              <div className="flex items-center gap-2 text-dharma-success-text">
                 <ShieldCheck className="h-4 w-4" />
                 <p className="text-xs font-medium">All current</p>
               </div>
-              <p className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+              <p className="mt-1 text-2xl font-bold text-dharma-success-text">
                 0
               </p>
-              <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
+              <p className="text-xs text-dharma-success-text mt-0.5">
                 expired files
               </p>
             </Card>
@@ -141,7 +141,7 @@ export default function EvidencePage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <FileText className="h-4 w-4 text-dharma-ink-secondary" />
               <CardTitle className="text-base">All Evidence</CardTitle>
             </div>
           </div>

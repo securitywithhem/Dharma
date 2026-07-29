@@ -87,7 +87,7 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
     <div
       ref={ref}
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200",
+        "fixed inset-0 z-50 bg-black/50 transition-opacity duration-dharma-base ease-dharma",
         className,
       )}
       aria-hidden="true"
@@ -135,8 +135,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           role="dialog"
           aria-modal="true"
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-xl",
-            "animate-in fade-in-0 zoom-in-95 slide-in-from-left-1/2 slide-in-from-top-[48%] duration-200",
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-dharma-border bg-dharma-surface p-6 border border-dharma-border",
+            "animate-in fade-in-0 zoom-in-95 slide-in-from-left-1/2 slide-in-from-top-[48%] duration-dharma-base",
             className,
           )}
           {...props}
@@ -145,7 +145,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           <button
             type="button"
             aria-label="Close dialog"
-            className="absolute right-4 top-4 rounded-sm text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="absolute right-4 top-4 rounded-sm text-dharma-ink-secondary opacity-70 ring-offset-dharma-bg transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-dharma-accent focus:ring-offset-2"
             onClick={() => {
               onOpenChange(false);
               onClose?.();
@@ -207,7 +207,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-dharma-ink-secondary", className)}
     {...props}
   />
 ));

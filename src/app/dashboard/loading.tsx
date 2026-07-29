@@ -4,7 +4,7 @@ export default function DashboardLoading() {
       {Array.from({ length: 3 }).map((_, index) => (
         <div
           key={index}
-          className="h-32 animate-pulse rounded-xl border border-border/70 bg-muted/60"
+          className="h-32 animate-pulse rounded-xl border border-dharma-border bg-dharma-surface-hover"
         />
       ))}
     </div>

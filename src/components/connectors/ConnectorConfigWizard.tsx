@@ -162,7 +162,7 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
                   key={c.type}
                   disabled={!c.enabled}
                   onClick={() => selectType(c.type)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-lg border border-stone-200 dark:border-stone-800 hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="flex flex-col items-center gap-2 p-4 rounded-lg border border-dharma-border hover:border-dharma-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Cloud className="w-6 h-6" />
                   <span className="text-sm font-medium">{c.label}</span>
@@ -188,7 +188,7 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
                 <div>
                   <Label>1. Create a read-only IAM role using this policy</Label>
                   <div className="relative mt-1">
-                    <pre className="text-xs bg-stone-950 text-stone-100 rounded-lg p-3 overflow-x-auto max-h-40">
+                    <pre className="text-xs bg-dharma-ink text-dharma-ink-inverse rounded-lg p-3 overflow-x-auto max-h-40">
                       {awsIamPolicyTemplate}
                     </pre>
                     <Button
@@ -247,13 +247,13 @@ export function ConnectorConfigWizard({ onClose }: ConnectorConfigWizardProps) {
               exit={{ opacity: 0, x: -10 }}
               className="space-y-4"
             >
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-center gap-2 text-dharma-success-text">
                 <Check className="w-5 h-5" />
                 <span className="font-medium">Connected successfully</span>
               </div>
               <div>
                 <Label>Available evidence types</Label>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                <p className="text-xs text-dharma-ink-secondary mb-2">
                   Selecting which types to collect on a schedule is configured after setup.
                 </p>
                 <div className="space-y-2">

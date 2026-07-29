@@ -15,21 +15,21 @@ interface DomainBreakdownProps {
 }
 
 function getBarColour(pct: number): string {
-  if (pct >= 80) return "[&>div]:bg-emerald-500";
-  if (pct >= 40) return "[&>div]:bg-amber-500";
-  return "[&>div]:bg-rose-500";
+  if (pct >= 80) return "[&>div]:bg-dharma-success-bg";
+  if (pct >= 40) return "[&>div]:bg-dharma-warning-bg";
+  return "[&>div]:bg-dharma-danger-bg";
 }
 
 function getTextColour(pct: number): string {
-  if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
-  if (pct >= 40) return "text-amber-600 dark:text-amber-400";
-  return "text-rose-500 dark:text-rose-400";
+  if (pct >= 80) return "text-dharma-success-text";
+  if (pct >= 40) return "text-dharma-ink";
+  return "text-dharma-danger-text";
 }
 
 export function DomainBreakdown({ breakdown }: DomainBreakdownProps) {
   if (breakdown.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No domains found.</p>
+      <p className="text-sm text-dharma-ink-secondary">No domains found.</p>
     );
   }
 
@@ -49,7 +49,7 @@ export function DomainBreakdown({ breakdown }: DomainBreakdownProps) {
               {item.domain}
             </h4>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-xs text-dharma-ink-secondary tabular-nums">
                 {item.compliant}/{item.total}
               </span>
               <span

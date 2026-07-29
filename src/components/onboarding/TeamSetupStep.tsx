@@ -111,18 +111,18 @@ export function TeamSetupStep({ onNext, onBack }: TeamSetupStepProps) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800"
+                  className="flex items-center justify-between p-3 rounded-lg bg-dharma-surface-hover border border-dharma-border"
                 >
                   <div>
                     <p className="text-sm font-medium">{member.email}</p>
-                    <p className="text-xs text-stone-500">{member.role.replace(/_/g, ' ')}</p>
+                    <p className="text-xs text-dharma-ink-secondary">{member.role.replace(/_/g, ' ')}</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRemoveMember(member.email)}
                   >
-                    <Trash2 className="w-4 h-4 text-red-600" />
+                    <Trash2 className="w-4 h-4 text-dharma-danger-text" />
                   </Button>
                 </motion.div>
               ))}

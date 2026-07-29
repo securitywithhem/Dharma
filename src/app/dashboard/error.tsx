@@ -18,7 +18,7 @@ export default function DashboardError({
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <AlertTriangle className="h-5 w-5 text-dharma-danger-text" />
             Dashboard request failed
           </CardTitle>
           <CardDescription>

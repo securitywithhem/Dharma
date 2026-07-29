@@ -21,7 +21,7 @@ export function BillingUsage() {
   }
 
   if (error || !usageStats) {
-    return <div className="text-destructive">Failed to load usage data.</div>;
+    return <div className="text-dharma-danger-text">Failed to load usage data.</div>;
   }
 
   return (
@@ -97,18 +97,18 @@ export function BillingUsage() {
                 return (
                   <TableRow key={key}>
                     <TableCell className="font-medium">{label}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{data.current}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">
+                    <TableCell className="text-center text-dharma-ink-secondary">{data.current}</TableCell>
+                    <TableCell className="text-center text-dharma-ink-secondary">
                       {data.limit === 0 ? "Unlimited" : data.limit}
                     </TableCell>
                     <TableCell className="text-center">
                       <span
                         className={`text-sm font-semibold ${
                           isCritical
-                            ? "text-destructive"
+                            ? "text-dharma-danger-text"
                             : isWarning
-                            ? "text-amber-500"
-                            : "text-emerald-500"
+                            ? "text-dharma-ink"
+                            : "text-dharma-success-text"
                         }`}
                       >
                         {data.limit === 0 ? "0" : Math.min(data.percent, 100).toFixed(1)}%
@@ -129,7 +129,7 @@ export function BillingUsage() {
             </TableBody>
           </Table>
           
-          <p className="mt-6 text-xs text-muted-foreground flex items-center gap-1">
+          <p className="mt-6 text-xs text-dharma-ink-secondary flex items-center gap-1">
             <span className="text-lg">💡</span> Usage is calculated in real-time. If you're nearing a limit, consider upgrading your plan.
           </p>
         </CardContent>

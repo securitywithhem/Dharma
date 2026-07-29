@@ -144,7 +144,7 @@ export function DharmaRing({
           r={radius}
           fill="none"
           strokeWidth={strokeWidth}
-          className="stroke-muted"
+          className="stroke-dharma-border"
         />
 
         {arcs.map((arc) => (
