@@ -24,8 +24,11 @@ test.describe("Reports", () => {
 
     await page.waitForURL("**/dashboard/reports");
     await expect(page.getByText("Report queued — it will appear in the list shortly")).toBeVisible();
-    await expect(page.getByText(title)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("Custom PDF")).toBeVisible();
+    const row = page.getByRole("row").filter({ hasText: title });
+    await expect(row).toBeVisible({ timeout: 10000 });
+    // exact: true — plain getByText("Custom PDF") also substring-matches the
+    // page subtitle ("Custom PDF reports and AI-narrated board summaries.").
+    await expect(row.getByText("Custom PDF", { exact: true })).toBeVisible();
   });
 
   test("creating a scheduled report shows it under the Schedules tab", async ({ page }) => {
@@ -34,9 +37,8 @@ test.describe("Reports", () => {
     const title = `E2E Scheduled Report ${Date.now()}`;
     await page.locator("#title").fill(title);
 
-    // Switch cadence away from "One-off" to reveal the recipients field and
-    // change the submit button to "Create schedule".
-    await page.getByRole("combobox").filter({ hasText: "One-off (generate now)" }).click();
+    // Only one combobox on this page (the Schedule/cadence dropdown).
+    await page.getByRole("combobox").click();
     await page.getByRole("option", { name: "Weekly (Mondays)" }).click();
     await page.locator("#recipients").fill("ciso@example.com, board@example.com");
 
@@ -46,8 +48,9 @@ test.describe("Reports", () => {
     await expect(page.getByText("Schedule created")).toBeVisible();
 
     await page.getByRole("button", { name: "Schedules" }).click();
-    await expect(page.getByText(title)).toBeVisible();
-    await expect(page.getByText("2")).toBeVisible(); // recipient count column
+    const row = page.getByRole("row").filter({ hasText: title });
+    await expect(row).toBeVisible();
+    await expect(row.getByText("2", { exact: true })).toBeVisible(); // recipient count column
   });
 
   test("deleting a report removes it from the list", async ({ page }) => {

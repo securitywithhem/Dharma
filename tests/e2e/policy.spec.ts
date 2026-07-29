@@ -58,15 +58,19 @@ test.describe("Template-first policy builder", () => {
       page.getByRole("heading", { name: /Step 2: Fill in your details/ }),
     ).toBeVisible();
 
-    // Fill any required text/date/email inputs with a placeholder value so
-    // Generate Draft is meaningful regardless of which template got seeded
-    // first (template variable sets differ per policy type).
-    const textInputs = page.locator(
-      "input[type='text'], input[type='date'], input[type='email']",
-    );
-    const count = await textInputs.count();
-    for (let i = 0; i < count; i++) {
+    // Fill any required text/date/email inputs so Generate Draft is
+    // meaningful regardless of which template got seeded first (template
+    // variable sets differ per policy type). Date inputs need YYYY-MM-DD —
+    // any other string is a "Malformed value" fill error on <input type=date>.
+    const textInputs = page.locator("input[type='text'], input[type='email']");
+    const textCount = await textInputs.count();
+    for (let i = 0; i < textCount; i++) {
       await textInputs.nth(i).fill("E2E Test Value");
+    }
+    const dateInputs = page.locator("input[type='date']");
+    const dateCount = await dateInputs.count();
+    for (let i = 0; i < dateCount; i++) {
+      await dateInputs.nth(i).fill("2026-01-01");
     }
 
     await page.getByRole("button", { name: "Generate Draft" }).click();

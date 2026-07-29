@@ -32,7 +32,9 @@ test.describe("Endpoints page", () => {
     await expect(page.getByText("Enroll a new endpoint")).not.toBeVisible();
 
     // Endpoint now shows as a card, PENDING (no heartbeat yet), with a Revoke action.
-    const card = page.locator("div").filter({ hasText: hostname }).last();
+    // Filtering the (sibling) card testids by hostname, rather than raw <div> nesting,
+    // avoids picking an inner wrapper that excludes CardContent's sibling elements.
+    const card = page.locator('[data-testid^="endpoint-card-"]').filter({ hasText: hostname });
     await expect(card.getByText(/never seen/)).toBeVisible();
     await expect(card.getByRole("button", { name: /Revoke/ })).toBeVisible();
   });
@@ -48,7 +50,7 @@ test.describe("Endpoints page", () => {
     await expect(page.locator("input[readonly]")).toBeVisible();
     await page.getByRole("button", { name: "Done" }).click();
 
-    const card = page.locator("div").filter({ hasText: hostname }).last();
+    const card = page.locator('[data-testid^="endpoint-card-"]').filter({ hasText: hostname });
     await card.getByRole("button", { name: /Revoke/ }).click();
 
     await expect(page.getByText("Endpoint revoked — future heartbeats will be rejected")).toBeVisible();

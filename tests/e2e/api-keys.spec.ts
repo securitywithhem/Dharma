@@ -15,10 +15,7 @@ test.describe("API keys settings page", () => {
 
     const keyName = `e2e-key-${Date.now()}`;
     await page.locator("#key-name").fill(keyName);
-
-    // Scope checkboxes render as <label><Checkbox/><code>{scope}</code></label> —
-    // no per-checkbox id, so target the one whose row contains the scope text.
-    await page.getByText("controls:read", { exact: true }).locator("..").locator("button[role='checkbox']").click();
+    await page.getByTestId("scope-checkbox-controls:read").click();
 
     const submitBtn = page.getByRole("button", { name: "Create key" }).last();
     await expect(submitBtn).toBeEnabled();
@@ -35,7 +32,9 @@ test.describe("API keys settings page", () => {
     await expect(page.getByText("Copy your API key")).not.toBeVisible();
 
     // The key now shows in the list as Active with its scope badge, never the token again.
-    const row = page.locator("div").filter({ hasText: keyName }).last();
+    // Filtering the (sibling) key-row testids by name, rather than raw <div> nesting, avoids
+    // picking an inner wrapper that excludes the scope badges (a sibling of the name span).
+    const row = page.locator('[data-testid^="api-key-row-"]').filter({ hasText: keyName });
     await expect(row.getByText("Active")).toBeVisible();
     await expect(row.getByText("controls:read")).toBeVisible();
     await expect(page.getByText(token)).not.toBeVisible();
@@ -47,15 +46,15 @@ test.describe("API keys settings page", () => {
     await page.getByRole("button", { name: "Create key" }).click();
     const keyName = `e2e-revoke-${Date.now()}`;
     await page.locator("#key-name").fill(keyName);
-    await page.getByText("evidence:read", { exact: true }).locator("..").locator("button[role='checkbox']").click();
+    await page.getByTestId("scope-checkbox-evidence:read").click();
     await page.getByRole("button", { name: "Create key" }).last().click();
     await expect(page.getByText("Copy your API key")).toBeVisible();
     await page.getByRole("button", { name: "Done" }).click();
 
-    const row = page.locator("div").filter({ hasText: keyName }).last();
+    const row = page.locator('[data-testid^="api-key-row-"]').filter({ hasText: keyName });
     await expect(row.getByText("Active")).toBeVisible();
 
-    await row.getByRole("button").last().click(); // trash-icon revoke button
+    await row.getByRole("button").click(); // trash-icon revoke button (only button in a non-revoked row)
     await expect(page.getByText("API key revoked")).toBeVisible();
     await expect(row.getByText("Revoked")).toBeVisible();
     await expect(row.getByRole("button")).toHaveCount(0);

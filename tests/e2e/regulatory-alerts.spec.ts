@@ -25,7 +25,9 @@ test.describe("Regulatory alerts page", () => {
     await page.goto("/dashboard/regulatory-alerts");
     await expect(page.getByText("E2E Seed Framework")).toBeVisible();
     await expect(page.getByText("v2.0.0")).toBeVisible();
-    await expect(page.getByText("New")).toBeVisible();
+    // exact: true — plain getByText("New") also substring-matches "...two
+    // new access-control..." in the changelog paragraph below.
+    await expect(page.getByText("New", { exact: true })).toBeVisible();
     await expect(page.getByText("Added two new access-control requirements.")).toBeVisible();
 
     // Expand the diff viewer.
