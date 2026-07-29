@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SeverityBadge } from "@/components/pentest/SeverityBadge";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 interface LogFindingModalProps {
   onClose: () => void;
@@ -177,7 +177,7 @@ export function LogFindingModal({ onClose, onSuccess }: LogFindingModalProps) {
                     <span className="text-sm font-mono text-muted-foreground">{vector}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-bold tabular-nums">{previewQuery.data.score.toFixed(1)}</span>
-                      <SeverityBadge severity={previewQuery.data.severity} />
+                      <StatusBadge severity={previewQuery.data.severity} />
                     </div>
                   </>
                 ) : (

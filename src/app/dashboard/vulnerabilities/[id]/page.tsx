@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SeverityBadge } from "@/components/pentest/SeverityBadge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { Route } from "next";
 
 // See pentests/[id]/page.tsx for why this is a plain object, not a Promise,
@@ -99,7 +99,7 @@ export default function VulnerabilityDetailPage({ params }: VulnerabilityDetailP
       <Card>
         <CardContent className="space-y-6 pt-6">
           <div className="flex flex-wrap items-center gap-2">
-            <SeverityBadge severity={vuln.severity} />
+            <StatusBadge severity={vuln.severity} />
             <Badge variant="outline">{vuln.status}</Badge>
             {vuln.cvssScore != null && (
               <Badge variant="secondary">CVSS {vuln.cvssScore.toFixed(1)}</Badge>

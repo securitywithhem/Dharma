@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SeverityBadge } from "@/components/pentest/SeverityBadge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { LogFindingModal } from "./LogFindingModal";
 import { VulnerabilityTrendsChart } from "./VulnerabilityTrendsChart";
 import type { Route } from "next";
@@ -70,6 +70,15 @@ export default function VulnerabilitiesPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Link href={"/dashboard/vulnerabilities/triage" as Route}>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Open triage board swimlane view"
+            >
+              Triage Board
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -185,7 +194,7 @@ export default function VulnerabilitiesPage() {
                 <p className="text-xs text-muted-foreground truncate">{v.description}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <SeverityBadge severity={v.severity} />
+                <StatusBadge severity={v.severity} />
                 <Badge variant="outline" className="text-xs">
                   {v.status}
                 </Badge>
