@@ -132,4 +132,65 @@ describe("whiteLabel router", () => {
     });
     expect(updated.customDomainVerified).toBe(false);
   });
+
+  describe("resetTheme", () => {
+    it("clears the visual overrides but retains the custom domain", async () => {
+      const caller = callerFor(a.org.id, a.admin.id);
+      const domain = `reset-${Date.now()}.example.com`;
+      await caller.whiteLabel.updateSettings({
+        primaryColor: "#2F9E6E",
+        css: ":root { --radius: 0px; }",
+        customDomain: domain,
+      });
+
+      const reset = await caller.whiteLabel.resetTheme();
+
+      expect(reset.primaryColor).toBeUndefined();
+      expect(reset.css).toBeUndefined();
+      expect(reset.logoKey).toBeUndefined();
+      // Dropping the domain would take the tenant's URL offline — resetting a
+      // theme is a styling action, not a deactivation.
+      expect(reset.customDomain).toBe(domain);
+    });
+
+    it("audit-logs the reset", async () => {
+      const caller = callerFor(a.org.id, a.admin.id);
+      await caller.whiteLabel.updateSettings({ primaryColor: "#C9A227" });
+      await caller.whiteLabel.resetTheme();
+
+      const entry = await prisma.auditLog.findFirst({
+        where: { organizationId: a.org.id, action: "WHITE_LABEL_RESET" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(entry).not.toBeNull();
+      expect(entry?.entity).toBe("OrganizationSettings");
+      expect((entry?.changes as { cleared?: string[] })?.cleared).toContain("primaryColor");
+    });
+
+    it("tenant isolation: resetting org A's theme leaves org B's untouched", async () => {
+      const aCaller = callerFor(a.org.id, a.admin.id);
+      const bCaller = callerFor(b.org.id, b.admin.id);
+
+      await bCaller.whiteLabel.updateSettings({ primaryColor: "#123456" });
+      await aCaller.whiteLabel.updateSettings({ primaryColor: "#654321" });
+
+      await aCaller.whiteLabel.resetTheme();
+
+      const bSettings = await prisma.organizationSettings.findUnique({
+        where: { organizationId: b.org.id },
+        select: { whiteLabel: true },
+      });
+      expect(parseStoredWhiteLabel(bSettings?.whiteLabel)?.primaryColor).toBe("#123456");
+    });
+
+    it("is safe to call when the org has no settings row yet", async () => {
+      const fresh = await seedOrg("WlOrgC");
+      try {
+        const caller = callerFor(fresh.org.id, fresh.admin.id);
+        await expect(caller.whiteLabel.resetTheme()).resolves.toEqual({});
+      } finally {
+        await prisma.organization.delete({ where: { id: fresh.org.id } }).catch(() => undefined);
+      }
+    });
+  });
 });

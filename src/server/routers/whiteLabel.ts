@@ -124,6 +124,51 @@ export const whiteLabelRouter = createTRPCRouter({
       return next;
     }),
 
+  /**
+   * Clears the tenant's visual overrides, returning the workspace to the base
+   * Dharma tokens.
+   *
+   * Deliberately preserves customDomain and its verification state. Resetting
+   * a theme is a styling action; dropping the domain would take the tenant's
+   * URL offline and force a fresh CNAME round-trip to undo. Domains are
+   * released through updateSettings, where that intent is explicit.
+   */
+  resetTheme: permissionProcedure("whitelabel.manage").mutation(async ({ ctx }) => {
+    const organizationId = ctx.session.user.organizationId;
+    const settings = await ctx.prisma.organizationSettings.findUnique({
+      where: { organizationId },
+      select: { whiteLabel: true },
+    });
+    const current = parseStoredWhiteLabel(settings?.whiteLabel) ?? {};
+
+    const next: WhiteLabelConfig = whiteLabelSchema.parse({
+      customDomain: current.customDomain,
+      customDomainVerified: current.customDomainVerified,
+    });
+
+    await ctx.prisma.organizationSettings.upsert({
+      where: { organizationId },
+      create: { organizationId, whiteLabel: next },
+      update: { whiteLabel: next },
+    });
+
+    await emitAuditEvent(ctx.prisma, {
+      organizationId,
+      userId: ctx.session.user.id,
+      action: "WHITE_LABEL_RESET",
+      entity: "OrganizationSettings",
+      entityId: organizationId,
+      changes: {
+        cleared: (["logoKey", "primaryColor", "css"] as const).filter(
+          (field) => current[field] !== undefined,
+        ),
+        customDomainRetained: current.customDomain ?? null,
+      },
+    });
+
+    return next;
+  }),
+
   /** DNS CNAME verification — the domain activates only after this passes. */
   verifyCustomDomain: permissionProcedure("whitelabel.manage").mutation(
     async ({ ctx }) => {
