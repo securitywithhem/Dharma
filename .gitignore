@@ -43,3 +43,11 @@ tsconfig.tsbuildinfo
 *.tfstate.*
 *.tfplan
 crash.log
+
+# Obsidian local UI state (open tabs, graph view position) — not project content
+**/.obsidian/
+
+# Local agent-tooling runtime state (regenerated per machine, not project content)
+.claude-flow/
+.swarm/
+ruvector.db

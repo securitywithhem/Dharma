@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SeverityBadge } from "@/components/pentest/SeverityBadge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { LogFindingModal } from "./LogFindingModal";
 import { VulnerabilityTrendsChart } from "./VulnerabilityTrendsChart";
 import type { Route } from "next";
@@ -63,13 +63,22 @@ export default function VulnerabilitiesPage() {
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground text-sm max-w-xl">
+          <p className="text-dharma-ink-secondary text-sm max-w-xl">
             Findings from automated scans and manually logged issues, tracked through to
             remediation.
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Link href={"/dashboard/vulnerabilities/triage" as Route}>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Open triage board swimlane view"
+            >
+              Triage Board
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -134,9 +143,9 @@ export default function VulnerabilitiesPage() {
       )}
 
       {isError && !isLoading && (
-        <Card className="border-destructive/40 bg-destructive/5">
+        <Card className="border-dharma-danger bg-dharma-danger-bg">
           <CardHeader>
-            <div className="flex items-center gap-2 text-destructive">
+            <div className="flex items-center gap-2 text-dharma-danger-text">
               <ShieldAlert className="h-5 w-5" />
               <CardTitle className="text-base">Failed to load vulnerabilities</CardTitle>
             </div>
@@ -156,13 +165,13 @@ export default function VulnerabilitiesPage() {
         <div
           role="region"
           aria-label="No vulnerabilities"
-          className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 px-6 text-center"
+          className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dharma-border py-20 px-6 text-center"
         >
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <ShieldAlert className="h-7 w-7 text-primary" />
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-dharma-accent-tint">
+            <ShieldAlert className="h-7 w-7 text-dharma-accent-on-tint" />
           </div>
           <h2 className="text-lg font-semibold">No findings match these filters</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground max-w-sm">
+          <p className="mt-1.5 text-sm text-dharma-ink-secondary max-w-sm">
             Run a pentest or log a finding manually to start tracking vulnerabilities.
           </p>
           <Button className="mt-6" onClick={() => setShowLogFindingModal(true)} id="log-finding-empty-btn">
@@ -178,14 +187,14 @@ export default function VulnerabilitiesPage() {
             <Link
               key={v.id}
               href={(`/dashboard/vulnerabilities/${v.id}`) as Route}
-              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30 hover:bg-muted/30"
+              className="flex items-center justify-between gap-4 rounded-lg border border-dharma-border bg-dharma-surface p-4 transition-colors hover:border-dharma-accent hover:bg-dharma-surface-hover"
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{v.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{v.description}</p>
+                <p className="text-xs text-dharma-ink-secondary truncate">{v.description}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <SeverityBadge severity={v.severity} />
+                <StatusBadge severity={v.severity} />
                 <Badge variant="outline" className="text-xs">
                   {v.status}
                 </Badge>

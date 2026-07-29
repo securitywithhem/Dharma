@@ -10,7 +10,7 @@ function Skeleton({
       role="status"
       aria-label="Loading..."
       className={cn(
-        "animate-pulse rounded-md bg-muted/60",
+        "animate-pulse rounded-md bg-dharma-surface-hover",
         className,
       )}
       {...props}

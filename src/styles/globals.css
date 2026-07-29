@@ -2,94 +2,412 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Dharma design tokens — "Indian pigment" identity.
+
+   The palette is drawn from traditional Indian pigment rather than the generic
+   enterprise-SaaS blue/violet: indigo dye (nīl) for primary, haldi (turmeric)
+   for attention, vermilion (sindūr) for critical, neem green for pass states,
+   on warm chalk paper rather than cold slate.
+
+   HSL CHANNEL FORMAT IS LOAD-BEARING — do not switch these to hex or to the
+   CSS color() syntax. tailwind.config.ts consumes them as hsl(var(--x)), and
+   the white-label engine (src/lib/theme/getTenantTheme.ts) overrides --primary
+   and --ring at runtime with values produced by hexToHslChannels(), which
+   emits exactly "H S% L%". A format change here silently breaks tenant themes.
+   ========================================================================= */
+
 @layer base {
   :root {
-    --background: 36 100% 99%;
-    --foreground: 24 12% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 24 12% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 24 12% 11%;
-    --primary: 34 89% 47%;
-    --primary-foreground: 48 100% 98%;
-    --secondary: 35 40% 94%;
-    --secondary-foreground: 24 12% 11%;
-    --muted: 30 30% 96%;
-    --muted-foreground: 24 7% 42%;
-    --accent: 35 50% 93%;
-    --accent-foreground: 24 12% 11%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 60 9% 98%;
-    --border: 30 18% 87%;
-    --input: 30 18% 87%;
-    --ring: 34 89% 47%;
-    --radius: 0.95rem;
+    /* Surfaces — warm chalk paper, not cold slate. */
+    --background: 42 33% 96%;
+    --foreground: 226 28% 13%;
+    --card: 40 50% 99%;
+    --card-foreground: 226 28% 13%;
+    --popover: 40 50% 99%;
+    --popover-foreground: 226 28% 13%;
+
+    /* Indigo dye — the primary. Deep enough to carry white text at AAA. */
+    --primary: 231 48% 34%;
+    --primary-foreground: 42 40% 97%;
+
+    --secondary: 40 20% 91%;
+    --secondary-foreground: 226 24% 20%;
+    --muted: 40 18% 92%;
+    --muted-foreground: 226 10% 40%;
+
+    /* Haldi — attention/highlight, deliberately NOT the primary.
+       Foreground is ink, not paper: haldi is a mid-lightness yellow, so
+       near-white text on it lands at 2.98:1 and fails AA. Ink reaches 5.47:1.
+       Dark mode already pairs it with ink for the same reason. */
+    --accent: 38 62% 46%;
+    --accent-foreground: 226 28% 13%;
+
+    /* Vermilion — destructive. */
+    --destructive: 8 60% 45%;
+    --destructive-foreground: 40 45% 98%;
+
+    --border: 38 16% 85%;
+    --input: 38 16% 85%;
+    --ring: 231 48% 34%;
+
+    /* Compliance status scale. Separate from --accent/--destructive so a
+       white-label tenant recoloring the brand cannot accidentally invert the
+       meaning of "compliant" vs "critical finding". */
+    --success: 145 30% 32%;
+    --success-foreground: 40 45% 98%;
+    --warning: 38 62% 46%;
+    /* Ink for the same reason as --accent-foreground above. */
+    --warning-foreground: 226 28% 13%;
+    --critical: 8 62% 44%;
+    --critical-foreground: 40 45% 98%;
+    --info: 231 48% 40%;
+    --info-foreground: 40 45% 98%;
+
+    /* Text colour for TINTED treatments — the badge/chip pattern where the
+       role colour is washed over the card at ~12% and the label is set in the
+       same role. `-foreground` is the opposite case (text ON a solid fill).
+       Two different jobs, so two different tokens.
+       Most of these equal their base token; they exist as a complete set so
+       the component rule is uniform ("tinted text always uses -on-tint")
+       rather than a lookup of which roles happen to need an override.
+       Haldi is the reason this exists at all: at 46% lightness `text-warning`
+       on a 12% haldi wash reached only 2.71:1. Same root cause the file
+       already notes for --warning-foreground being ink rather than paper.
+       Machine-checked by scripts/validate-token-contrast.js. */
+    --success-on-tint: 145 30% 32%;
+    --warning-on-tint: 38 62% 34%;
+    --critical-on-tint: 8 62% 44%;
+    --info-on-tint: 231 48% 40%;
+    --accent-on-tint: 38 62% 34%;
+
+    /* Severity ramp — one step per member of the Prisma `Severity` enum
+       (NONE/LOW/MEDIUM/HIGH/CRITICAL, packages/db/schema.prisma). Distinct
+       from the --success/--warning/--critical status tokens above: status
+       describes a control's state, severity describes a finding's blast
+       radius, and the two are read side by side on the vulnerability views.
+       Escalation is encoded as a hue sweep (neutral → neem → haldi → orange →
+       lac-red), so the ramp reads as increasing heat rather than arbitrary
+       colour.
+       Machine-validated by scripts/validate-severity-palette.js — AA contrast
+       on the card surface plus normal-vision and CVD step separation. Re-run
+       it after any edit here. */
+    --severity-none: 40 8% 42%;
+    --severity-low: 145 34% 30%;
+    --severity-medium: 44 88% 27%;
+    --severity-high: 20 88% 39%;
+    --severity-critical: 354 68% 38%;
+
+    /* Severity label colour on the 12% wash StatusBadge paints. The dot keeps
+       the base token above (a 2px dot is a graphical object at 3:1); only the
+       text steps darken, and only where the wash costs it AA. */
+    --severity-none-on-tint: 40 8% 40%;
+    --severity-low-on-tint: 145 34% 30%;
+    --severity-medium-on-tint: 44 88% 27%;
+    --severity-high-on-tint: 20 88% 38%;
+    --severity-critical-on-tint: 354 68% 38%;
+
+    /* Categorical data ramp. Assign in this fixed order, never cycled — colour
+       must follow the entity, not its rank, or filtering repaints the
+       survivors.
+       These five steps are machine-validated (dataviz validate_palette.js)
+       against the light card surface: lightness band, chroma floor, CVD
+       separation, normal-vision floor, and 3:1 contrast all pass. Do not
+       hand-tune them without re-running the validator.
+       Green is deliberately NOT a slot here: it is reserved for --success, and
+       a green/red adjacency fails deuteranopia separation. */
+    --chart-1: 232 51% 53%;
+    --chart-2: 40 79% 39%;
+    --chart-3: 191 77% 39%;
+    --chart-4: 8 60% 50%;
+    --chart-5: 276 56% 52%;
+
+    /* Sequential ramp — ONE hue, light→dark, for encoding magnitude
+       (domain completion, coverage density). A rainbow here would imply
+       categories where there is only "more" and "less". */
+    --seq-1: 232 44% 92%;
+    --seq-2: 232 46% 80%;
+    --seq-3: 232 48% 66%;
+    --seq-4: 232 50% 53%;
+    --seq-5: 232 52% 38%;
+
+    /* Dashboards read better with less roundness than the shadcn default. */
+    --radius: 0.375rem;
   }
 
   .dark {
-    --background: 24 10% 7%;
-    --foreground: 30 24% 96%;
-    --card: 24 11% 10%;
-    --card-foreground: 30 24% 96%;
-    --popover: 24 11% 10%;
-    --popover-foreground: 30 24% 96%;
-    --primary: 36 96% 58%;
-    --primary-foreground: 24 16% 10%;
-    --secondary: 24 7% 16%;
-    --secondary-foreground: 30 24% 96%;
-    --muted: 24 8% 14%;
-    --muted-foreground: 30 10% 68%;
-    --accent: 24 7% 16%;
-    --accent-foreground: 30 24% 96%;
-    --destructive: 0 63% 46%;
-    --destructive-foreground: 30 24% 96%;
-    --border: 24 7% 20%;
-    --input: 24 7% 20%;
-    --ring: 36 96% 58%;
+    /* Ink — near-black with an indigo cast, never pure #000. */
+    --background: 226 26% 8%;
+    --foreground: 42 24% 92%;
+    --card: 226 22% 11%;
+    --card-foreground: 42 24% 92%;
+    --popover: 226 22% 11%;
+    --popover-foreground: 42 24% 92%;
+
+    --primary: 232 72% 70%;
+    --primary-foreground: 226 30% 10%;
+
+    --secondary: 226 18% 17%;
+    --secondary-foreground: 42 24% 92%;
+    --muted: 226 16% 15%;
+    --muted-foreground: 42 12% 64%;
+
+    --accent: 38 70% 58%;
+    --accent-foreground: 226 30% 10%;
+
+    --destructive: 6 65% 58%;
+    --destructive-foreground: 226 30% 10%;
+
+    --border: 226 16% 19%;
+    --input: 226 16% 19%;
+    --ring: 232 72% 70%;
+
+    --success: 145 40% 52%;
+    --success-foreground: 226 30% 10%;
+    --warning: 38 70% 58%;
+    --warning-foreground: 226 30% 10%;
+    --critical: 6 65% 58%;
+    --critical-foreground: 226 30% 10%;
+    --info: 232 72% 70%;
+    --info-foreground: 226 30% 10%;
+
+    /* Tinted-text set for ink mode. Here the wash darkens rather than lightens
+       the surface, so the corrections run the other way: --critical needs to
+       go UP in lightness, not down. */
+    --success-on-tint: 145 40% 52%;
+    --warning-on-tint: 38 70% 58%;
+    --critical-on-tint: 6 65% 61%;
+    --info-on-tint: 232 72% 70%;
+    --accent-on-tint: 38 70% 58%;
+
+    /* Severity keeps its HUE across modes — an auditor moving between the
+       console and an exported light-mode report must not have to relearn the
+       ramp. Only lightness moves, and only as far as the dark card surface
+       requires for AA. */
+    --severity-none: 40 6% 52%;
+    --severity-low: 145 48% 60%;
+    --severity-medium: 44 78% 55%;
+    --severity-high: 22 84% 62%;
+    --severity-critical: 354 76% 68%;
+
+    --severity-none-on-tint: 40 6% 54%;
+    --severity-low-on-tint: 145 48% 60%;
+    --severity-medium-on-tint: 44 78% 55%;
+    --severity-high-on-tint: 22 84% 62%;
+    --severity-critical-on-tint: 354 76% 68%;
+
+    /* Dark-mode chart steps are SELECTED, not an automatic lightening of the
+       light ramp — separately validated against the dark card surface. */
+    --chart-1: 230 62% 63%;
+    --chart-2: 38 59% 45%;
+    --chart-3: 194 61% 44%;
+    --chart-4: 8 60% 56%;
+    --chart-5: 275 51% 63%;
+
+    --seq-1: 230 24% 22%;
+    --seq-2: 230 34% 32%;
+    --seq-3: 230 46% 44%;
+    /* 54%, not 56%: the crosswalk OverlapHeatmap sets a numeric label directly
+       on this step, and at 56% the label reached only 4.38:1 against
+       --foreground — just under AA. 54% gives 4.78:1 and keeps the ramp
+       monotonic. */
+    --seq-4: 230 56% 54%;
+    --seq-5: 230 66% 70%;
   }
 
+  /* Warm Paper (2026-07-29): the base layer paints from --dharma-* now, so the
+     whole app grounds on paper even where a component has not been retokened.
+     The HSL tokens above are retained for the chart/sequential ramps, which
+     Warm Paper supplies no replacement for — see 0_DESIGN_SYSTEM.md. */
   * {
-    @apply border-border;
+    @apply border-dharma-border;
   }
 
   html {
     @apply scroll-smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-dharma-bg text-dharma-ink;
+    /* Public Sans has no cv02/cv03/cv04/cv11 stylistic sets — those were Inter
+       Tight's. Kept `ss01` off deliberately; the default forms are correct. */
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Compliance work is numeric comparison — scores, control counts, CVSS,
+     dates stacked in columns. Lining tabular figures everywhere keeps digits
+     aligned down a column instead of jittering. */
+  table,
+  time,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* One visible, high-contrast focus ring for keyboard users across the whole
+     app — never removed, only restyled. */
+  /* Accent, not a border token: neither --dharma-surface-border (1.35:1) nor
+     -border-strong (1.53:1) clears the 3:1 WCAG 1.4.11 floor, so neither may
+     be the sole indicator of focus. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-dharma-accent ring-offset-2 ring-offset-dharma-bg;
+  }
+
+  ::selection {
+    background-color: var(--dharma-accent-tint-bg);
+    color: var(--dharma-accent-on-tint);
+  }
+
+  /* Thin, surface-coloured scrollbars — the default chrome ones read as
+     unfinished against a warm paper background. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--dharma-surface-border) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--dharma-surface-border);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--dharma-surface-border-strong);
   }
 }
 
-/* CSS Variables for Design System */
-:root {
-  --color-primary: #D97706; /* amber-600 */
-  --color-success: #10B981; /* emerald-500 */
-  --color-warning: #F59E0B; /* amber-500 */
-  --color-danger: #EF4444; /* red-500 */
-}
+@layer components {
+  /* Paper grain. The single texture that separates this from a flat template
+     — an inline SVG turbulence at very low alpha, so it costs no request and
+     is invisible individually but reads as "printed" in aggregate. Light mode
+     only; on ink it just muddies the surface. */
+  .surface-paper {
+    position: relative;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-primary: #F59E0B; /* amber-500 */
+  .surface-paper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  .dark .surface-paper::before {
+    opacity: 0;
+  }
+
+  /* Section label — small caps tracking used to title dense data regions
+     without spending a heading level on them. */
+  .label-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-dharma-ink-secondary;
+  }
+
+  /* Hairline rule that matches the border token at sub-pixel weight. */
+  .rule {
+    @apply h-px w-full border-0 bg-dharma-border;
   }
 }
 
-/* Smooth transitions */
-* {
-  @apply transition-colors duration-200;
+/* ---- Motion ----------------------------------------------------------------
+   Deliberately minimal. An operations console is opened dozens of times a day;
+   content that animates in on every load becomes a latency tax, so entrance
+   motion is reserved for the marketing surface. Interactive feedback (hover,
+   press, open/close) is the only motion inside the dashboard.
+   ------------------------------------------------------------------------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* Loading animation */
+/* Landing surface only — not for dashboard content. */
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @keyframes pulse-subtle {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.7;
+    opacity: 0.6;
   }
 }
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Dharma Ring settle — the app's one orchestrated moment, played when a
+   readiness score or scan resolves. Arcs sweep in sequentially by severity and
+   converge. Animating stroke-dasharray (not width/transform) keeps it on the
+   compositor and avoids relayout.
+   The reduced-motion fallback is handled in DharmaRing.tsx rather than here:
+   the component skips the animation entirely so the final arc is what renders,
+   instead of a zero-duration animation racing to its end state. */
+@keyframes dharma-ring-settle {
+  from {
+    stroke-dasharray: 0 9999;
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Audit-chain "verify" pulse travelling down the ledger. */
+@keyframes chain-scan {
+  0% {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(1200%);
+    opacity: 0;
+  }
+}
+
+.animate-chain-scan {
+  animation: chain-scan 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-up {
+    opacity: 1;
+    transform: none;
+  }
 }

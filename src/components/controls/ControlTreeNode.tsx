@@ -17,7 +17,7 @@ const STATUS_META: Record<
   TreeControl["status"],
   { label: string; variant: "outline" | "secondary" | "success" | "warning"; className: string }
 > = {
-  NOT_STARTED: { label: "Not Started", variant: "outline", className: "border-border text-muted-foreground" },
+  NOT_STARTED: { label: "Not Started", variant: "outline", className: "border-dharma-border text-dharma-ink-secondary" },
   IN_PROGRESS: { label: "In Progress", variant: "warning", className: "" },
   COMPLIANT: { label: "Compliant", variant: "success", className: "" },
   NOT_APPLICABLE: { label: "N/A", variant: "secondary", className: "opacity-60" },
@@ -83,8 +83,8 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
           onFocus={() => props.onFocus(node.id)}
           className={cn(
             "group flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 outline-none",
-            "hover:bg-muted/50 focus-visible:border-primary/50 focus-visible:bg-muted/50",
-            isFocused && "bg-muted/40",
+            "hover:bg-dharma-surface-hover focus-visible:border-dharma-accent focus-visible:bg-dharma-surface-hover",
+            isFocused && "bg-dharma-surface-hover",
           )}
         >
           {/* Drag handle */}
@@ -94,7 +94,7 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
             {...listeners}
             aria-label={`Drag ${node.title}`}
             tabIndex={-1}
-            className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
+            className="shrink-0 cursor-grab text-dharma-ink-secondary hover:text-dharma-ink-secondary active:cursor-grabbing"
           >
             <GripVertical className="h-4 w-4" />
           </button>
@@ -105,7 +105,7 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
               onClick={() => props.onToggle(node.id)}
               aria-label={isCollapsed ? "Expand" : "Collapse"}
               tabIndex={-1}
-              className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted"
+              className="shrink-0 rounded p-0.5 text-dharma-ink-secondary hover:bg-dharma-surface-hover"
             >
               <ChevronRight
                 className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-90")}
@@ -124,12 +124,12 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               {node.code && (
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">{node.code}</span>
+                <span className="shrink-0 font-mono text-xs text-dharma-ink-secondary">{node.code}</span>
               )}
               <span className="truncate text-sm font-medium">{node.title}</span>
             </div>
             {node.description && (
-              <p className="truncate text-xs text-muted-foreground">{node.description}</p>
+              <p className="truncate text-xs text-dharma-ink-secondary">{node.description}</p>
             )}
           </div>
 
@@ -139,7 +139,7 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
           </Badge>
 
           {/* Evidence count */}
-          <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
+          <span className="hidden shrink-0 items-center gap-1 text-xs text-dharma-ink-secondary sm:flex">
             <FileText className="h-3.5 w-3.5" />
             {node.evidenceCount}
           </span>
@@ -150,7 +150,7 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
               onClick={() => props.onAddChild(node.id)}
               disabled={props.disabled}
               aria-label={`Add sub-control under ${node.title}`}
-              className="rounded p-1 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500 disabled:opacity-40"
+              className="rounded p-1 text-dharma-ink-secondary hover:bg-dharma-surface-hover hover:text-dharma-success-text disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -158,7 +158,7 @@ export function ControlTreeNode(props: ControlTreeNodeProps) {
               onClick={() => props.onDelete(node)}
               disabled={props.disabled}
               aria-label={`Delete ${node.title}`}
-              className="rounded p-1 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40"
+              className="rounded p-1 text-dharma-ink-secondary hover:bg-dharma-surface-hover hover:text-dharma-danger-text disabled:opacity-40"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

@@ -7,8 +7,9 @@ import { getProviders, signIn } from "next-auth/react";
 import type { ClientSafeProvider } from "next-auth/react";
 import { Chrome, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DharmaMark } from "@/components/brand/DharmaMark";
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
@@ -33,61 +34,92 @@ export default function SignInPage() {
     setIsSubmitting(false);
   }
 
+  const canSubmitEmail = emailEnabled && !isSubmitting && email.length > 0;
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(217,119,6,0.12),transparent_35%),linear-gradient(180deg,rgba(255,251,235,0.7),rgba(255,255,255,1))] px-4 dark:bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),linear-gradient(180deg,rgba(41,37,36,0.8),rgba(9,9,11,1))]">
-      <Card className="w-full max-w-lg border-primary/10 bg-card/90 backdrop-blur">
-        <CardHeader className="space-y-3">
-          <CardTitle className="text-3xl">Sign in to Dharma</CardTitle>
-          <CardDescription>
-            Use Google or a magic link to enter your compliance workspace.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Button
-            size="lg"
-            className="w-full gap-2"
-            disabled={!googleEnabled || isSubmitting}
-            onClick={() => handleProviderSignIn("google")}
-          >
-            <Chrome className="h-4 w-4" />
-            {googleEnabled ? "Continue with Google" : "Google sign-in not configured"}
-          </Button>
+    <main className="surface-paper relative flex min-h-screen items-center justify-center bg-dharma-bg px-4 py-10">
+      {/* A single soft indigo wash from the top, replacing the amber radials
+          left over from the retired warm identity. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0" />
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium" htmlFor="email">Magic link</label>
-            <div className="flex gap-3">
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="founder@company.in"
-                disabled={!emailEnabled || isSubmitting}
-              />
-              <Button
-                variant="outline"
-                disabled={!emailEnabled || isSubmitting || email.length === 0}
-                onClick={() => handleProviderSignIn("email", email)}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Send
-              </Button>
-            </div>
-            {!emailEnabled ? (
-              <p className="text-sm text-muted-foreground">
-                Magic links activate once SMTP variables are set.
-              </p>
-            ) : null}
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            Authentication issues route to the dedicated error page.{" "}
-            <Link className="font-semibold text-primary" href="/auth/error">
-              Review auth errors
-            </Link>
+      <div className="relative w-full max-w-[26rem]">
+        <div className="mb-7 flex flex-col items-center text-center">
+          <DharmaMark className="h-9 w-9 text-dharma-accent-on-tint" />
+          <h1 className="mt-3 font-display text-2xl font-semibold tracking-[-0.02em]">
+            Sign in to Dharma
+          </h1>
+          <p className="mt-1.5 text-data text-dharma-ink-secondary">
+            Enter your compliance workspace.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+
+        <Card className="border border-dharma-border">
+          <CardContent className="space-y-5 p-5">
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={!googleEnabled || isSubmitting}
+              onClick={() => handleProviderSignIn("google")}
+            >
+              <Chrome />
+              {googleEnabled ? "Continue with Google" : "Google sign-in not configured"}
+            </Button>
+
+            <div className="flex items-center gap-3">
+              <hr className="rule flex-1" />
+              <span className="text-micro uppercase tracking-[0.12em] text-dharma-ink-secondary">
+                or
+              </span>
+              <hr className="rule flex-1" />
+            </div>
+
+            {/* A real <form>: the previous version was two loose controls, so
+                pressing Enter in the email field did nothing. */}
+            <form
+              className="space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (canSubmitEmail) void handleProviderSignIn("email", email);
+              }}
+            >
+              <label className="text-data font-medium" htmlFor="email">
+                Magic link
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="founder@company.in"
+                  disabled={!emailEnabled || isSubmitting}
+                  aria-describedby={!emailEnabled ? "email-help" : undefined}
+                />
+                <Button type="submit" variant="outline" disabled={!canSubmitEmail}>
+                  <Mail />
+                  Send
+                </Button>
+              </div>
+              {!emailEnabled && (
+                <p id="email-help" className="text-micro text-dharma-ink-secondary">
+                  Magic links activate once SMTP variables are set.
+                </p>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="mt-5 text-center text-micro text-dharma-ink-secondary">
+          Trouble signing in?{" "}
+          <Link
+            className="font-medium text-dharma-accent-on-tint underline-offset-4 hover:underline"
+            href="/auth/error"
+          >
+            Review auth errors
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

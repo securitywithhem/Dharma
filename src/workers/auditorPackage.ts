@@ -157,24 +157,32 @@ function generateIndexHtml(data: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dharma Compliance Report — ${escHtml(data.orgName)}</title>
   <style>
+    /* Literal hex is required here: this file is written to disk and opened
+       standalone, outside the app, so it cannot reference the CSS custom
+       properties in src/styles/globals.css. The values below are the light-mode
+       tokens resolved to hex and MUST be kept in step with them -- this is the
+       first artefact an external auditor sees, so it carrying the generic
+       slate/indigo starter palette (which it did) read as a different product.
+       Mapping: --background --foreground --muted-foreground --card --border
+       --muted --primary --success --warning --critical. */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f6f1; color: #181c2a; padding: 32px; }
     h1 { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
-    .meta { color: #64748b; font-size: 0.875rem; margin-bottom: 32px; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-    .anchor-card { border-color: #6366f1; background: #eef2ff; }
+    .meta { color: #5c6170; font-size: 0.875rem; margin-bottom: 32px; }
+    .card { background: #fefdfb; border: 1px solid #dfdad3; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .anchor-card { border-color: #2d3a80; background: #eceef7; }
     h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th { background: #f1f5f9; text-align: left; padding: 8px 12px; font-weight: 600; }
-    td { padding: 8px 12px; border-top: 1px solid #e2e8f0; }
+    th { background: #eeece7; text-align: left; padding: 8px 12px; font-weight: 600; }
+    td { padding: 8px 12px; border-top: 1px solid #dfdad3; }
     .status { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
-    .status-compliant { color: #16a34a; }
-    .status-in_progress { color: #d97706; }
-    .status-non_compliant { color: #dc2626; }
-    .status-not_started { color: #6b7280; }
+    .status-compliant { color: #396a4e; }
+    .status-in_progress { color: #be892d; }
+    .status-non_compliant { color: #b63d2b; }
+    .status-not_started { color: #5c6170; }
     .mono { font-family: monospace; font-size: 0.75rem; word-break: break-all; }
-    .note { font-size: 0.75rem; color: #475569; margin-top: 12px; }
-    footer { text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 40px; }
+    .note { font-size: 0.75rem; color: #5c6170; margin-top: 12px; }
+    footer { text-align: center; color: #8b8f9c; font-size: 0.75rem; margin-top: 40px; }
   </style>
 </head>
 <body>

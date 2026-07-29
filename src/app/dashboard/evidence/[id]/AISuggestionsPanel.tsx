@@ -64,15 +64,15 @@ function PendingState() {
   return (
     <div className="flex flex-col items-center justify-center py-10 gap-4">
       <div
-        className="relative flex items-center justify-center h-14 w-14 rounded-full bg-amber-500/10"
+        className="relative flex items-center justify-center h-14 w-14 rounded-full bg-dharma-accent-tint"
         aria-hidden="true"
       >
-        <span className="absolute inset-0 rounded-full animate-ping bg-amber-500/20" />
-        <Brain className="h-6 w-6 text-amber-500" />
+        <span className="absolute inset-0 rounded-full animate-pulse-subtle bg-dharma-accent-tint" />
+        <Brain className="h-6 w-6 text-dharma-accent-on-tint" />
       </div>
       <div className="text-center space-y-1">
-        <p className="text-sm font-medium text-foreground">Analyzing evidence…</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm font-medium text-dharma-ink">Analyzing evidence…</p>
+        <p className="text-xs text-dharma-ink-secondary">
           Extracting text and generating embeddings
         </p>
       </div>
@@ -80,7 +80,7 @@ function PendingState() {
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-bounce"
+            className="h-1.5 w-1.5 rounded-full bg-dharma-accent animate-pulse-subtle"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}
@@ -92,10 +92,10 @@ function PendingState() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
-      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-        <Sparkles className="h-5 w-5 text-muted-foreground" />
+      <div className="h-12 w-12 rounded-full bg-dharma-surface-hover flex items-center justify-center">
+        <Sparkles className="h-5 w-5 text-dharma-ink-secondary" />
       </div>
-      <p className="text-sm text-muted-foreground max-w-[200px]">
+      <p className="text-sm text-dharma-ink-secondary max-w-[200px]">
         No recommendations found. Try refreshing after the embedding completes.
       </p>
     </div>
@@ -105,11 +105,11 @@ function EmptyState() {
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-      <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-        <AlertCircle className="h-5 w-5 text-destructive" />
+      <div className="h-12 w-12 rounded-full bg-dharma-danger-bg flex items-center justify-center">
+        <AlertCircle className="h-5 w-5 text-dharma-danger-text" />
       </div>
-      <p className="text-sm font-medium text-destructive">Analysis failed</p>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm font-medium text-dharma-danger-text">Analysis failed</p>
+      <p className="text-xs text-dharma-ink-secondary">
         The AI pipeline could not process this file.
       </p>
       <Button variant="outline" size="sm" onClick={onRetry} className="mt-1">
@@ -122,9 +122,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 
 /** Progress-bar and chip colour based on match quality */
 function matchColour(pct: number) {
-  if (pct >= 75) return { bar: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" };
-  if (pct >= 50) return { bar: "bg-amber-500",   chip: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" };
-  return          { bar: "bg-orange-400",         chip: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
+  if (pct >= 75) return { bar: "bg-dharma-success-bg", chip: "bg-dharma-success-bg text-dharma-success-text" };
+  if (pct >= 50) return { bar: "bg-dharma-warning-bg", chip: "bg-dharma-warning-bg text-dharma-ink" };
+  return          { bar: "bg-dharma-surface-hover-foreground", chip: "bg-dharma-surface-hover text-dharma-ink-secondary" };
 }
 
 // ------------------------------------------------------------------
@@ -158,8 +158,8 @@ function RecommendationCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-3 space-y-2.5 transition-all duration-200",
-        alreadyMapped && "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20",
+        "rounded-lg border bg-dharma-surface p-3 space-y-2.5 transition-all duration-150 ease-out",
+        alreadyMapped && "border-dharma-success bg-dharma-success-bg",
       )}
     >
       {/* Header row */}
@@ -169,7 +169,7 @@ function RecommendationCard({
             {rec.title}
           </p>
           <Badge
-            className="mt-1 text-[10px] h-4 px-1.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-none"
+            className="mt-1 text-[10px] h-4 px-1.5 bg-dharma-accent-tint text-dharma-accent-on-tint border-none"
           >
             {rec.domain}
           </Badge>
@@ -191,7 +191,7 @@ function RecommendationCard({
             <button
               type="button"
               onClick={onReject}
-              className="h-5 w-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="h-5 w-5 flex items-center justify-center rounded-full text-dharma-ink-secondary hover:text-dharma-danger-text hover:bg-dharma-surface-hover transition-colors"
               aria-label={`Dismiss recommendation: ${rec.title}`}
               title="Dismiss"
             >
@@ -202,10 +202,10 @@ function RecommendationCard({
       </div>
 
       {/* Progress bar */}
-      <div className="relative h-1.5 w-full rounded-full bg-muted overflow-hidden">
+      <div className="relative h-1.5 w-full rounded-full bg-dharma-surface-hover overflow-hidden">
         <div
           className={cn(
-            "absolute left-0 top-0 h-full rounded-full transition-all duration-700",
+            "absolute left-0 top-0 h-full rounded-full transition-all duration-dharma-base ease-dharma",
             colours.bar,
           )}
           style={{ width: `${Math.max(rec.matchPercentage, 4)}%` }}
@@ -213,14 +213,14 @@ function RecommendationCard({
       </div>
 
       {/* Description snippet */}
-      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+      <p className="text-[11px] text-dharma-ink-secondary line-clamp-2 leading-relaxed">
         {rec.description}
       </p>
 
       {/* Action row */}
       {alreadyMapped ? (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-1.5 text-dharma-success-text">
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
             <span className="text-xs font-medium">
               {isCurrentControl && !isAccepted ? "Currently linked" : "Accepted"}
@@ -228,7 +228,7 @@ function RecommendationCard({
           </div>
           <Link
             href={`/dashboard/frameworks`}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1 text-[11px] text-dharma-ink-secondary hover:text-dharma-ink transition-colors"
             aria-label={`View control: ${rec.title}`}
           >
             View control
@@ -238,7 +238,7 @@ function RecommendationCard({
       ) : (
         <Button
           size="sm"
-          className="w-full h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white border-none"
+          className="w-full h-7 text-xs bg-dharma-accent hover:bg-dharma-accent-hover text-dharma-ink-inverse border-none"
           onClick={onAccept}
           disabled={isAccepting}
           id={`accept-control-${rec.id}`}
@@ -360,15 +360,15 @@ export function AISuggestionsPanel({
 
   return (
     <Card
-      className="w-full shadow-sm"
+      className="w-full border border-dharma-border"
       id="ai-suggestions-panel"
       aria-label="AI Recommendations Panel"
     >
       <CardHeader className="pb-3 pt-4 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-md bg-amber-500/10 flex items-center justify-center">
-              <Brain className="h-3.5 w-3.5 text-amber-500" />
+            <div className="h-6 w-6 rounded-md bg-dharma-accent-tint flex items-center justify-center">
+              <Brain className="h-3.5 w-3.5 text-dharma-accent-on-tint" />
             </div>
             <CardTitle className="text-sm font-semibold">
               AI Recommendations
@@ -379,7 +379,7 @@ export function AISuggestionsPanel({
             {status === "READY" && (
               <Badge
                 variant="outline"
-                className="text-[10px] h-4 px-1.5 border-emerald-300 text-emerald-600 dark:text-emerald-400"
+                className="text-[10px] h-4 px-1.5 border-dharma-success text-dharma-success-text"
               >
                 Ready
               </Badge>
@@ -412,7 +412,7 @@ export function AISuggestionsPanel({
             <div className="text-center py-2">
               <Button
                 size="sm"
-                className="bg-amber-500 hover:bg-amber-600 text-white text-xs"
+                className="bg-dharma-accent hover:bg-dharma-accent-hover text-dharma-ink-inverse text-xs"
                 onClick={() => requestMappingMutation.mutate({ evidenceId })}
                 disabled={requestMappingMutation.isPending}
                 id="request-ai-mapping-btn"
@@ -452,7 +452,7 @@ export function AISuggestionsPanel({
         {/* All-dismissed state */}
         {status === "READY" && visibleRecs.length === 0 && allRecs.length > 0 && (
           <div className="text-center py-6">
-            <p className="text-xs text-muted-foreground">All suggestions dismissed.</p>
+            <p className="text-xs text-dharma-ink-secondary">All suggestions dismissed.</p>
             <Button
               variant="ghost"
               size="sm"
@@ -480,7 +480,7 @@ export function AISuggestionsPanel({
               />
             ))}
 
-            <p className="text-[10px] text-muted-foreground text-center pt-1">
+            <p className="text-[10px] text-dharma-ink-secondary text-center pt-1">
               Powered by Ollama · nomic-embed-text · pgvector
             </p>
           </div>

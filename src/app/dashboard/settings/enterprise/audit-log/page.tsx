@@ -72,7 +72,7 @@ export default function EnterpriseAuditLogPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Audit log</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Append-only, hash-chained record of every action in this organization.
           </p>
         </div>
@@ -202,14 +202,14 @@ export default function EnterpriseAuditLogPage() {
               {chainQuery.isLoading ? (
                 <Skeleton className="h-40 w-full" />
               ) : (chainQuery.data ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-dharma-ink-secondary">
                   No correlated events found for this entry.
                 </p>
               ) : (
                 <ol className="relative space-y-4 border-l pl-4">
                   {(chainQuery.data ?? []).map((related) => (
                     <li key={related.auditLog.id} className="space-y-1">
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-dharma-ink-secondary">
                         {new Date(related.auditLog.timestamp).toLocaleString()}
                       </div>
                       <div className="flex flex-wrap items-center gap-1">
@@ -220,7 +220,7 @@ export default function EnterpriseAuditLogPage() {
                           {related.auditLog.user?.email ?? "system"}
                         </span>
                       </div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <div className="text-[10px] uppercase tracking-wide text-dharma-ink-secondary">
                         {VIA_LABELS[related.via] ?? related.via}
                       </div>
                     </li>

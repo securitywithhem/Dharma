@@ -67,7 +67,7 @@ export default function MsspGrantsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">MSSP access grants</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Cross-tenant access is always explicit: scoped to listed client orgs, optionally
           time-boxed, revocable instantly, and audited on every use.
         </p>
@@ -114,7 +114,7 @@ export default function MsspGrantsPage() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-dharma-ink-secondary">
                   {group.organizations.length} client org(s):{" "}
                   {group.organizations.map((o) => o.name).join(", ") || "none attached yet"}
                 </p>
@@ -131,7 +131,7 @@ export default function MsspGrantsPage() {
                             {grant.scopeOrgIds.length} org(s)
                           </Badge>
                           {grant.expiresAt && (
-                            <span className="ml-2 text-muted-foreground">
+                            <span className="ml-2 text-dharma-ink-secondary">
                               expires {new Date(grant.expiresAt).toLocaleDateString()}
                             </span>
                           )}

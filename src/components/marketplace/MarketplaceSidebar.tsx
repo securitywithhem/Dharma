@@ -20,10 +20,10 @@ export function MarketplaceSidebar({
   onFilterChange,
 }: MarketplaceSidebarProps) {
   return (
-    <div className="space-y-6 sticky top-20 bg-card rounded-lg border border-border p-5">
+    <div className="space-y-6 sticky top-20 bg-dharma-surface rounded-lg border border-dharma-border p-5">
       {/* Sort */}
       <div>
-        <h3 className="font-semibold text-foreground mb-3 text-sm">Sort By</h3>
+        <h3 className="font-semibold text-dharma-ink mb-3 text-sm">Sort By</h3>
         <select
           value={currentFilters.sortBy}
           onChange={(e) =>
@@ -33,7 +33,7 @@ export function MarketplaceSidebar({
               page: 1,
             })
           }
-          className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="w-full h-10 rounded-md border border-dharma-border-strong bg-dharma-bg px-3 py-2 text-sm ring-offset-dharma-bg focus:outline-none focus:ring-2 focus:ring-dharma-accent focus:ring-offset-2"
         >
           <option value="recent">Most Recent</option>
           <option value="downloads">Most Downloaded</option>
@@ -43,7 +43,7 @@ export function MarketplaceSidebar({
 
       {/* Type Filter */}
       <div>
-        <h3 className="font-semibold text-foreground mb-3 text-sm">Type</h3>
+        <h3 className="font-semibold text-dharma-ink mb-3 text-sm">Type</h3>
         <div className="space-y-2">
           {["FRAMEWORK", "TEMPLATE", "CONNECTOR"].map((type) => (
             <label key={type} className="flex items-center gap-2 cursor-pointer">
@@ -59,9 +59,9 @@ export function MarketplaceSidebar({
                     page: 1,
                   })
                 }
-                className="w-4 h-4 text-primary focus:ring-primary border-gray-300"
+                className="w-4 h-4 text-dharma-accent-on-tint focus:ring-dharma-accent border-dharma-border"
               />
-              <span className="text-sm text-muted-foreground">{type}</span>
+              <span className="text-sm text-dharma-ink-secondary">{type}</span>
             </label>
           ))}
           <label className="flex items-center gap-2 cursor-pointer">
@@ -71,16 +71,16 @@ export function MarketplaceSidebar({
               value=""
               checked={currentFilters.type === ""}
               onChange={() => onFilterChange({ ...currentFilters, type: "", page: 1 })}
-              className="w-4 h-4 text-primary focus:ring-primary border-gray-300"
+              className="w-4 h-4 text-dharma-accent-on-tint focus:ring-dharma-accent border-dharma-border"
             />
-            <span className="text-sm text-muted-foreground">All Types</span>
+            <span className="text-sm text-dharma-ink-secondary">All Types</span>
           </label>
         </div>
       </div>
 
       {/* Category Filter */}
       <div>
-        <h3 className="font-semibold text-foreground mb-3 text-sm">Categories</h3>
+        <h3 className="font-semibold text-dharma-ink mb-3 text-sm">Categories</h3>
         <div className="space-y-1 max-h-64 overflow-y-auto pr-2">
           {categories.map((cat) => (
             <button
@@ -94,8 +94,8 @@ export function MarketplaceSidebar({
               }
               className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm ${
                 currentFilters.category === cat.name
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-dharma-accent-tint text-dharma-accent-on-tint font-medium"
+                  : "text-dharma-ink-secondary hover:bg-dharma-surface-hover"
               }`}
             >
               <span className="flex justify-between items-center">
@@ -120,7 +120,7 @@ export function MarketplaceSidebar({
               page: 1,
             })
           }
-          className="w-full text-primary hover:text-primary/80 text-sm font-medium transition-colors"
+          className="w-full text-dharma-accent-on-tint hover:text-dharma-accent-on-tint text-sm font-medium transition-colors"
         >
           Clear Filters
         </button>

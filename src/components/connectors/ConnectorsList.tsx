@@ -19,18 +19,23 @@ const SUPPORTED_TYPES = ['AWS', 'AZURE', 'GCP', 'GITHUB', 'OKTA', 'JIRA'] as con
 const ENABLED_TYPES = new Set(['AWS', 'GITHUB', 'OKTA', 'JIRA']);
 
 const STATUS_STYLES: Record<string, { dot: string; label: string; pulse?: boolean }> = {
-  CONNECTED: { dot: 'bg-emerald-500', label: 'Connected' },
-  DISCONNECTED: { dot: 'bg-stone-400', label: 'Disconnected' },
-  ERROR: { dot: 'bg-red-500', label: 'Error' },
-  TESTING: { dot: 'bg-amber-500', label: 'Testing', pulse: true },
+  CONNECTED: { dot: 'bg-dharma-success-bg', label: 'Connected' },
+  DISCONNECTED: { dot: 'bg-dharma-surface-hover-foreground', label: 'Disconnected' },
+  ERROR: { dot: 'bg-dharma-danger-bg', label: 'Error' },
+  TESTING: { dot: 'bg-dharma-warning-bg', label: 'Testing', pulse: true },
 };
 
 function StatusDot({ status }: { status: string }) {
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.DISCONNECTED;
   return (
+    // The live indicator is an opacity pulse, not `animate-ping`. Ping expands
+    // a second ring to 2x scale and fades it -- a repeating scale animation in
+    // a list that can hold a dozen connectors, which is the opposite of
+    // "motion is a whisper". Opacity alone stays on the compositor and reads
+    // as a heartbeat rather than a radar sweep.
     <span className="relative flex h-2.5 w-2.5">
       {style.pulse && (
-        <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${style.dot} opacity-75`} />
+        <span className={`absolute inline-flex h-full w-full animate-pulse-subtle rounded-full ${style.dot}`} />
       )}
       <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${style.dot}`} />
     </span>
@@ -90,7 +95,7 @@ export function ConnectorsList() {
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                  <p className="text-xs text-dharma-ink-secondary">
                     {connector.type} · {connector.lastSyncAt
                       ? `Synced ${formatDistanceToNow(new Date(connector.lastSyncAt), { addSuffix: true })}`
                       : 'Never synced'}
@@ -128,7 +133,7 @@ export function ConnectorsList() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(connector.id)}
-                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      className="text-dharma-danger-text hover:bg-dharma-surface-hover"
                       title="Delete connector"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -150,7 +155,7 @@ export function ConnectorsList() {
               <Badge variant="outline">Coming soon</Badge>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
+              <p className="text-xs text-dharma-ink-secondary">
                 Support for {type} connectors is planned for a future release.
               </p>
             </CardContent>

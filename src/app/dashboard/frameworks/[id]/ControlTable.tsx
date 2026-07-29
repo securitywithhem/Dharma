@@ -47,7 +47,7 @@ const STATUS_CONFIG: Record<
   NOT_STARTED: {
     label: "Not Started",
     variant: "outline",
-    className: "border-border text-muted-foreground",
+    className: "border-dharma-border text-dharma-ink-secondary",
   },
   IN_PROGRESS: {
     label: "In Progress",
@@ -94,7 +94,7 @@ export function ControlTable({ controls, onStatusChanged }: ControlTableProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-dharma-ink-secondary" />
           <Input
             placeholder="Search controls…"
             value={searchQuery}
@@ -134,13 +134,13 @@ export function ControlTable({ controls, onStatusChanged }: ControlTableProps) {
 
       {/* Result count */}
       {searchQuery && (
-        <p className="text-xs text-muted-foreground mb-3">
+        <p className="text-xs text-dharma-ink-secondary mb-3">
           Showing {filteredControls.length} of {controls.length} controls
         </p>
       )}
 
       {filteredControls.length === 0 ? (
-        <div className="py-12 text-center text-sm text-muted-foreground rounded-lg border border-dashed border-border">
+        <div className="py-12 text-center text-sm text-dharma-ink-secondary rounded-lg border border-dashed border-dharma-border">
           No controls match your filter.
         </div>
       ) : (
@@ -164,13 +164,13 @@ export function ControlTable({ controls, onStatusChanged }: ControlTableProps) {
                   key={control.id}
                   className={cn(
                     "cursor-pointer",
-                    control.status === "COMPLIANT" && "bg-emerald-500/5",
+                    control.status === "COMPLIANT" && "bg-dharma-success-bg",
                     control.status === "NOT_APPLICABLE" && "opacity-60",
                   )}
                   onClick={() => setSelectedControlId(control.id)}
                 >
                   <TableCell>
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="text-xs font-medium text-dharma-ink-secondary">
                       {control.domain}
                     </span>
                   </TableCell>
@@ -178,7 +178,7 @@ export function ControlTable({ controls, onStatusChanged }: ControlTableProps) {
                     <p className="font-medium text-sm leading-tight">
                       {control.title}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    <p className="text-xs text-dharma-ink-secondary mt-0.5 line-clamp-1">
                       {control.description}
                     </p>
                   </TableCell>
@@ -191,7 +191,7 @@ export function ControlTable({ controls, onStatusChanged }: ControlTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-xs text-dharma-ink-secondary">
                       <FileText className="h-3.5 w-3.5" />
                       <span>{control.evidenceCount}</span>
                     </div>

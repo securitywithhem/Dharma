@@ -29,14 +29,14 @@ export default function ImportedItemsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Imported Frameworks</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-dharma-ink-secondary mt-2">
           Manage frameworks and templates you've imported from the marketplace.
         </p>
       </div>
 
       {isLoading ? (
         <div className="py-20 flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-8 w-8 animate-spin text-dharma-accent-on-tint" />
         </div>
       ) : (
         <div className="space-y-4">
@@ -44,24 +44,24 @@ export default function ImportedItemsPage() {
             items.map((item: any) => (
               <div
                 key={item.id}
-                className="bg-card border border-border rounded-lg p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
+                className="bg-dharma-surface border border-dharma-border rounded-lg p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-dharma-border"
               >
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-foreground">
+                  <h3 className="text-lg font-semibold text-dharma-ink">
                     {item.itemName}
                   </h3>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="secondary">{item.itemType}</Badge>
-                    <span className="text-sm text-muted-foreground border-l border-border pl-2">
+                    <span className="text-sm text-dharma-ink-secondary border-l border-dharma-border pl-2">
                       v{item.itemVersion}
                     </span>
                     {item.sourceItem && (
-                      <span className="text-sm text-muted-foreground border-l border-border pl-2">
+                      <span className="text-sm text-dharma-ink-secondary border-l border-dharma-border pl-2">
                         By {item.sourceItem.author?.name || "Unknown"}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-3">
+                  <p className="text-xs text-dharma-ink-secondary mt-3">
                     Imported on {new Date(item.importedAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -92,8 +92,8 @@ export default function ImportedItemsPage() {
               </div>
             ))
           ) : (
-            <div className="text-center py-16 bg-muted/30 rounded-lg border border-dashed border-border">
-              <p className="text-muted-foreground mb-4">
+            <div className="text-center py-16 bg-dharma-surface-hover rounded-lg border border-dashed border-dharma-border">
+              <p className="text-dharma-ink-secondary mb-4">
                 You haven't imported any frameworks yet.
               </p>
               <Button variant="outline">

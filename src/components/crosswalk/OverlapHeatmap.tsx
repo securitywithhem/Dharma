@@ -12,30 +12,45 @@ interface OverlapHeatmapProps {
   onDrillDown: (familyAId: string, familyBId: string) => void;
 }
 
-// Validated single-hue sequential ramp (blue), 5 steps, low→high coverage.
-// Light: node scripts/validate_palette.js "#86b6ef,#5598e7,#2a78d6,#1c5cab,#0d366b" --mode light --ordinal → ALL CHECKS PASS
-// Dark:  node scripts/validate_palette.js "#184f95,#256abf,#3987e5,#6da7ec,#b7d3f6" --mode dark --ordinal → ALL CHECKS PASS
+// Single-hue sequential ramp, 5 steps, low→high coverage. This used to be a
+// second, separately-validated blue ramp hardcoded as hex + dark: pairs. It
+// duplicated --seq-1..5 in globals.css, which is the same thing: one hue,
+// light→dark, for encoding magnitude. Consolidated onto the token, which also
+// measures better — the old step 3 (#2a78d6) reached only 4.18:1 against ink,
+// where --seq-3 reaches 5.20:1.
+//
 // 0% coverage is rendered as the neutral surface, not the ramp's lightest step —
 // sequential "near zero recedes toward surface", so it isn't a ramp step at all.
 const BUCKET_CLASSES = [
-  "bg-[#86b6ef] dark:bg-[#184f95]",
-  "bg-[#5598e7] dark:bg-[#256abf]",
-  "bg-[#2a78d6] dark:bg-[#3987e5]",
-  "bg-[#1c5cab] dark:bg-[#6da7ec]",
-  "bg-[#0d366b] dark:bg-[#b7d3f6]",
+  "bg-seq-1",
+  "bg-seq-2",
+  "bg-seq-3",
+  "bg-seq-4",
+  "bg-seq-5",
 ];
 
 function bucketClass(coveragePct: number): string {
-  if (coveragePct <= 0) return "bg-muted/40";
+  if (coveragePct <= 0) return "bg-dharma-surface-hover";
   const index = Math.min(4, Math.floor(coveragePct / 20));
   return BUCKET_CLASSES[index];
 }
 
-/** Text stays legible against every ramp step — dark ink at low steps, light ink at high steps. */
+/**
+ * Cell label stays legible against every ramp step. --foreground/--background
+ * already invert per mode, so no `dark:` override is needed for *which colour*
+ * — only for *where the ramp flips*, because the ramp is light→dark in light
+ * mode and dark→light in dark mode, so the flip lands on a different step.
+ *
+ * Measured against the tokens (AA 4.5:1 for this small numeric text):
+ *   light  seq-1..3 on ink 13.40 / 8.99 / 5.20 · seq-4..5 on paper 5.42 / 8.90
+ *   dark   seq-1..3 on fg  11.20 / 8.55 / 6.36 · seq-4 on fg 4.78 · seq-5 on bg 6.34
+ */
 function textClass(coveragePct: number): string {
-  if (coveragePct <= 0) return "text-muted-foreground";
+  if (coveragePct <= 0) return "text-dharma-ink-secondary";
   const index = Math.min(4, Math.floor(coveragePct / 20));
-  return index >= 3 ? "text-white dark:text-[#0d1420]" : "text-[#0d1420] dark:text-white";
+  if (index >= 4) return "text-dharma-ink-inverse";
+  if (index === 3) return "text-dharma-ink-inverse dark:text-dharma-ink";
+  return "text-dharma-ink";
 }
 
 export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: OverlapHeatmapProps) {
@@ -57,7 +72,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
 
   if (isError) {
     return (
-      <div className="rounded-lg border border-dashed border-destructive/40 py-10 text-center text-sm text-destructive">
+      <div className="rounded-lg border border-dashed border-dharma-danger py-10 text-center text-sm text-dharma-danger-text">
         {error?.message ?? "Failed to load the overlap matrix."}
       </div>
     );
@@ -65,10 +80,10 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
 
   if (!data || data.familiesA.length === 0 || data.familiesB.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border py-12 text-center">
-        <Grid3x3 className="mx-auto h-8 w-8 text-muted-foreground/40" />
+      <div className="rounded-lg border border-dashed border-dharma-border py-12 text-center">
+        <Grid3x3 className="mx-auto h-8 w-8 text-dharma-ink-secondary" />
         <p className="mt-3 text-sm font-medium">No overlap data yet</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-xs text-dharma-ink-secondary">
           Add controls to both frameworks to see a coverage matrix.
         </p>
       </div>
@@ -89,7 +104,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
         }}
       >
         {/* Corner */}
-        <div className="sticky left-0 z-10 flex items-end pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="sticky left-0 z-10 flex items-end pb-1 text-[10px] font-medium uppercase tracking-wide text-dharma-ink-secondary">
           {data.frameworkB.name} ↓ / {data.frameworkA.name} →
         </div>
         {/* Column headers: families of framework A */}
@@ -97,7 +112,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
           <div
             key={famA.familyId}
             role="columnheader"
-            className="truncate px-1 pb-1 text-center text-[11px] font-medium text-muted-foreground"
+            className="truncate px-1 pb-1 text-center text-[11px] font-medium text-dharma-ink-secondary"
             title={famA.familyName}
           >
             {famA.familyName}
@@ -109,7 +124,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
           <Fragment key={famB.familyId}>
             <div
               role="rowheader"
-              className="sticky left-0 z-10 truncate bg-background pr-2 py-1.5 text-[11px] font-medium text-muted-foreground"
+              className="sticky left-0 z-10 truncate bg-dharma-bg pr-2 py-1.5 text-[11px] font-medium text-dharma-ink-secondary"
               title={famB.familyName}
             >
               {famB.familyName}
@@ -130,12 +145,12 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
                     "relative flex h-10 items-center justify-center rounded-sm text-xs font-semibold transition-transform",
                     bucketClass(pct),
                     textClass(pct),
-                    hovered === key && "z-20 scale-[1.06] ring-2 ring-primary",
+                    hovered === key && "z-20 scale-[1.06] ring-2 ring-dharma-accent",
                   )}
                 >
                   {pct > 0 ? `${Math.round(pct)}%` : "–"}
                   {hovered === key && (
-                    <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-normal text-popover-foreground shadow-md">
+                    <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-dharma-border bg-dharma-surface px-2 py-1 text-[11px] font-normal text-dharma-ink border border-dharma-border">
                       {cell?.mappingCount ?? 0} mapping{(cell?.mappingCount ?? 0) === 1 ? "" : "s"} · click to view
                     </div>
                   )}
@@ -147,10 +162,10 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
       </div>
 
       {/* Legend */}
-      <div className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="mt-4 flex items-center gap-2 text-[11px] text-dharma-ink-secondary">
         <span>Coverage:</span>
         <div className="flex items-center gap-0.5">
-          <span className="h-3 w-3 rounded-sm bg-muted/40" />
+          <span className="h-3 w-3 rounded-sm bg-dharma-surface-hover" />
           {BUCKET_CLASSES.map((c, i) => (
             <span key={i} className={cn("h-3 w-3 rounded-sm", c)} />
           ))}

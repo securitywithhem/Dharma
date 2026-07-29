@@ -114,10 +114,10 @@ export function UploadDropzone({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          'relative rounded-lg border-2 border-dashed transition-all duration-200',
+          'relative rounded-lg border-2 border-dashed transition-all duration-150 ease-out',
           isDragActive
-            ? 'border-amber-600 bg-amber-50 dark:bg-amber-950'
-            : 'border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900',
+            ? 'border-dharma-warning bg-dharma-warning-bg'
+            : 'border-dharma-border bg-dharma-surface-hover',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -129,16 +129,16 @@ export function UploadDropzone({
             <Upload
               className={cn(
                 'w-12 h-12 transition-colors',
-                isDragActive ? 'text-amber-600' : 'text-stone-400 dark:text-stone-500'
+                isDragActive ? 'text-dharma-ink' : 'text-dharma-ink-secondary'
               )}
             />
           </motion.div>
 
           <div className="text-center">
-            <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
+            <p className="text-sm font-medium text-dharma-ink">
               {isLoading ? 'Uploading...' : 'Drag & drop files here or click to browse'}
             </p>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
+            <p className="text-xs text-dharma-ink-secondary mt-2">
               Supported: Images, PDFs, JSON, TXT, LOG (max {(maxFileSize / 1024 / 1024).toFixed(0)}MB)
             </p>
           </div>
@@ -161,10 +161,10 @@ export function UploadDropzone({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mt-3 flex gap-2 items-start p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800"
+          className="mt-3 flex gap-2 items-start p-3 rounded-lg bg-dharma-danger-bg border border-dharma-danger"
         >
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <AlertCircle className="w-5 h-5 text-dharma-danger-text flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-dharma-danger-text">{error}</p>
         </motion.div>
       )}
     </motion.div>

@@ -51,7 +51,7 @@ export function FrameworkPairSelector({ frameworkAId, frameworkBId, onChange }: 
         </SelectContent>
       </Select>
 
-      <ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <ArrowLeftRight className="h-4 w-4 shrink-0 text-dharma-ink-secondary" aria-hidden />
 
       <Select
         value={frameworkBId ?? undefined}

@@ -26,15 +26,15 @@ export default function MarketplaceDetailPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-32">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <Loader2 className="h-10 w-10 animate-spin text-dharma-accent-on-tint" />
       </div>
     );
   }
 
   if (!item) {
     return (
-      <div className="text-center py-20 bg-card rounded-xl border border-dashed border-border mt-8">
-        <p className="text-muted-foreground text-lg mb-4">Item not found</p>
+      <div className="text-center py-20 bg-dharma-surface rounded-xl border border-dashed border-dharma-border mt-8">
+        <p className="text-dharma-ink-secondary text-lg mb-4">Item not found</p>
         <Button onClick={() => router.push("/dashboard/marketplace" as any)} variant="outline">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Marketplace
@@ -45,7 +45,7 @@ export default function MarketplaceDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
-      <Link href={"/dashboard/marketplace" as any} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <Link href={"/dashboard/marketplace" as any} className="inline-flex items-center text-sm text-dharma-ink-secondary hover:text-dharma-ink transition-colors">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Marketplace
       </Link>
@@ -55,7 +55,7 @@ export default function MarketplaceDetailPage() {
         <div className="lg:col-span-2 space-y-10">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start gap-6">
-            <div className="h-32 w-32 shrink-0 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl flex items-center justify-center relative overflow-hidden border border-border/50">
+            <div className="h-32 w-32 shrink-0 bg-dharma-surface from-primary/5 to-primary/10 rounded-2xl flex items-center justify-center relative overflow-hidden border border-dharma-border">
               {item.logoUrl ? (
                 <Image
                   src={item.logoUrl}
@@ -64,14 +64,14 @@ export default function MarketplaceDetailPage() {
                   className="object-contain p-4 mix-blend-multiply"
                 />
               ) : (
-                <Tag className="h-12 w-12 text-primary/40" />
+                <Tag className="h-12 w-12 text-dharma-accent-on-tint" />
               )}
             </div>
             <div className="flex-1">
-              <h1 className="text-4xl font-bold text-foreground tracking-tight">
+              <h1 className="text-4xl font-bold text-dharma-ink tracking-tight">
                 {item.name}
               </h1>
-              <p className="text-muted-foreground mt-2 text-lg">
+              <p className="text-dharma-ink-secondary mt-2 text-lg">
                 Version {item.version}
               </p>
               <div className="flex gap-2 mt-4 flex-wrap">
@@ -86,27 +86,27 @@ export default function MarketplaceDetailPage() {
           </div>
 
           {/* Description */}
-          <Card className="p-8 shadow-sm">
-            <h2 className="text-xl font-semibold text-foreground mb-4">
+          <Card className="p-8 border border-dharma-border">
+            <h2 className="text-xl font-semibold text-dharma-ink mb-4">
               About this item
             </h2>
-            <div className="prose prose-sm sm:prose-base max-w-none text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <div className="prose prose-sm sm:prose-base max-w-none text-dharma-ink-secondary whitespace-pre-wrap leading-relaxed">
               {item.description}
             </div>
           </Card>
 
           {/* Metadata Grid */}
           <div className="grid grid-cols-2 gap-4">
-            <Card className="p-6 text-center shadow-sm">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Downloads</p>
-              <p className="text-3xl font-bold text-foreground flex items-center justify-center gap-2">
-                <Download className="h-6 w-6 text-primary/60" />
+            <Card className="p-6 text-center border border-dharma-border">
+              <p className="text-sm font-medium text-dharma-ink-secondary mb-1">Downloads</p>
+              <p className="text-3xl font-bold text-dharma-ink flex items-center justify-center gap-2">
+                <Download className="h-6 w-6 text-dharma-accent-on-tint" />
                 {item.downloads}
               </p>
             </Card>
-            <Card className="p-6 text-center shadow-sm">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Published By</p>
-              <p className="text-xl font-semibold text-foreground mt-2 line-clamp-1">
+            <Card className="p-6 text-center border border-dharma-border">
+              <p className="text-sm font-medium text-dharma-ink-secondary mb-1">Published By</p>
+              <p className="text-xl font-semibold text-dharma-ink mt-2 line-clamp-1">
                 {item.author?.name || "Dharma"}
               </p>
             </Card>
@@ -118,10 +118,10 @@ export default function MarketplaceDetailPage() {
 
         {/* Sidebar */}
         <aside className="lg:col-span-1">
-          <Card className="p-6 sticky top-24 shadow-md border-primary/20">
+          <Card className="p-6 sticky top-24 border border-dharma-border border-dharma-accent">
             <div className="mb-6">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Price</p>
-              <p className="text-4xl font-bold text-foreground">
+              <p className="text-sm font-medium text-dharma-ink-secondary mb-2">Price</p>
+              <p className="text-4xl font-bold text-dharma-ink">
                 {item.price === 0 ? "Free" : `$${(item.price / 100).toFixed(2)}`}
               </p>
             </div>
@@ -134,25 +134,25 @@ export default function MarketplaceDetailPage() {
               Import to My Org
             </Button>
             
-            <p className="text-xs text-center text-muted-foreground mt-3">
+            <p className="text-xs text-center text-dharma-ink-secondary mt-3">
               Requires active billing profile
             </p>
 
             {/* Stats */}
-            <div className="mt-8 pt-8 border-t border-border space-y-4">
+            <div className="mt-8 pt-8 border-t border-dharma-border space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">Rating</span>
+                <span className="text-dharma-ink-secondary text-sm">Rating</span>
                 <span className="font-semibold flex items-center gap-1.5">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <Star className="h-4 w-4 fill-dharma-warning text-dharma-ink" />
                   {item.ratings ? item.ratings.toFixed(1) : "N/A"}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">Reviews</span>
+                <span className="text-dharma-ink-secondary text-sm">Reviews</span>
                 <span className="font-semibold">{item.reviewCount || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">Last Updated</span>
+                <span className="text-dharma-ink-secondary text-sm">Last Updated</span>
                 <span className="font-semibold text-sm">
                   {new Date(item.updatedAt).toLocaleDateString()}
                 </span>
@@ -161,11 +161,11 @@ export default function MarketplaceDetailPage() {
 
             {/* Tags */}
             {item.tags && item.tags.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-border">
-                <p className="text-sm font-medium text-muted-foreground mb-3">Tags</p>
+              <div className="mt-8 pt-8 border-t border-dharma-border">
+                <p className="text-sm font-medium text-dharma-ink-secondary mb-3">Tags</p>
                 <div className="flex flex-wrap gap-2">
                   {item.tags.map((tag: string) => (
-                    <Badge key={tag} variant="secondary" className="text-xs bg-secondary hover:bg-secondary">
+                    <Badge key={tag} variant="secondary" className="text-xs bg-dharma-surface-hover hover:bg-dharma-surface-hover">
                       {tag}
                     </Badge>
                   ))}

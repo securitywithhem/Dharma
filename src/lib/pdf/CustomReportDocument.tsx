@@ -4,21 +4,22 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { CustomReportData } from "@/server/services/reportData";
+import { pdfPalette } from '@/lib/pdf/palette';
 
 const styles = StyleSheet.create({
-  page: { flexDirection: "column", backgroundColor: "#FFFFFF", padding: 40, fontFamily: "Helvetica", fontSize: 11 },
-  header: { marginBottom: 20, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: "#D97706" },
-  title: { fontSize: 22, fontWeight: "bold", color: "#1C1917", marginBottom: 4 },
-  subtitle: { fontSize: 11, color: "#78716C" },
+  page: { flexDirection: "column", backgroundColor: pdfPalette.surface, padding: 40, fontFamily: "Helvetica", fontSize: 11 },
+  header: { marginBottom: 20, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: pdfPalette.primary },
+  title: { fontSize: 22, fontWeight: "bold", color: pdfPalette.text, marginBottom: 4 },
+  subtitle: { fontSize: 11, color: pdfPalette.textMuted },
   section: { marginBottom: 18, marginTop: 8 },
-  sectionTitle: { fontSize: 13, fontWeight: "bold", color: "#D97706", marginBottom: 8, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: "#E7E5E4" },
-  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#F5F5F4" },
-  cell: { fontSize: 10, color: "#292524" },
-  cellMuted: { fontSize: 10, color: "#78716C" },
-  scoreBarTrack: { height: 8, backgroundColor: "#E7E5E4", borderRadius: 4, marginTop: 2, width: 120 },
-  scoreBarFill: { height: 8, backgroundColor: "#D97706", borderRadius: 4 },
-  empty: { fontSize: 10, color: "#A8A29E", fontStyle: "italic" },
-  footer: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 8, color: "#A8A29E", textAlign: "center", borderTopWidth: 1, borderTopColor: "#E7E5E4", paddingTop: 6 },
+  sectionTitle: { fontSize: 13, fontWeight: "bold", color: pdfPalette.primary, marginBottom: 8, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: pdfPalette.border },
+  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: pdfPalette.surfaceMuted },
+  cell: { fontSize: 10, color: pdfPalette.text },
+  cellMuted: { fontSize: 10, color: pdfPalette.textMuted },
+  scoreBarTrack: { height: 8, backgroundColor: pdfPalette.border, borderRadius: 4, marginTop: 2, width: 120 },
+  scoreBarFill: { height: 8, backgroundColor: pdfPalette.primary, borderRadius: 4 },
+  empty: { fontSize: 10, color: pdfPalette.textMuted, fontStyle: "italic" },
+  footer: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 8, color: pdfPalette.textMuted, textAlign: "center", borderTopWidth: 1, borderTopColor: pdfPalette.border, paddingTop: 6 },
 });
 
 function CountRows({ record }: { record: Record<string, number> }) {

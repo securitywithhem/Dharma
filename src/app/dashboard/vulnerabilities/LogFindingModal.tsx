@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SeverityBadge } from "@/components/pentest/SeverityBadge";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 interface LogFindingModalProps {
   onClose: () => void;
@@ -117,7 +117,7 @@ export function LogFindingModal({ onClose, onSuccess }: LogFindingModalProps) {
             />
           </div>
 
-          <div className="flex gap-2 rounded-lg border border-border p-1">
+          <div className="flex gap-2 rounded-lg border border-dharma-border p-1">
             {[
               { key: true, label: "CVSS Builder" },
               { key: false, label: "Manual Severity" },
@@ -127,8 +127,8 @@ export function LogFindingModal({ onClose, onSuccess }: LogFindingModalProps) {
                 type="button"
                 className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   useCvssBuilder === opt.key
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-dharma-accent text-dharma-ink-inverse"
+                    : "text-dharma-ink-secondary hover:text-dharma-ink"
                 }`}
                 onClick={() => setUseCvssBuilder(opt.key)}
               >
@@ -142,7 +142,7 @@ export function LogFindingModal({ onClose, onSuccess }: LogFindingModalProps) {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {METRICS.map((metric) => (
                   <div key={metric.key} className="space-y-1">
-                    <label htmlFor={`cvss-${metric.key}`} className="text-xs font-medium text-muted-foreground">
+                    <label htmlFor={`cvss-${metric.key}`} className="text-xs font-medium text-dharma-ink-secondary">
                       {metric.label}
                     </label>
                     <Select
@@ -166,22 +166,22 @@ export function LogFindingModal({ onClose, onSuccess }: LogFindingModalProps) {
 
               <div
                 id="cvss-preview"
-                className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3"
+                className="flex items-center justify-between rounded-lg border border-dharma-border bg-dharma-surface-hover px-4 py-3"
               >
                 {!vector ? (
-                  <p className="text-xs text-muted-foreground">Select all 8 metrics to see the score.</p>
+                  <p className="text-xs text-dharma-ink-secondary">Select all 8 metrics to see the score.</p>
                 ) : previewQuery.isLoading ? (
-                  <p className="text-xs text-muted-foreground">Calculating…</p>
+                  <p className="text-xs text-dharma-ink-secondary">Calculating…</p>
                 ) : previewQuery.data?.valid ? (
                   <>
-                    <span className="text-sm font-mono text-muted-foreground">{vector}</span>
+                    <span className="text-sm font-mono text-dharma-ink-secondary">{vector}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-bold tabular-nums">{previewQuery.data.score.toFixed(1)}</span>
-                      <SeverityBadge severity={previewQuery.data.severity} />
+                      <StatusBadge severity={previewQuery.data.severity} />
                     </div>
                   </>
                 ) : (
-                  <p className="text-xs text-destructive">{previewQuery.data?.error ?? "Invalid vector"}</p>
+                  <p className="text-xs text-dharma-danger-text">{previewQuery.data?.error ?? "Invalid vector"}</p>
                 )}
               </div>
             </div>
@@ -207,7 +207,7 @@ export function LogFindingModal({ onClose, onSuccess }: LogFindingModalProps) {
         </div>
 
         {createMutation.error && (
-          <p role="alert" className="text-xs text-destructive mt-2">
+          <p role="alert" className="text-xs text-dharma-danger-text mt-2">
             {createMutation.error.message}
           </p>
         )}

@@ -17,7 +17,7 @@ export function ImportedFrameworksCard() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Download className="h-5 w-5 text-primary" />
+          <Download className="h-5 w-5 text-dharma-accent-on-tint" />
           Recently Imported
         </CardTitle>
       </CardHeader>
@@ -26,15 +26,15 @@ export function ImportedFrameworksCard() {
           {items.slice(0, 3).map((item: any) => (
             <li key={item.id} className="flex justify-between items-center group">
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground">{item.itemName}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-sm font-medium text-dharma-ink">{item.itemName}</span>
+                <span className="text-xs text-dharma-ink-secondary">
                   Imported {new Date(item.importedAt).toLocaleDateString()}
                 </span>
               </div>
               {item.importedFrameworkId && (
                 <Link
                   href={`/dashboard/frameworks/${item.importedFrameworkId}`}
-                  className="text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-xs font-medium text-dharma-accent-on-tint opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   View
                 </Link>
@@ -45,7 +45,7 @@ export function ImportedFrameworksCard() {
 
         <Link
           href={"/dashboard/settings/imported-items" as any}
-          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mt-4 pt-4 border-t border-border w-full"
+          className="inline-flex items-center text-sm font-medium text-dharma-ink-secondary hover:text-dharma-accent-on-tint transition-colors mt-4 pt-4 border-t border-dharma-border w-full"
         >
           Manage imports
           <ArrowRight className="ml-1 h-4 w-4" />

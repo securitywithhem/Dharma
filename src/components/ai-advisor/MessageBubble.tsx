@@ -37,7 +37,7 @@ export function MessageBubble({ role, content, citations, streaming }: MessageBu
       {!isUser && (
         <div
           aria-hidden="true"
-          className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary"
+          className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dharma-accent-tint text-xs font-semibold text-dharma-accent-on-tint"
         >
           AI
         </div>
@@ -45,7 +45,7 @@ export function MessageBubble({ role, content, citations, streaming }: MessageBu
       <div
         className={cn(
           "max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
-          isUser ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm",
+          isUser ? "bg-dharma-accent text-dharma-ink-inverse rounded-br-sm" : "bg-dharma-surface-hover text-dharma-ink rounded-bl-sm",
         )}
         aria-busy={streaming ? "true" : undefined}
       >

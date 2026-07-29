@@ -42,10 +42,10 @@ export function MessageInput({ onSend, disabled, usage }: MessageInputProps) {
   };
 
   return (
-    <div className="border-t border-border p-3">
+    <div className="border-t border-dharma-border p-3">
       {usage && (lowBudget || budgetExceeded) && (
         <div
-          className={cn("mb-2 rounded-md px-2 py-1 text-xs", budgetExceeded ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-700 dark:text-amber-300")}
+          className={cn("mb-2 rounded-md px-2 py-1 text-xs", budgetExceeded ? "bg-dharma-danger-bg text-dharma-danger-text" : "bg-dharma-warning-bg text-dharma-ink")}
           role="status"
           aria-live="polite"
         >

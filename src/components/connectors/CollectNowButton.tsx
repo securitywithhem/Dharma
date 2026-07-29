@@ -28,7 +28,7 @@ export function CollectNowButton({
     <button
       onClick={handleCollectNow}
       disabled={disabled || isLoading}
-      className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-dharma-accent text-dharma-ink-inverse hover:bg-dharma-accent-hover rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       title="Trigger immediate evidence collection for this mapping"
     >
       {isLoading ? (

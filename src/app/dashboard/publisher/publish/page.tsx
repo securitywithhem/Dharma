@@ -25,7 +25,7 @@ export default function PublishItemPage() {
           <CardDescription>Fill out the details to submit your item to the marketplace.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm text-center py-12">
+          <p className="text-dharma-ink-secondary text-sm text-center py-12">
             Publishing form placeholder. This form will capture item type, metadata, and files.
           </p>
         </CardContent>

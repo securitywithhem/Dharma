@@ -144,8 +144,8 @@ export default function NewPolicyPage() {
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Template-First Policy Builder</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-dharma-ink">Template-First Policy Builder</h1>
+        <p className="text-dharma-ink-secondary mt-1">
           Start with a DPDP-aligned template, fill in your details, and request an AI audit —
           no AI rewrites your legal text.
         </p>
@@ -153,10 +153,10 @@ export default function NewPolicyPage() {
 
       {/* Step 1: Pick template */}
       {step === 1 && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Step 1: Choose a template</h2>
+        <div className="bg-dharma-surface p-6 rounded-lg border border-dharma-border">
+          <h2 className="text-lg font-medium text-dharma-ink mb-4">Step 1: Choose a template</h2>
           {loadingTemplates ? (
-            <div className="flex items-center text-gray-400">
+            <div className="flex items-center text-dharma-ink-secondary">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading templates…
             </div>
           ) : (
@@ -167,12 +167,12 @@ export default function NewPolicyPage() {
                   onClick={() => setSelectedTemplateId(t.id)}
                   className={`text-left p-4 rounded-lg border-2 transition-colors ${
                     selectedTemplateId === t.id
-                      ? "border-indigo-600 bg-indigo-50"
-                      : "border-gray-200 hover:border-indigo-300"
+                      ? "border-dharma-accent bg-dharma-accent-tint"
+                      : "border-dharma-border hover:border-dharma-accent"
                   }`}
                 >
-                  <div className="font-medium text-gray-900">{t.name}</div>
-                  <div className="text-sm text-gray-500 mt-0.5">
+                  <div className="font-medium text-dharma-ink">{t.name}</div>
+                  <div className="text-sm text-dharma-ink-secondary mt-0.5">
                     {t.policyType.replace(/_/g, " ")} · v{t.version}
                   </div>
                 </button>
@@ -183,7 +183,7 @@ export default function NewPolicyPage() {
             <button
               onClick={() => setStep(2)}
               disabled={!selectedTemplateId}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-dharma-accent text-dharma-ink-inverse px-4 py-2 rounded-md hover:bg-dharma-accent-hover font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue
             </button>
@@ -193,16 +193,16 @@ export default function NewPolicyPage() {
 
       {/* Step 2: Fill variables */}
       {step === 2 && selectedTemplate && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 animate-in fade-in slide-in-from-bottom-4">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
+        <div className="bg-dharma-surface p-6 rounded-lg border border-dharma-border animate-in fade-in slide-in-from-bottom-4">
+          <h2 className="text-lg font-medium text-dharma-ink mb-4">
             Step 2: Fill in your details for &ldquo;{selectedTemplate.name}&rdquo;
           </h2>
           <div className="space-y-4">
             {(selectedTemplate.variables as unknown as TemplateVariable[]).map((v) => (
               <div key={v.key}>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-dharma-ink-secondary">
                   {v.label}
-                  {v.required && <span className="text-red-500 ml-1">*</span>}
+                  {v.required && <span className="text-dharma-danger-text ml-1">*</span>}
                 </label>
                 {v.type === "boolean" ? (
                   <input
@@ -218,7 +218,7 @@ export default function NewPolicyPage() {
                     type={v.type === "date" ? "date" : v.type === "email" ? "email" : "text"}
                     value={variables[v.key] ?? ""}
                     onChange={(e) => setVariables((prev) => ({ ...prev, [v.key]: e.target.value }))}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="mt-1 block w-full border border-dharma-border rounded-md border border-dharma-border p-2 text-sm focus:border-dharma-accent focus:ring-dharma-accent"
                     placeholder={v.defaultValue}
                   />
                 )}
@@ -228,14 +228,14 @@ export default function NewPolicyPage() {
           <div className="flex justify-between mt-6">
             <button
               onClick={() => setStep(1)}
-              className="text-gray-600 bg-gray-100 px-4 py-2 rounded-md hover:bg-gray-200 font-medium"
+              className="text-dharma-ink-secondary bg-dharma-surface-hover px-4 py-2 rounded-md hover:bg-dharma-surface-hover font-medium"
             >
               Back
             </button>
             <button
               onClick={handleRender}
               disabled={generateFromTemplate.isPending}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium flex items-center disabled:opacity-60"
+              className="bg-dharma-accent text-dharma-ink-inverse px-4 py-2 rounded-md hover:bg-dharma-accent-hover font-medium flex items-center disabled:opacity-60"
             >
               {generateFromTemplate.isPending ? (
                 <>
@@ -252,8 +252,8 @@ export default function NewPolicyPage() {
       {/* Step 3: Review & Edit */}
       {step === 3 && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8">
-          <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center text-green-600">
+          <div className="flex justify-between items-center bg-dharma-surface p-4 rounded-lg border border-dharma-border">
+            <div className="flex items-center text-dharma-success-text">
               <CheckCircle2 className="w-5 h-5 mr-2" />
               <span className="font-medium">Draft generated — review and edit below</span>
             </div>
@@ -261,7 +261,7 @@ export default function NewPolicyPage() {
               <button
                 onClick={handleRequestReview}
                 disabled={reviewDraft.isPending}
-                className="flex items-center px-4 py-2 bg-purple-100 border border-purple-300 rounded-md text-purple-700 hover:bg-purple-200"
+                className="flex items-center px-4 py-2 bg-dharma-accent-tint border border-dharma-accent rounded-md text-dharma-accent-on-tint hover:bg-dharma-accent-hover"
               >
                 <ShieldCheck className="w-4 h-4 mr-2" />
                 AI Audit
@@ -269,7 +269,7 @@ export default function NewPolicyPage() {
               <button
                 onClick={() => handleSave(false)}
                 disabled={createPolicy.isPending}
-                className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="flex items-center px-4 py-2 bg-dharma-surface border border-dharma-border rounded-md text-dharma-ink-secondary hover:bg-dharma-surface-hover"
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Draft
@@ -277,14 +277,14 @@ export default function NewPolicyPage() {
               <button
                 onClick={() => handleSave(true)}
                 disabled={createPolicy.isPending}
-                className="flex items-center px-4 py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-700"
+                className="flex items-center px-4 py-2 bg-dharma-accent rounded-md text-dharma-ink-inverse hover:bg-dharma-accent-hover"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Publish
               </button>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm">
+          <div className="bg-dharma-surface rounded-lg border border-dharma-border">
             <EditorContent editor={editor} />
           </div>
         </div>
@@ -293,21 +293,21 @@ export default function NewPolicyPage() {
       {/* Step 4: AI Audit Results */}
       {step === 4 && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <ShieldCheck className="w-5 h-5 mr-2 text-purple-600" />
+          <div className="bg-dharma-surface p-6 rounded-lg border border-dharma-border">
+            <h2 className="text-lg font-medium text-dharma-ink mb-4 flex items-center">
+              <ShieldCheck className="w-5 h-5 mr-2 text-dharma-accent-on-tint" />
               AI Compliance Audit Results
             </h2>
             {!reviewStatus || reviewStatus.status === "active" ? (
-              <div className="flex items-center text-gray-400">
+              <div className="flex items-center text-dharma-ink-secondary">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" /> Analysing your policy draft…
               </div>
             ) : reviewStatus.status === "failed" ? (
-              <p className="text-red-600">Audit failed: {reviewStatus.error}</p>
+              <p className="text-dharma-danger-text">Audit failed: {reviewStatus.error}</p>
             ) : reviewStatus.status === "completed" ? (
               <div>
                 {(reviewStatus.findings as Array<{ type: string; description: string; severity: string; regulationRef?: string }> || []).length === 0 ? (
-                  <div className="flex items-center text-green-600">
+                  <div className="flex items-center text-dharma-success-text">
                     <CheckCircle2 className="w-5 h-5 mr-2" />
                     <span>No issues found — your policy looks good!</span>
                   </div>
@@ -319,10 +319,10 @@ export default function NewPolicyPage() {
                           key={i}
                           className={`p-3 rounded-lg border-l-4 ${
                             f.severity === "HIGH"
-                              ? "border-red-500 bg-red-50"
+                              ? "border-dharma-danger bg-dharma-danger-bg"
                               : f.severity === "MEDIUM"
-                                ? "border-yellow-500 bg-yellow-50"
-                                : "border-blue-500 bg-blue-50"
+                                ? "border-dharma-warning bg-dharma-warning-bg"
+                                : "border-dharma-accent bg-dharma-accent-tint"
                           }`}
                         >
                           <div className="flex items-start">
@@ -332,7 +332,7 @@ export default function NewPolicyPage() {
                                 {f.type.replace(/_/g, " ")} · {f.severity}
                               </span>
                               {f.regulationRef && (
-                                <span className="ml-2 text-xs text-gray-500">§ {f.regulationRef}</span>
+                                <span className="ml-2 text-xs text-dharma-ink-secondary">§ {f.regulationRef}</span>
                               )}
                               <p className="text-sm mt-1">{f.description}</p>
                             </div>
@@ -348,7 +348,7 @@ export default function NewPolicyPage() {
             <div className="flex justify-between mt-6">
               <button
                 onClick={() => setStep(3)}
-                className="text-gray-600 bg-gray-100 px-4 py-2 rounded-md hover:bg-gray-200 font-medium"
+                className="text-dharma-ink-secondary bg-dharma-surface-hover px-4 py-2 rounded-md hover:bg-dharma-surface-hover font-medium"
               >
                 ← Back to Editor
               </button>
@@ -356,14 +356,14 @@ export default function NewPolicyPage() {
                 <button
                   onClick={() => handleSave(false)}
                   disabled={createPolicy.isPending}
-                  className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="flex items-center px-4 py-2 bg-dharma-surface border border-dharma-border rounded-md text-dharma-ink-secondary hover:bg-dharma-surface-hover"
                 >
                   <Save className="w-4 h-4 mr-2" /> Save Draft
                 </button>
                 <button
                   onClick={() => handleSave(true)}
                   disabled={createPolicy.isPending}
-                  className="flex items-center px-4 py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-700"
+                  className="flex items-center px-4 py-2 bg-dharma-accent rounded-md text-dharma-ink-inverse hover:bg-dharma-accent-hover"
                 >
                   <FileText className="w-4 h-4 mr-2" /> Publish
                 </button>

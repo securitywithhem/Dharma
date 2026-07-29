@@ -25,9 +25,9 @@ interface FamilyBreakdownTableProps {
 type SortKey = "familyName" | "familyScore" | "evidencedLeaves";
 
 function barClass(score: number): string {
-  if (score < 50) return "[&>div]:bg-red-500";
-  if (score < 75) return "[&>div]:bg-amber-500";
-  return "[&>div]:bg-emerald-500";
+  if (score < 50) return "[&>div]:bg-dharma-danger-bg";
+  if (score < 75) return "[&>div]:bg-dharma-warning-bg";
+  return "[&>div]:bg-dharma-success-bg";
 }
 
 export function FamilyBreakdownTable({ frameworkId, families }: FamilyBreakdownTableProps) {
@@ -53,8 +53,8 @@ export function FamilyBreakdownTable({ frameworkId, families }: FamilyBreakdownT
     <button
       onClick={() => toggleSort(column)}
       className={cn(
-        "flex items-center gap-1 text-xs font-medium hover:text-foreground",
-        sortKey === column ? "text-foreground" : "text-muted-foreground",
+        "flex items-center gap-1 text-xs font-medium hover:text-dharma-ink",
+        sortKey === column ? "text-dharma-ink" : "text-dharma-ink-secondary",
       )}
     >
       {label}
@@ -63,7 +63,7 @@ export function FamilyBreakdownTable({ frameworkId, families }: FamilyBreakdownT
   );
 
   if (families.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No control families to show yet.</p>;
+    return <p className="py-8 text-center text-sm text-dharma-ink-secondary">No control families to show yet.</p>;
   }
 
   return (
@@ -88,13 +88,13 @@ export function FamilyBreakdownTable({ frameworkId, families }: FamilyBreakdownT
         {sorted.map((f) => (
           <TableRow key={f.familyId}>
             <TableCell className="font-medium text-sm">{f.familyName}</TableCell>
-            <TableCell className="text-sm text-muted-foreground">
+            <TableCell className="text-sm text-dharma-ink-secondary">
               {f.evidencedLeaves} / {f.totalLeaves}
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
                 <Progress value={f.familyScore} className={cn("h-2 flex-1", barClass(f.familyScore))} />
-                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-dharma-ink-secondary">
                   {Math.round(f.familyScore)}%
                 </span>
               </div>

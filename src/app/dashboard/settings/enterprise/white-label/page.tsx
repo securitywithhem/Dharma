@@ -18,7 +18,13 @@ export default function WhiteLabelSettingsPage() {
   const utils = api.useUtils();
   const settingsQuery = api.whiteLabel.getSettings.useQuery();
 
-  const [primaryColor, setPrimaryColor] = useState("#d97706");
+  // Seeded with the actual default --primary (indigo dye, `231 48% 34%` in
+  // globals.css). It previously seeded #d97706 — the saffron primary retired
+  // with the old UI docs — so a tenant that had never set a brand colour was
+  // shown a swatch that matched nothing in the product. Keep this in sync with
+  // --primary; it is the only place the token is mirrored as hex, because an
+  // <input type="color"> cannot read a CSS custom property.
+  const [primaryColor, setPrimaryColor] = useState("#2D3A80"); // theme-drift-allow
   const [customDomain, setCustomDomain] = useState("");
   const [css, setCss] = useState("");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -75,7 +81,7 @@ export default function WhiteLabelSettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">White-label</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Brand this workspace for your organization — logo, accent color, and a custom domain.
         </p>
       </div>
@@ -93,7 +99,7 @@ export default function WhiteLabelSettingsPage() {
               <div className="space-y-1">
                 <Label>Logo</Label>
                 <div className="flex items-center gap-3">
-                  <label className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">
+                  <label className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-dharma-surface-hover">
                     <UploadCloud className="mr-2 h-4 w-4" /> Upload logo
                     <input
                       type="file"
@@ -155,7 +161,7 @@ export default function WhiteLabelSettingsPage() {
                   onChange={(e) => setCustomDomain(e.target.value)}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-dharma-ink-secondary">
                 Create a CNAME record pointing at{" "}
                 <code className="font-mono">{data?.expectedCnameTarget}</code>, save, then
                 verify. The theme only activates on a verified domain.
@@ -219,8 +225,8 @@ export default function WhiteLabelSettingsPage() {
                 </span>
               </div>
               <div className="space-y-3 p-4">
-                <div className="h-3 w-2/3 rounded bg-muted" />
-                <div className="h-3 w-1/2 rounded bg-muted" />
+                <div className="h-3 w-2/3 rounded bg-dharma-surface-hover" />
+                <div className="h-3 w-1/2 rounded bg-dharma-surface-hover" />
                 <button
                   className="rounded-md px-3 py-1.5 text-xs font-semibold text-white"
                   style={{ backgroundColor: primaryColor }}
@@ -229,7 +235,7 @@ export default function WhiteLabelSettingsPage() {
                 </button>
               </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-xs text-dharma-ink-secondary">
               Preview approximates how the accent color and logo apply across org pages.
             </p>
           </CardContent>

@@ -72,12 +72,12 @@ export function FrameworkSelectionStep({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <label className="flex items-center gap-3 p-4 rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-900 cursor-pointer transition-colors">
+              <label className="flex items-center gap-3 p-4 rounded-lg border border-dharma-border hover:bg-dharma-surface-hover cursor-pointer transition-colors">
                 <Checkbox
                   checked={selectedFrameworks.includes(fw.key)}
                   onCheckedChange={() => handleFrameworkToggle(fw.key)}
                 />
-                <span className="font-medium text-stone-900 dark:text-stone-100">
+                <span className="font-medium text-dharma-ink">
                   {fw.label}
                 </span>
               </label>

@@ -44,7 +44,7 @@ function DownloadButton({ reportId, status }: { reportId: string; status: string
   );
   const data = getQuery.data;
   if (!data || data.status !== "COMPLETED" || !data.downloadUrl) {
-    return <span className="text-xs text-muted-foreground">{data?.status ?? status}</span>;
+    return <span className="text-xs text-dharma-ink-secondary">{data?.status ?? status}</span>;
   }
   return (
     <Button variant="outline" size="sm" onClick={() => window.open(data.downloadUrl!, "_blank")}>
@@ -79,7 +79,7 @@ function ReportsTable() {
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 pt-6">
           <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Type</span>
+            <span className="text-xs text-dharma-ink-secondary">Type</span>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -90,7 +90,7 @@ function ReportsTable() {
             </Select>
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Status</span>
+            <span className="text-xs text-dharma-ink-secondary">Status</span>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -110,7 +110,7 @@ function ReportsTable() {
           {listQuery.isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : (listQuery.data?.items ?? []).length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No reports yet.</p>
+            <p className="py-8 text-center text-sm text-dharma-ink-secondary">No reports yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -139,10 +139,10 @@ function ReportsTable() {
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"}>{r.status}</Badge>
                       {r.status === "FAILED" && r.errorMessage && (
-                        <span className="ml-2 text-xs text-muted-foreground">{r.errorMessage}</span>
+                        <span className="ml-2 text-xs text-dharma-ink-secondary">{r.errorMessage}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs text-dharma-ink-secondary">
                       {new Date(r.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
@@ -194,7 +194,7 @@ function SchedulesTab() {
       </CardHeader>
       <CardContent>
         {schedules.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
+          <p className="py-6 text-center text-sm text-dharma-ink-secondary">
             No schedules. Create a report and choose a cadence to schedule it.
           </p>
         ) : (
@@ -250,7 +250,7 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Reports</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Custom PDF reports and AI-narrated board summaries.
           </p>
         </div>
@@ -268,8 +268,8 @@ export default function ReportsPage() {
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === t
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-dharma-accent text-dharma-accent-on-tint"
+                : "border-transparent text-dharma-ink-secondary hover:text-dharma-ink"
             }`}
           >
             {t === "reports" ? "Reports" : (

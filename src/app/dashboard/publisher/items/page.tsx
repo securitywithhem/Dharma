@@ -19,7 +19,7 @@ export default function PublisherItemsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">My Published Items</h1>
-          <p className="text-muted-foreground">Manage your frameworks, templates, and connectors.</p>
+          <p className="text-dharma-ink-secondary">Manage your frameworks, templates, and connectors.</p>
         </div>
         <Button onClick={() => router.push("/dashboard/publisher/publish" as any)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -31,11 +31,11 @@ export default function PublisherItemsPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-dharma-ink-secondary" />
             </div>
           ) : !items?.length ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">You haven't published any items yet.</p>
+              <p className="text-dharma-ink-secondary mb-4">You haven't published any items yet.</p>
               <Button variant="outline" onClick={() => router.push("/dashboard/publisher/publish" as any)}>
                 Get Started
               </Button>
@@ -59,7 +59,7 @@ export default function PublisherItemsPage() {
                     <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
                     <TableCell>
                       {item.isPublic ? (
-                        <Badge variant="default" className="bg-green-600">Published</Badge>
+                        <Badge variant="default" className="bg-dharma-success-bg">Published</Badge>
                       ) : (
                         <Badge variant="secondary">Pending Review</Badge>
                       )}

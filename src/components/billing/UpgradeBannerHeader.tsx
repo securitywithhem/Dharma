@@ -30,15 +30,15 @@ export function UpgradeBannerHeader() {
   if (!isAtCapacity || usageStats.planName === "enterprise") return null;
 
   return (
-    <div className="bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/20 px-4 py-3 sm:px-6">
+    <div className="bg-dharma-warning-bg border-b border-dharma-warning px-4 py-3 sm:px-6">
       <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="text-amber-500 w-5 h-5 shrink-0 mt-0.5" />
+          <AlertTriangle className="text-dharma-ink w-5 h-5 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-400">
+            <p className="text-sm font-semibold text-dharma-ink">
               You're reaching your plan limits
             </p>
-            <p className="text-xs text-amber-700 dark:text-amber-500 mt-1">
+            <p className="text-xs text-dharma-ink mt-1">
               Upgrade to unlock more users, frameworks, and storage.
             </p>
           </div>
@@ -46,14 +46,14 @@ export function UpgradeBannerHeader() {
         <div className="flex items-center gap-4">
           <Link
             href={"/dashboard/settings/billing?tab=plans" as any}
-            className="text-sm font-semibold text-amber-900 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 underline underline-offset-2"
+            className="text-sm font-semibold text-dharma-ink hover:text-dharma-ink underline underline-offset-2"
           >
             Upgrade
           </Link>
           <button
             onClick={() => setDismissed(true)}
             aria-label="Dismiss"
-            className="text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition-colors"
+            className="text-dharma-ink hover:text-dharma-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>

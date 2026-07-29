@@ -1,80 +1,84 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Upload, FileText, BarChart3, Shield } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart3, ChevronRight, FileText, Shield, Upload } from 'lucide-react';
+
+import type { Route } from 'next';
+import type { LucideIcon } from 'lucide-react';
 
 interface QuickAction {
   label: string;
   description: string;
-  icon: React.ReactNode;
-  href: string;
-  variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost';
+  icon: LucideIcon;
+  href: Route;
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    label: 'Add Proof',
+    label: 'Add proof',
     description: 'Upload files that show you meet a requirement',
-    icon: <Upload className="w-5 h-5" />,
-    href: '/dashboard/evidence',
-    variant: 'default',
+    icon: Upload,
+    href: '/dashboard/evidence' as Route,
   },
   {
-    label: 'Auto-Draft Policy',
+    label: 'Auto-draft policy',
     description: 'Create a smart draft for a required policy',
-    icon: <FileText className="w-5 h-5" />,
-    href: '/dashboard/policies/new',
-    variant: 'default',
+    icon: FileText,
+    href: '/dashboard/policies/new' as Route,
   },
   {
-    label: 'View Goals',
+    label: 'View goals',
     description: 'Track the requirements behind each certification goal',
-    icon: <BarChart3 className="w-5 h-5" />,
-    href: '/dashboard/frameworks',
-    variant: 'outline',
+    icon: BarChart3,
+    href: '/dashboard/frameworks' as Route,
   },
   {
-    label: 'Share with Auditor',
+    label: 'Share with auditor',
     description: 'Generate a read-only report for external review',
-    icon: <Shield className="w-5 h-5" />,
-    href: '/dashboard/settings',
-    variant: 'outline',
+    icon: Shield,
+    href: '/dashboard/settings' as Route,
   },
 ];
 
+/**
+ * A vertical list of link rows, not a grid of buttons.
+ *
+ * These actions each carry a label AND a sentence of description, which a
+ * <Button> cannot hold — its `whitespace-nowrap` base fights the wrapped text,
+ * and a 4-column grid inside a one-third-width dashboard column collapsed the
+ * cells until the labels overlapped. A row list also degrades correctly at any
+ * column width.
+ */
 export function QuickActionsCard() {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {QUICK_ACTIONS.map((action, index) => (
-            <motion.div
-              key={action.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Link href={action.href as any}>
-                <Button
-                  variant={action.variant}
-                  className="w-full h-auto flex flex-col items-start gap-2 p-4 rounded-lg"
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    {action.icon}
-                    <span className="font-semibold text-sm">{action.label}</span>
-                  </div>
-                  <span className="text-xs text-stone-600 dark:text-stone-400 text-left leading-tight whitespace-normal">
-                    {action.description}
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>Quick actions</CardTitle>
+      </CardHeader>
+      <CardContent className="p-2 pt-0">
+        <ul>
+          {QUICK_ACTIONS.map(({ label, description, icon: Icon, href }) => (
+            <li key={label}>
+              <Link
+                href={href}
+                className="group flex items-start gap-3 rounded-md p-2.5 transition-colors duration-150 hover:bg-dharma-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
+              >
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-dharma-border bg-dharma-bg text-dharma-ink-secondary transition-colors duration-150 group-hover:border-dharma-accent group-hover:bg-dharma-accent-hover group-hover:text-dharma-accent-on-tint">
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-data font-medium text-dharma-ink">{label}</span>
+                  <span className="mt-0.5 block text-micro leading-snug text-dharma-ink-secondary">
+                    {description}
                   </span>
-                </Button>
+                </span>
+                <ChevronRight className="mt-1.5 h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
               </Link>
-            </motion.div>
+            </li>
           ))}
-        </div>
+        </ul>
       </CardContent>
     </Card>
   );

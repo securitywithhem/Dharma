@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 // Rewritten for the template-first builder (the old "AI Policy Wizard" UI this
-// spec originally drove no longer exists). The AI-audit step that follows
-// Step 3 needs local Ollama models, so the spec stops at the details step.
+// spec originally drove no longer exists). The AI-audit step (Step 3 -> 4,
+// "AI Audit" button) needs local Ollama models, so this spec stops there —
+// but Step 2 -> 3 (rendering the draft from the template) is plain Handlebars
+// substitution via policy.generateFromTemplate, no AI involved, so it's
+// covered here too.
 test.describe("Template-first policy builder", () => {
   test.beforeEach(async ({ page }) => {
     // Authenticate using the test backdoor
@@ -38,5 +41,48 @@ test.describe("Template-first policy builder", () => {
     await expect(
       page.getByRole("heading", { name: /Step 2: Fill in your details/ }),
     ).toBeVisible();
+  });
+
+  test("rendering the draft moves to the editor step", async ({ page }) => {
+    await page.goto("/dashboard/policies/new");
+
+    const firstTemplate = page
+      .getByRole("button")
+      .filter({ hasText: /· v\d/ })
+      .first();
+    await expect(firstTemplate).toBeVisible({ timeout: 10000 });
+    await firstTemplate.click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: /Step 2: Fill in your details/ }),
+    ).toBeVisible();
+
+    // Fill any required text/date/email inputs so Generate Draft is
+    // meaningful regardless of which template got seeded first (template
+    // variable sets differ per policy type). Date inputs need YYYY-MM-DD —
+    // any other string is a "Malformed value" fill error on <input type=date>.
+    const textInputs = page.locator("input[type='text'], input[type='email']");
+    const textCount = await textInputs.count();
+    for (let i = 0; i < textCount; i++) {
+      await textInputs.nth(i).fill("E2E Test Value");
+    }
+    const dateInputs = page.locator("input[type='date']");
+    const dateCount = await dateInputs.count();
+    for (let i = 0; i < dateCount; i++) {
+      await dateInputs.nth(i).fill("2026-01-01");
+    }
+
+    await page.getByRole("button", { name: "Generate Draft" }).click();
+
+    // Step 3: rendered draft in the TipTap editor, with the AI Audit /
+    // Save Draft / Publish actions visible (AI Audit itself is out of scope
+    // here — it needs Ollama).
+    await expect(page.getByText("Draft generated — review and edit below")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole("button", { name: "AI Audit" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save Draft" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish" })).toBeVisible();
   });
 });

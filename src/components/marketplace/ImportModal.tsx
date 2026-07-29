@@ -82,22 +82,22 @@ export function ImportModal({ item, onClose }: ImportModalProps) {
             <div className="space-y-4 py-4">
               {validate.isLoading ? (
                 <div className="flex items-center justify-center p-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">Validating import...</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-dharma-ink-secondary" />
+                  <span className="ml-2 text-sm text-dharma-ink-secondary">Validating import...</span>
                 </div>
               ) : validate.data?.valid === false ? (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                <div className="bg-dharma-danger-bg text-dharma-danger-text text-sm p-3 rounded-md">
                   <strong>Cannot import:</strong> {validate.data.error}
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Framework Name</p>
+                      <p className="text-sm font-medium text-dharma-ink-secondary mb-1">Framework Name</p>
                       <p className="font-semibold">{item.name}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Price</p>
+                      <p className="text-sm font-medium text-dharma-ink-secondary mb-1">Price</p>
                       <p className="font-semibold">{item.price === 0 ? "Free" : `$${(item.price / 100).toFixed(2)}`}</p>
                     </div>
                   </div>
@@ -109,8 +109,8 @@ export function ImportModal({ item, onClose }: ImportModalProps) {
                       placeholder="Custom name for imported framework"
                     />
                   </div>
-                  <div className="bg-primary/10 border border-primary/20 text-primary-foreground text-sm p-4 rounded-md mt-4">
-                    <p className="text-primary font-medium">
+                  <div className="bg-dharma-accent-tint border border-dharma-accent text-dharma-ink-inverse text-sm p-4 rounded-md mt-4">
+                    <p className="text-dharma-accent-on-tint font-medium">
                       ✨ This framework will be copied into your organization with all controls and templates. You can customize it after import.
                     </p>
                   </div>
@@ -135,8 +135,8 @@ export function ImportModal({ item, onClose }: ImportModalProps) {
 
         {step === "importing" && (
           <div className="py-12 flex flex-col items-center justify-center space-y-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-muted-foreground font-medium">Importing framework...</p>
+            <Loader2 className="h-10 w-10 animate-spin text-dharma-accent-on-tint" />
+            <p className="text-dharma-ink-secondary font-medium">Importing framework...</p>
           </div>
         )}
 
@@ -144,18 +144,18 @@ export function ImportModal({ item, onClose }: ImportModalProps) {
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
+                <CheckCircle2 className="h-6 w-6 text-dharma-success-text" />
                 Import Complete!
               </DialogTitle>
             </DialogHeader>
 
             <div className="py-6 space-y-4">
-              <p className="text-muted-foreground">
+              <p className="text-dharma-ink-secondary">
                 Your framework has been imported successfully. You can now assign evidence to controls.
               </p>
-              <div className="bg-muted p-4 rounded-md border border-border">
+              <div className="bg-dharma-surface-hover p-4 rounded-md border border-dharma-border">
                 <p className="text-sm font-medium">
-                  Framework: <span className="font-semibold text-foreground">{frameworkName}</span>
+                  Framework: <span className="font-semibold text-dharma-ink">{frameworkName}</span>
                 </p>
               </div>
             </div>

@@ -3,23 +3,24 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { ComplianceGraphDigest } from "@/server/lib/graphify/complianceGraphBuilder";
+import { pdfPalette } from '@/lib/pdf/palette';
 
 const styles = StyleSheet.create({
-  page: { flexDirection: "column", backgroundColor: "#FFFFFF", padding: 44, fontFamily: "Helvetica", fontSize: 11, lineHeight: 1.5 },
-  header: { marginBottom: 18, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: "#D97706" },
-  title: { fontSize: 22, fontWeight: "bold", color: "#1C1917", marginBottom: 4 },
-  subtitle: { fontSize: 11, color: "#78716C" },
+  page: { flexDirection: "column", backgroundColor: pdfPalette.surface, padding: 44, fontFamily: "Helvetica", fontSize: 11, lineHeight: 1.5 },
+  header: { marginBottom: 18, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: pdfPalette.primary },
+  title: { fontSize: 22, fontWeight: "bold", color: pdfPalette.text, marginBottom: 4 },
+  subtitle: { fontSize: 11, color: pdfPalette.textMuted },
   topRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
   gaugeBox: { alignItems: "center", width: 130 },
-  gaugeScore: { fontSize: 34, fontWeight: "bold", color: "#D97706" },
-  gaugeLabel: { fontSize: 9, color: "#78716C" },
+  gaugeScore: { fontSize: 34, fontWeight: "bold", color: pdfPalette.primary },
+  gaugeLabel: { fontSize: 9, color: pdfPalette.textMuted },
   snapshot: { flex: 1, marginLeft: 20 },
   snapRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 },
-  snapKey: { fontSize: 10, color: "#292524" },
-  snapVal: { fontSize: 10, color: "#78716C" },
-  narrative: { fontSize: 11, color: "#292524", textAlign: "justify" },
+  snapKey: { fontSize: 10, color: pdfPalette.text },
+  snapVal: { fontSize: 10, color: pdfPalette.textMuted },
+  narrative: { fontSize: 11, color: pdfPalette.text, textAlign: "justify" },
   para: { marginBottom: 8 },
-  footer: { position: "absolute", bottom: 24, left: 44, right: 44, fontSize: 8, color: "#A8A29E", textAlign: "center", borderTopWidth: 1, borderTopColor: "#E7E5E4", paddingTop: 6 },
+  footer: { position: "absolute", bottom: 24, left: 44, right: 44, fontSize: 8, color: pdfPalette.textMuted, textAlign: "center", borderTopWidth: 1, borderTopColor: pdfPalette.border, paddingTop: 6 },
 });
 
 export function BoardSummaryDocument({

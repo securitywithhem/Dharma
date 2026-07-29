@@ -17,11 +17,11 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-dharma-bg px-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl">
-            <AlertOctagon className="h-6 w-6 text-destructive" />
+            <AlertOctagon className="h-6 w-6 text-dharma-danger-text" />
             Something went wrong
           </CardTitle>
           <CardDescription>

@@ -1,20 +1,46 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Manrope } from "next/font/google";
+import { Fraunces, IBM_Plex_Mono, Public_Sans } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import { Providers } from "@/app/providers";
 import { authOptions } from "@/server/auth";
 import { getTenantTheme, tenantThemeStyleTag } from "@/lib/theme/getTenantTheme";
+// Warm Paper tokens load BEFORE globals.css so globals can consume them and
+// so a later rule always wins on specificity ties.
+// Spec: Dharma-Knowledge-OS/0_DESIGN_SYSTEM.md
+import "@/styles/tokens.css";
 import "@/styles/globals.css";
 
-const sans = Manrope({
+// Public Sans carries the dense UI — the Warm Paper spec's UI face. It is a
+// touch wider than the Inter Tight it replaces, so table cells and control
+// titles have slightly less room; the 11–13px micro/meta/data steps in
+// tailwind.config.ts are what keep them fitting.
+const sans = Public_Sans({
   subsets: ["latin"],
-  variable: "--font-sans"
+  variable: "--font-sans",
+  display: "swap"
 });
 
-const mono = JetBrains_Mono({
+// Fraunces is the brand voice — the Warm Paper spec names "Newsreader or
+// Fraunces", and Fraunces was already loaded, so no font is added. Reserved for
+// the wordmark and h1/h2 page titles ONLY: not table headers, buttons, labels,
+// or body copy. `opsz` is what makes it hold up at display sizes; `SOFT`/`WONK`
+// are dialled down so it reads considered, not decorative.
+const display = Fraunces({
   subsets: ["latin"],
-  variable: "--font-mono"
+  variable: "--font-display",
+  display: "swap",
+  axes: ["SOFT", "WONK", "opsz"]
+});
+
+// Identifiers that must be compared character-by-character: audit log entries,
+// control IDs (A.8.1.1), evidence hashes, ARNs, CVEs, API keys. IBM Plex Mono
+// per the Warm Paper spec, replacing JetBrains Mono.
+const mono = IBM_Plex_Mono({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap"
 });
 
 export const metadata: Metadata = {
@@ -47,7 +73,9 @@ export default async function RootLayout({
           />
         )}
       </head>
-      <body className={`${sans.variable} ${mono.variable} min-h-screen font-sans antialiased`}>
+      <body
+        className={`${sans.variable} ${display.variable} ${mono.variable} min-h-screen font-sans antialiased`}
+      >
         <Providers session={session}>{children}</Providers>
       </body>
     </html>

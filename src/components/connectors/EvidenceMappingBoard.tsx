@@ -130,21 +130,21 @@ export function EvidenceMappingBoard({
   };
 
   if (loadingEvidenceTypes) {
-    return <div className="p-4 text-muted-foreground">Loading evidence types...</div>;
+    return <div className="p-4 text-dharma-ink-secondary">Loading evidence types...</div>;
   }
 
   // Get controls from the framework or show placeholder
   const controls = framework ? (
-    <div className="text-sm text-muted-foreground">
+    <div className="text-sm text-dharma-ink-secondary">
       No framework selected. Select a framework to map evidence.
     </div>
   ) : null;
 
   return (
-    <div className="border rounded-lg bg-card p-6 space-y-4">
+    <div className="border rounded-lg bg-dharma-surface p-6 space-y-4">
       <div>
         <h3 className="text-lg font-semibold">{connectorName}</h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Map evidence types to controls for automated collection
         </p>
       </div>
@@ -159,10 +159,10 @@ export function EvidenceMappingBoard({
                 key={type.id}
                 draggable
                 onDragStart={() => handleDragStart(type)}
-                className="p-3 bg-slate-50 border border-slate-200 rounded cursor-move hover:bg-slate-100 hover:shadow-sm transition-all"
+                className="p-3 bg-dharma-surface-hover border border-dharma-border rounded cursor-move hover:bg-dharma-surface-hover hover:border border-dharma-border transition-all"
               >
                 <p className="text-sm font-medium">{type.name}</p>
-                <p className="text-xs text-muted-foreground">{type.id}</p>
+                <p className="text-xs text-dharma-ink-secondary">{type.id}</p>
               </div>
             ))}
           </div>
@@ -172,7 +172,7 @@ export function EvidenceMappingBoard({
         <div>
           <h4 className="font-medium mb-4">Mappings</h4>
           {mappings.length === 0 ? (
-            <div className="p-4 bg-slate-50 border border-dashed rounded text-sm text-muted-foreground text-center">
+            <div className="p-4 bg-dharma-surface-hover border border-dashed rounded text-sm text-dharma-ink-secondary text-center">
               Drag evidence types here to create mappings
             </div>
           ) : (
@@ -180,12 +180,12 @@ export function EvidenceMappingBoard({
               {mappings.map((mapping) => (
                 <div
                   key={mapping.id}
-                  className="p-3 bg-blue-50 border border-blue-200 rounded"
+                  className="p-3 bg-dharma-accent-tint border border-dharma-accent rounded"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="text-sm font-medium">{mapping.evidenceType}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-dharma-ink-secondary">
                         Schedule: {mapping.schedule}
                       </p>
                     </div>
@@ -193,7 +193,7 @@ export function EvidenceMappingBoard({
                       onClick={() =>
                         handleDeleteMapping(mapping.id, mapping.controlId)
                       }
-                      className="text-xs px-2 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                      className="text-xs px-2 py-1 text-dharma-danger-text hover:text-dharma-danger-text hover:bg-dharma-surface-hover rounded transition-colors"
                     >
                       Remove
                     </button>
@@ -208,7 +208,7 @@ export function EvidenceMappingBoard({
 
       {/* Undo Toast Preview */}
       {undoStack.length > 0 && (
-        <div className="fixed bottom-4 right-4 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg text-sm">
+        <div className="fixed bottom-4 right-4 bg-dharma-ink text-dharma-ink-inverse px-4 py-3 rounded-lg border border-dharma-border text-sm">
           Evidence mapping removed
           {/* Undo button will be added in Part 3 with deleteAuto endpoint */}
         </div>

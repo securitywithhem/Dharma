@@ -37,7 +37,7 @@ export function BillingHistory() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 gap-4">
                 <div>
                   <p className="text-sm font-medium">Invoice #INV-001</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-dharma-ink-secondary">
                     Billed on {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date())}
                   </p>
                 </div>
@@ -50,7 +50,7 @@ export function BillingHistory() {
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md border border-dashed">
+              <div className="text-sm text-dharma-ink-secondary bg-dharma-surface-hover p-4 rounded-md border border-dashed">
                 No invoices yet. Your first invoice will appear after your first payment.
               </div>
             )}
@@ -71,7 +71,7 @@ export function BillingHistory() {
             <div className="flex items-center justify-between border-b pb-4">
               <div>
                 <p className="text-sm font-medium">Subscription Created</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-dharma-ink-secondary">
                   {subscription?.status 
                     ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date())
                     : "No active subscription"}

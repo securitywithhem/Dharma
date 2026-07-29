@@ -18,7 +18,7 @@ export default function AdminMarketplacePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Marketplace Admin</h1>
-        <p className="text-muted-foreground">Review and approve publisher submissions.</p>
+        <p className="text-dharma-ink-secondary">Review and approve publisher submissions.</p>
       </div>
 
       <Card>
@@ -28,10 +28,10 @@ export default function AdminMarketplacePage() {
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-dharma-ink-secondary" />
             </div>
           ) : !items?.length ? (
-            <p className="text-muted-foreground text-center py-8">No pending items.</p>
+            <p className="text-dharma-ink-secondary text-center py-8">No pending items.</p>
           ) : (
             <Table>
               <TableHeader>

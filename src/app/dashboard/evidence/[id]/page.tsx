@@ -74,7 +74,7 @@ export default function EvidenceDetailPage({
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard/evidence"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-dharma-ink-secondary hover:text-dharma-ink transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           All Evidence
@@ -85,12 +85,12 @@ export default function EvidenceDetailPage({
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-muted-foreground" />
+            <FileText className="h-5 w-5 text-dharma-ink-secondary" />
             <h1 className="text-2xl font-semibold tracking-tight">
               {evidence.fileName}
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-dharma-ink-secondary">
             Uploaded{" "}
             {new Date(evidence.createdAt).toLocaleDateString("en-IN", {
               day: "numeric",
@@ -127,18 +127,18 @@ export default function EvidenceDetailPage({
             <CardContent className="space-y-4">
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <dt className="text-muted-foreground text-xs">Type</dt>
+                  <dt className="text-dharma-ink-secondary text-xs">Type</dt>
                   <dd className="mt-0.5 font-medium">{evidence.type.replace(/_/g, " ")}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground text-xs">Collected</dt>
+                  <dt className="text-dharma-ink-secondary text-xs">Collected</dt>
                   <dd className="mt-0.5 font-medium">
                     {new Date(evidence.collectedAt).toLocaleDateString("en-IN")}
                   </dd>
                 </div>
                 {evidence.expiresAt && (
                   <div>
-                    <dt className="text-muted-foreground text-xs">Expires</dt>
+                    <dt className="text-dharma-ink-secondary text-xs">Expires</dt>
                     <dd className="mt-0.5 font-medium">
                       {new Date(evidence.expiresAt).toLocaleDateString("en-IN")}
                     </dd>
@@ -146,8 +146,8 @@ export default function EvidenceDetailPage({
                 )}
                 {evidence.summary && (
                   <div className="col-span-2">
-                    <dt className="text-muted-foreground text-xs">AI Summary</dt>
-                    <dd className="mt-0.5 text-sm italic text-muted-foreground">
+                    <dt className="text-dharma-ink-secondary text-xs">AI Summary</dt>
+                    <dd className="mt-0.5 text-sm italic text-dharma-ink-secondary">
                       &ldquo;{evidence.summary}&rdquo;
                     </dd>
                   </div>
@@ -161,7 +161,7 @@ export default function EvidenceDetailPage({
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <ShieldCheck className="h-4 w-4 text-dharma-success-text" />
                   <CardTitle className="text-base">Linked Control</CardTitle>
                 </div>
               </CardHeader>

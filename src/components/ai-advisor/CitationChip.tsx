@@ -41,7 +41,7 @@ export function CitationChip({ type, id, allowedIds, label }: CitationChipProps)
 
   const baseClass = cn(
     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium align-baseline mx-0.5",
-    "border-primary/30 bg-primary/10 text-primary",
+    "border-dharma-accent bg-dharma-accent-tint text-dharma-accent-on-tint",
   );
 
   if (!isNavigable) {
@@ -55,7 +55,7 @@ export function CitationChip({ type, id, allowedIds, label }: CitationChipProps)
   return (
     <Link
       href={routeFor!(id) as Route}
-      className={cn(baseClass, "hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring")}
+      className={cn(baseClass, "hover:bg-dharma-accent-hover focus-visible:ring-2 focus-visible:ring-dharma-accent")}
       aria-label={`Open ${type} ${id}`}
       data-citation-link="true"
     >

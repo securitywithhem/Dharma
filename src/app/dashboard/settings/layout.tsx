@@ -43,8 +43,8 @@ export default function SettingsLayout({
                 href={tab.href as any}
                 className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-dharma-accent-tint text-dharma-accent-on-tint"
+                    : "text-dharma-ink-secondary hover:bg-dharma-surface-hover hover:text-dharma-ink"
                 }`}
               >
                 {tab.icon}

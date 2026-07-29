@@ -28,8 +28,8 @@ export default function ControlDetailPage() {
   if (isLoading) {
     return (
       <div className="p-8 max-w-4xl mx-auto">
-        <div className="h-8 bg-stone-200 dark:bg-stone-800 rounded-lg w-64 mb-6 animate-pulse" />
-        <div className="h-40 bg-stone-100 dark:bg-stone-900 rounded-lg animate-pulse" />
+        <div className="h-8 bg-dharma-surface-hover rounded-lg w-64 mb-6 animate-pulse" />
+        <div className="h-40 bg-dharma-surface-hover rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -37,7 +37,7 @@ export default function ControlDetailPage() {
   if (!control) {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center">
-        <p className="text-red-600">Control not found</p>
+        <p className="text-dharma-danger-text">Control not found</p>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function ControlDetailPage() {
       {/* Back Button */}
       <Link
         href="/dashboard/frameworks"
-        className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 mb-6"
+        className="flex items-center gap-2 text-sm text-dharma-ink-secondary hover:text-dharma-ink mb-6"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to Certification Goals
@@ -80,7 +80,7 @@ export default function ControlDetailPage() {
           </div>
           <Separator className="mt-4" />
           <CardContent className="mt-4 p-0">
-            <p className="text-sm text-stone-600 dark:text-stone-400">{control.description}</p>
+            <p className="text-sm text-dharma-ink-secondary">{control.description}</p>
           </CardContent>
         </CardHeader>
       </Card>

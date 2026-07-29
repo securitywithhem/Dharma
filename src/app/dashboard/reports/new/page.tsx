@@ -105,7 +105,7 @@ export default function NewReportPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">New report</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Build a one-off report or schedule it to recur.
         </p>
       </div>
@@ -121,12 +121,12 @@ export default function NewReportPage() {
             key={t}
             onClick={() => setType(t)}
             className={`rounded-lg border p-4 text-left transition-colors ${
-              type === t ? "border-primary bg-primary/5" : "hover:border-primary/40"
+              type === t ? "border-dharma-accent bg-dharma-accent-tint" : "hover:border-dharma-accent"
             }`}
           >
             <Icon className="mb-2 h-5 w-5" />
             <div className="font-medium">{label}</div>
-            <div className="text-xs text-muted-foreground">{desc}</div>
+            <div className="text-xs text-dharma-ink-secondary">{desc}</div>
           </button>
         ))}
       </div>

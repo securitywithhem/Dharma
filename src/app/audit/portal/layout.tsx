@@ -34,30 +34,30 @@ export default function AuditorLayout({ children }: { children: React.ReactNode 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-dharma-surface-hover">
+        <Loader2 className="w-8 h-8 text-dharma-accent-on-tint animate-spin" />
       </div>
     );
   }
 
   if (!session || session.role !== "VIEWER") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center px-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-        <p className="text-gray-500">Your auditor session is invalid or has expired.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-dharma-surface-hover text-center px-4">
+        <h1 className="text-2xl font-bold text-dharma-ink mb-2">Access Denied</h1>
+        <p className="text-dharma-ink-secondary">Your auditor session is invalid or has expired.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-dharma-surface-hover">
       {/* Banner */}
-      <div className="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-md">
+      <div className="bg-dharma-accent text-dharma-ink-inverse px-4 py-3 flex items-center justify-between border border-dharma-border">
         <div className="flex items-center space-x-2 font-medium">
           <ShieldCheck className="w-5 h-5" />
           <span>Dharma Auditor Portal — Read-Only Access</span>
         </div>
-        <div className="flex items-center space-x-2 text-indigo-100 bg-indigo-700/50 px-3 py-1 rounded-full text-sm">
+        <div className="flex items-center space-x-2 text-dharma-ink-inverse bg-dharma-accent-tint px-3 py-1 rounded-full text-sm">
           <Clock className="w-4 h-4" />
           <span>{timeLeft || "Calculating..."}</span>
         </div>

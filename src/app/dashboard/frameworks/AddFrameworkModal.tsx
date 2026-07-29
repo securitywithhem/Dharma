@@ -77,15 +77,15 @@ export function AddFrameworkModal({ onClose, onSuccess }: AddFrameworkModalProps
         </DialogHeader>
 
         {/* Mode toggle */}
-        <div className="flex gap-2 rounded-lg border border-border p-1 mb-2">
+        <div className="flex gap-2 rounded-lg border border-dharma-border p-1 mb-2">
           {(["predefined", "custom"] as const).map((m) => (
             <button
               key={m}
               type="button"
               className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 mode === m
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-dharma-accent text-dharma-ink-inverse"
+                  : "text-dharma-ink-secondary hover:text-dharma-ink"
               }`}
               onClick={() => setMode(m)}
             >
@@ -104,15 +104,15 @@ export function AddFrameworkModal({ onClose, onSuccess }: AddFrameworkModalProps
                 aria-checked={selected === fw.name}
                 className={`w-full rounded-lg border p-4 text-left transition-all ${
                   selected === fw.name
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/40 hover:bg-muted/30"
+                    ? "border-dharma-accent bg-dharma-accent-tint ring-2 ring-dharma-accent"
+                    : "border-dharma-border hover:border-dharma-accent hover:bg-dharma-surface-hover"
                 }`}
                 onClick={() => setSelected(fw.name)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-sm">{fw.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-dharma-ink-secondary mt-0.5">
                       {fw.description}
                     </p>
                   </div>
@@ -153,7 +153,7 @@ export function AddFrameworkModal({ onClose, onSuccess }: AddFrameworkModalProps
         )}
 
         {createMutation.error && (
-          <p role="alert" className="text-xs text-destructive mt-2">
+          <p role="alert" className="text-xs text-dharma-danger-text mt-2">
             {createMutation.error.message}
           </p>
         )}

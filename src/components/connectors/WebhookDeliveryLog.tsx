@@ -17,12 +17,12 @@ export function WebhookDeliveryLog({ webhookId }: WebhookDeliveryLogProps) {
   const { data: deliveries, isLoading } = listDeliveriesQuery(webhookId, true);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading delivery history...</p>;
+    return <p className="text-sm text-dharma-ink-secondary">Loading delivery history...</p>;
   }
 
   if (!deliveries || deliveries.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-2">
+      <p className="text-sm text-dharma-ink-secondary py-2">
         No deliveries yet. Use &quot;Send test event&quot; to verify your endpoint receives signed requests.
       </p>
     );
@@ -57,18 +57,18 @@ export function WebhookDeliveryLog({ webhookId }: WebhookDeliveryLogProps) {
                     {delivery.responseCode ?? 'network error'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{delivery.attempt}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
+                <TableCell className="text-xs text-dharma-ink-secondary">{delivery.attempt}</TableCell>
+                <TableCell className="text-xs text-dharma-ink-secondary">
                   {formatDistanceToNow(new Date(delivery.createdAt), { addSuffix: true })}
                 </TableCell>
               </TableRow>
               {isExpanded && (
                 <TableRow>
-                  <TableCell colSpan={5} className="bg-muted/30">
+                  <TableCell colSpan={5} className="bg-dharma-surface-hover">
                     <div className="space-y-2 py-1">
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Payload</p>
-                        <pre className="text-xs bg-stone-950 text-stone-100 rounded-lg p-3 overflow-x-auto max-h-48">
+                        <p className="text-xs font-semibold text-dharma-ink-secondary mb-1">Payload</p>
+                        <pre className="text-xs bg-dharma-ink text-dharma-ink-inverse rounded-lg p-3 overflow-x-auto max-h-48">
                           {JSON.stringify(delivery.payload, null, 2)}
                         </pre>
                       </div>

@@ -63,13 +63,13 @@ export default function ReadinessPage({ params }: ReadinessPageProps) {
       <div>
         <Link
           href={`/dashboard/frameworks/${frameworkId}`}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-dharma-ink-secondary hover:text-dharma-ink hover:bg-dharma-surface-hover transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           {framework?.name ?? "Framework"}
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Audit Readiness</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-dharma-ink-secondary">
           Evidence completeness weighted by cross-walk mapping coverage, with actionable next steps.
         </p>
       </div>
@@ -79,8 +79,8 @@ export default function ReadinessPage({ params }: ReadinessPageProps) {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm">Overall Score</CardTitle>
             {isComputing && (
-              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
+              <span className="flex items-center gap-1.5 text-[11px] text-dharma-ink-secondary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-dharma-accent" aria-hidden />
                 Computing…
               </span>
             )}
@@ -96,13 +96,13 @@ export default function ReadinessPage({ params }: ReadinessPageProps) {
             )}
 
             {isReady && "evidenceScore" in scoreData && (
-              <div className="grid w-full grid-cols-2 gap-2 text-center text-xs text-muted-foreground">
+              <div className="grid w-full grid-cols-2 gap-2 text-center text-xs text-dharma-ink-secondary">
                 <div>
-                  <p className="font-semibold text-foreground">{scoreData.evidenceScore}</p>
+                  <p className="font-semibold text-dharma-ink">{scoreData.evidenceScore}</p>
                   <p>Evidence (0-85)</p>
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">{scoreData.mappingBonus}</p>
+                  <p className="font-semibold text-dharma-ink">{scoreData.mappingBonus}</p>
                   <p>Cross-walk bonus (0-15)</p>
                 </div>
               </div>
@@ -120,7 +120,7 @@ export default function ReadinessPage({ params }: ReadinessPageProps) {
             </Button>
 
             {isReady && "computedAt" in scoreData && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[10px] text-dharma-ink-secondary">
                 Last computed {new Date(scoreData.computedAt).toLocaleString()}
               </p>
             )}
