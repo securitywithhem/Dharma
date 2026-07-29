@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Manrope } from "next/font/google";
+import { Fraunces, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import { Providers } from "@/app/providers";
@@ -7,14 +7,30 @@ import { authOptions } from "@/server/auth";
 import { getTenantTheme, tenantThemeStyleTag } from "@/lib/theme/getTenantTheme";
 import "@/styles/globals.css";
 
-const sans = Manrope({
+// Inter Tight carries the dense UI: slightly narrower than Inter, so control
+// titles and table cells fit without shrinking below a readable size.
+const sans = Inter_Tight({
   subsets: ["latin"],
-  variable: "--font-sans"
+  variable: "--font-sans",
+  display: "swap"
 });
 
+// Fraunces is the brand voice — an optical serif used only for page titles and
+// the marketing surface. `opsz` is what makes it hold up at display sizes;
+// `SOFT`/`WONK` are dialled down so it reads considered, not decorative.
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  axes: ["SOFT", "WONK", "opsz"]
+});
+
+// Identifiers that must be compared character-by-character: control IDs
+// (A.8.1.1), evidence hashes, CVEs, API keys.
 const mono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono"
+  variable: "--font-mono",
+  display: "swap"
 });
 
 export const metadata: Metadata = {
@@ -47,7 +63,9 @@ export default async function RootLayout({
           />
         )}
       </head>
-      <body className={`${sans.variable} ${mono.variable} min-h-screen font-sans antialiased`}>
+      <body
+        className={`${sans.variable} ${display.variable} ${mono.variable} min-h-screen font-sans antialiased`}
+      >
         <Providers session={session}>{children}</Providers>
       </body>
     </html>

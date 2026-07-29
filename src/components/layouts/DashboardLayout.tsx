@@ -11,7 +11,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <TopNav />
           <UpgradeBannerHeader />
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">{children}</main>
+          <main className="flex-1 px-4 py-5 sm:px-5 lg:px-6">{children}</main>
         </div>
       </div>
     </div>
