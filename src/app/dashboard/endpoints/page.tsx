@@ -87,7 +87,11 @@ export default function EndpointsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(listQuery.data?.items ?? []).map((endpoint) => (
-            <Card key={endpoint.id} className="transition-colors hover:border-primary/50">
+            <Card
+              key={endpoint.id}
+              data-testid={`endpoint-card-${endpoint.id}`}
+              className="transition-colors hover:border-primary/50"
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">

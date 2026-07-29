@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import React from 'react';
+import { AlertTriangle, CheckCircle2, CircleDot } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface OverallReadinessScoreProps {
   score: number;
@@ -9,116 +10,113 @@ interface OverallReadinessScoreProps {
   compliantControls: number;
 }
 
+/**
+ * Readiness band. Thresholds are shared by the meter fill, the icon, and the
+ * label so the state is never carried by colour alone — a requirement for the
+ * ~8% of male users with a colour-vision deficiency, and for print/export.
+ */
+function bandFor(score: number) {
+  if (score >= 80) {
+    return {
+      label: 'On track',
+      icon: CheckCircle2,
+      fill: 'bg-success',
+      text: 'text-success',
+      note: 'Readiness is at audit-ready level.',
+    } as const;
+  }
+  if (score >= 60) {
+    return {
+      label: 'Needs work',
+      icon: CircleDot,
+      fill: 'bg-warning',
+      text: 'text-warning',
+      note: 'Close the open gaps before booking an audit.',
+    } as const;
+  }
+  return {
+    label: 'At risk',
+    icon: AlertTriangle,
+    fill: 'bg-critical',
+    text: 'text-critical',
+    note: 'Significant control coverage is missing.',
+  } as const;
+}
+
+/**
+ * A single headline figure is a stat tile, not a chart — so the number is the
+ * mark. The previous donut made an exact value hard to read (arc length is a
+ * poor magnitude channel) and animated a counter from 0, which delayed the one
+ * number the user opened this page to see.
+ */
 export function OverallReadinessScore({
   score,
   totalControls,
   compliantControls,
 }: OverallReadinessScoreProps) {
-  const [displayedScore, setDisplayedScore] = useState(0);
-
-  // Animate score counter
-  useEffect(() => {
-    let animationFrame: number;
-    let current = 0;
-
-    const animate = () => {
-      if (current < score) {
-        current = Math.min(current + 2, score);
-        setDisplayedScore(current);
-        animationFrame = requestAnimationFrame(animate);
-      } else {
-        setDisplayedScore(score);
-      }
-    };
-
-    animationFrame = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(animationFrame);
-  }, [score]);
-
-  // Determine color based on score
-  const getColor = (s: number) => {
-    if (s >= 80) return 'text-emerald-600 dark:text-emerald-400';
-    if (s >= 60) return 'text-amber-600 dark:text-amber-400';
-    return 'text-red-600 dark:text-red-400';
-  };
-
-  const getProgressColor = (s: number) => {
-    if (s >= 80) return 'text-emerald-600';
-    if (s >= 60) return 'text-amber-600';
-    return 'text-red-600';
-  };
-
-  const circumference = 2 * Math.PI * 45; // radius = 45
-  const strokeDashoffset = circumference - (displayedScore / 100) * circumference;
+  const band = bandFor(score);
+  const Icon = band.icon;
+  const outstanding = Math.max(totalControls - compliantControls, 0);
+  const pct = Math.min(Math.max(score, 0), 100);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      className="flex flex-col items-center justify-center p-8 rounded-xl bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-800 border border-stone-200 dark:border-stone-700"
+    <section
+      aria-label="Overall readiness"
+      className="rounded-lg border border-border bg-card p-5 shadow-xs"
     >
-      {/* Circular Progress Indicator */}
-      <div className="relative w-40 h-40 mb-6">
-        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-          {/* Background circle */}
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="5"
-            className="text-stone-200 dark:text-stone-800"
-          />
-          {/* Progress circle */}
-          <motion.circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="5"
-            strokeLinecap="round"
-            className={getProgressColor(score)}
-            initial={{ strokeDasharray: circumference, strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 1.5, ease: 'easeOut' }}
-            strokeDasharray={circumference}
-          />
-        </svg>
-        {/* Center text */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <div className={`text-4xl font-bold ${getColor(score)}`}>
-              {displayedScore}%
-            </div>
-            <div className="text-xs text-stone-500 dark:text-stone-400 mt-2 text-center">
-              Compliance
-            </div>
-          </motion.div>
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div>
+          <p className="label-eyebrow">Overall readiness</p>
+          <div className="mt-2 flex items-baseline gap-2.5">
+            <span
+              data-numeric
+              className="font-display text-display-lg font-semibold leading-none text-foreground"
+            >
+              {pct}
+              <span className="text-display-sm text-muted-foreground">%</span>
+            </span>
+            <span className={cn('inline-flex items-center gap-1.5 text-data font-medium', band.text)}>
+              <Icon className="h-4 w-4" aria-hidden />
+              {band.label}
+            </span>
+          </div>
+          <p className="mt-1.5 text-data text-muted-foreground">{band.note}</p>
         </div>
+
+        {/* Supporting counts sit to the side, at a clearly lower weight than
+            the headline — the old layout gave them equal billing. */}
+        <dl className="flex gap-6">
+          <div>
+            <dt className="label-eyebrow">Compliant</dt>
+            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+              {compliantControls}
+            </dd>
+          </div>
+          <div>
+            <dt className="label-eyebrow">Outstanding</dt>
+            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+              {outstanding}
+            </dd>
+          </div>
+          <div>
+            <dt className="label-eyebrow">Total</dt>
+            <dd data-numeric className="mt-1 text-xl font-semibold tabular-nums text-muted-foreground">
+              {totalControls}
+            </dd>
+          </div>
+        </dl>
       </div>
 
-      {/* Stats */}
-      <div className="text-center space-y-2">
-        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-          {compliantControls} of {totalControls} controls compliant
-        </p>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-xs text-stone-600 dark:text-stone-400"
-        >
-          {totalControls - compliantControls} controls need attention
-        </motion.p>
+      <div
+        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        role="meter"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Readiness ${pct}%`}
+      >
+        <div className={cn('h-full rounded-full', band.fill)} style={{ width: `${pct}%` }} />
       </div>
-    </motion.div>
+    </section>
   );
 }

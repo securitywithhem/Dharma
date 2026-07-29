@@ -1,17 +1,18 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Upload,
-  FileText,
-  Shield,
-  CheckCircle,
+  CheckCircle2,
   Clock,
-  AlertCircle,
+  FileText,
+  Inbox,
+  Shield,
+  Upload,
 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+import type { LucideIcon } from 'lucide-react';
 
 interface ActivityItem {
   id: string;
@@ -25,69 +26,73 @@ interface RecentActivityFeedProps {
   activities: ActivityItem[];
 }
 
-export function RecentActivityFeed({
-  activities,
-}: RecentActivityFeedProps) {
-  const getActionIcon = (action: string) => {
-    switch (action) {
-      case 'EVIDENCE_UPLOAD':
-        return <Upload className="w-4 h-4 text-blue-600" />;
-      case 'POLICY_PUBLISH':
-        return <FileText className="w-4 h-4 text-purple-600" />;
-      case 'CONTROL_UPDATE':
-        return <CheckCircle className="w-4 h-4 text-emerald-600" />;
-      case 'REPORT_EXPORT':
-        return <Shield className="w-4 h-4 text-amber-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-stone-600" />;
-    }
-  };
+/**
+ * Icons carry the action type; colour does not. The previous version tinted
+ * each icon a different raw palette value (blue/purple/emerald/amber), which
+ * read as five unrelated status meanings on a feed where nothing is a status.
+ */
+const actionIcons: Record<string, LucideIcon> = {
+  EVIDENCE_UPLOAD: Upload,
+  POLICY_PUBLISH: FileText,
+  CONTROL_UPDATE: CheckCircle2,
+  REPORT_EXPORT: Shield,
+};
 
-  const getActionLabel = (action: string) => {
-    return action.replace(/_/g, ' ').toLowerCase();
-  };
+function labelFor(action: string): string {
+  const words = action.replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
+export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
-        <CardDescription>Latest compliance actions in your organization</CardDescription>
+        <CardTitle>Recent activity</CardTitle>
+        <CardDescription>Latest compliance actions in your organisation</CardDescription>
       </CardHeader>
+
       <CardContent>
-        <div className="space-y-3">
-          <AnimatePresence>
-            {activities.length === 0 ? (
-              <div className="py-8 text-center text-stone-500 dark:text-stone-400">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No recent activity</p>
-              </div>
-            ) : (
-              activities.map((activity, index) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex gap-3 items-start p-3 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-                >
-                  <div className="mt-1">{getActionIcon(activity.action)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-stone-900 dark:text-stone-100 capitalize">
-                      {getActionLabel(activity.action)}
-                    </p>
-                    <p className="text-xs text-stone-600 dark:text-stone-400">
-                      {activity.entity} {activity.userName && `by ${activity.userName}`}
-                    </p>
+        {activities.length === 0 ? (
+          <div className="py-10 text-center">
+            <Inbox className="mx-auto h-7 w-7 text-muted-foreground/40" aria-hidden />
+            <p className="mt-2 text-data text-muted-foreground">No recent activity</p>
+          </div>
+        ) : (
+          /* A timeline rule instead of a stack of bordered boxes: the events
+             share one continuous spine, so the eye tracks time rather than
+             re-parsing a card boundary on every row. */
+          <ol className="relative space-y-0 before:absolute before:bottom-2 before:left-[11px] before:top-2 before:w-px before:bg-border">
+            {activities.map((activity) => {
+              const Icon = actionIcons[activity.action] ?? Clock;
+              return (
+                <li key={activity.id} className="relative flex gap-3 py-2 pl-0">
+                  <span className="relative z-10 mt-0.5 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full border border-border bg-card">
+                    <Icon className="h-3 w-3 text-muted-foreground" aria-hidden />
+                  </span>
+
+                  <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-data font-medium text-foreground">
+                        {labelFor(activity.action)}
+                      </p>
+                      <p className="truncate text-micro text-muted-foreground">
+                        {activity.entity}
+                        {activity.userName ? ` · ${activity.userName}` : ''}
+                      </p>
+                    </div>
+                    <time
+                      dateTime={new Date(activity.timestamp).toISOString()}
+                      title={new Date(activity.timestamp).toLocaleString()}
+                      className="shrink-0 whitespace-nowrap text-micro tabular-nums text-muted-foreground"
+                    >
+                      {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                    </time>
                   </div>
-                  <div className="text-xs text-stone-500 dark:text-stone-500 whitespace-nowrap">
-                    {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
-        </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </CardContent>
     </Card>
   );

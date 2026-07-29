@@ -30,6 +30,13 @@ interface FrameworkCardProps {
 
 /**
  * Returns a colour token and label based on progress percentage.
+ *
+ * Uses the --severity-* ramp rather than raw Tailwind palette values: a gap in
+ * framework progress is a finding, and should be coloured like one. The old
+ * emerald/amber/rose hardcodes drifted from the badge ramp and put
+ * text-rose-500 on card at 3.61:1, below WCAG AA.
+ *
+ * Bands intentionally match ScoreGauge's bandFor().
  */
 function getProgressStatus(pct: number): {
   colour: string;
@@ -38,23 +45,23 @@ function getProgressStatus(pct: number): {
 } {
   if (pct >= 80) {
     return {
-      colour: "text-emerald-600 dark:text-emerald-400",
-      progressColour: "[&>div]:bg-emerald-500",
+      colour: "text-severity-low",
+      progressColour: "[&>div]:bg-severity-low",
       label: "On Track",
     };
   }
 
   if (pct >= 40) {
     return {
-      colour: "text-amber-600 dark:text-amber-400",
-      progressColour: "[&>div]:bg-amber-500",
+      colour: "text-severity-medium",
+      progressColour: "[&>div]:bg-severity-medium",
       label: "In Progress",
     };
   }
 
   return {
-    colour: "text-rose-500 dark:text-rose-400",
-    progressColour: "[&>div]:bg-rose-500",
+    colour: "text-severity-critical",
+    progressColour: "[&>div]:bg-severity-critical",
     label: "Needs Attention",
   };
 }
@@ -85,10 +92,10 @@ export function FrameworkCard({
           className={cn(
             "absolute inset-x-0 top-0 h-1 rounded-t-xl",
             progressPercentage >= 80
-              ? "bg-emerald-500"
+              ? "bg-severity-low"
               : progressPercentage >= 40
-                ? "bg-amber-500"
-                : "bg-rose-500",
+                ? "bg-severity-medium"
+                : "bg-severity-critical",
           )}
           aria-hidden="true"
         />

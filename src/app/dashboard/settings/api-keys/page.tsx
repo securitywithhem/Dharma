@@ -100,7 +100,11 @@ export default function ApiKeysPage() {
                 const scopeList = Array.isArray(k.scopes) ? (k.scopes as string[]) : [];
                 const revoked = Boolean(k.revokedAt);
                 return (
-                  <div key={k.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <div
+                    key={k.id}
+                    data-testid={`api-key-row-${k.id}`}
+                    className="flex items-center justify-between rounded-md border px-3 py-2"
+                  >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{k.name}</span>
@@ -166,6 +170,7 @@ export default function ApiKeysPage() {
                   {(scopesQuery.data ?? []).map((s) => (
                     <label key={s} className="flex items-center gap-2 text-sm">
                       <Checkbox
+                        data-testid={`scope-checkbox-${s}`}
                         checked={scopes[s] === true}
                         onCheckedChange={(c) => setScopes({ ...scopes, [s]: c === true })}
                       />
