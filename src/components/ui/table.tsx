@@ -5,10 +5,13 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto rounded-lg border border-border/70">
+  // text-data (13px) rather than text-sm: compliance tables carry long control
+  // titles and framework references, and the extra column width matters more
+  // than the extra pixel of type.
+  <div className="relative w-full overflow-auto rounded-lg border border-border">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom text-data", className)}
       {...props}
     />
   </div>
@@ -21,7 +24,13 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("bg-muted/40 [&_tr]:border-b [&_tr]:border-border/70", className)}
+    // Sticky by default: evidence and control lists routinely run past a
+    // viewport, and losing the column headers mid-scroll is the top complaint
+    // pattern for audit tables.
+    className={cn(
+      "sticky top-0 z-10 bg-muted/70 backdrop-blur-sm [&_tr]:border-b [&_tr]:border-border",
+      className,
+    )}
     {...props}
   />
 ));
@@ -79,7 +88,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-9 px-3 text-left align-middle text-micro font-semibold uppercase tracking-[0.08em] text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className,
     )}
     {...props}
@@ -94,7 +103,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-4 py-3 align-middle [&:has([role=checkbox])]:pr-0",
+      "px-3 py-2 align-middle [&:has([role=checkbox])]:pr-0",
       className,
     )}
     {...props}
