@@ -4,17 +4,46 @@ import { cn } from "@/lib/utils";
 // Padding steps down from the shadcn default (p-6 → p-5) across the card
 // family. At dashboard density that reclaims roughly a row of table data per
 // card without the layout reading as cramped.
+//
+// `density="compact"` steps down again (p-5 → p-3.5) for cards whose content is
+// a single band rather than a stacked block — the framework status card, chip
+// rows, anything where p-5 leaves the reader crossing empty space to get from
+// the metric to its label. Comfortable stays the default so no existing call
+// site changes shape.
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "rounded-lg border border-dharma-border bg-dharma-surface text-dharma-ink border border-dharma-border",
-        className,
-      )}
-      {...props}
-    />
+const DENSITY_PADDING = {
+  comfortable: { block: "p-5", stacked: "p-5 pt-0" },
+  compact: { block: "p-3.5", stacked: "p-3.5 pt-0" },
+} as const;
+
+export type CardDensity = keyof typeof DENSITY_PADDING;
+
+const CardDensityContext = React.createContext<CardDensity>("comfortable");
+
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  density?: CardDensity;
+  /**
+   * `flat` is the system default and the only variant the spec permits by
+   * itself — Warm Paper has no elevation scale and no shadow token; depth is
+   * carried by the hairline border. `elevated` therefore raises contrast via a
+   * stronger border rather than a box-shadow, which would violate the spec.
+   */
+  variant?: "flat" | "elevated";
+}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, density = "comfortable", variant = "flat", ...props }, ref) => (
+    <CardDensityContext.Provider value={density}>
+      <div
+        ref={ref}
+        className={cn(
+          "rounded-lg border bg-dharma-surface text-dharma-ink",
+          variant === "elevated" ? "border-dharma-border-strong" : "border-dharma-border",
+          className,
+        )}
+        {...props}
+      />
+    </CardDensityContext.Provider>
   ),
 );
 
@@ -23,9 +52,16 @@ Card.displayName = "Card";
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex flex-col space-y-1 p-5", className)} {...props} />
-));
+>(({ className, ...props }, ref) => {
+  const density = React.useContext(CardDensityContext);
+  return (
+    <div
+      ref={ref}
+      className={cn("flex flex-col space-y-1", DENSITY_PADDING[density].block, className)}
+      {...props}
+    />
+  );
+});
 
 CardHeader.displayName = "CardHeader";
 
@@ -54,18 +90,28 @@ CardDescription.displayName = "CardDescription";
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-5 pt-0", className)} {...props} />
-));
+>(({ className, ...props }, ref) => {
+  const density = React.useContext(CardDensityContext);
+  return (
+    <div ref={ref} className={cn(DENSITY_PADDING[density].stacked, className)} {...props} />
+  );
+});
 
 CardContent.displayName = "CardContent";
 
 const CardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex items-center p-5 pt-0", className)} {...props} />
-));
+>(({ className, ...props }, ref) => {
+  const density = React.useContext(CardDensityContext);
+  return (
+    <div
+      ref={ref}
+      className={cn("flex items-center", DENSITY_PADDING[density].stacked, className)}
+      {...props}
+    />
+  );
+});
 
 CardFooter.displayName = "CardFooter";
 

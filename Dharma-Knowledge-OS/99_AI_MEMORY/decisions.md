@@ -53,3 +53,43 @@ light and dark, all pass.
 
 Dark mode was **retained**; a dark Warm Paper variant was authored (it is not
 part of the approved spec, and is the one part open to taste).
+
+---
+
+## 2026-07-30 — Compliance Status dashboard: structural redesign, palette untouched
+
+A second design brief arrived asking for a cool slate/graphite token rebuild and
+naming cream+terracotta as a generic-AI tell to avoid. That is the palette
+adopted by owner override the previous day (`634c9ec`). **The owner chose to
+keep Warm Paper** and scope this pass to structure only. No colour token in
+`src/styles/tokens.css` was changed. Do not re-open this.
+
+The brief also restated premises that were already stale: it asked for a
+`Skeleton` primitive, loading states, and sidebar hover/focus states that all
+already existed, and it cited the retired `1_PRD.md .. 6_IMPLEMENTATION_PLAN.md`
+doc set (removed in `9d28729`). Live spec is `0_DESIGN_SYSTEM.md`.
+
+**Severity is now one module, not two.** `src/lib/compliance/severity.ts` is
+imported by `dashboardRouter.getStats` *and* the client. The brief proposed a
+server copy plus a client copy kept in agreement by test; two implementations
+that must be kept in sync is the defect, not the safeguard. This fixed a live
+bug — `page.tsx` banded at 50/80 while `FrameworkProgressCards.tsx` banded at
+60/80, so one framework could read "At risk" in one place and "Needs work" in
+another. `FrameworkProgressCards.tsx` was deleted (imported but never rendered);
+`FrameworkStatusCard.tsx` replaces both.
+
+`getStats.frameworks[].severity` is a new **additive** field. No Prisma change.
+
+**Trend/sparkline was deliberately NOT built.** There is no time-series source
+in the schema; the only history is `AuditLog`, and deriving per-framework
+readiness over time from it is a feature, not a re-skin. Adding the brief's
+`previousStatusPercent` column would have shipped a permanently-null field and a
+component that never renders. Needs a `FrameworkReadinessSnapshot` model plus a
+scheduled job — separate work.
+
+Other corrections made: every framework card printed the same **organisation-wide**
+critical-gap count as if it were that framework's; a framework with 0 controls
+banded as complete (now `critical`); `v{version}` rendered SOC 2's "Type II" as
+"vType II".
+
+Rationale in `docs/design/dashboard-redesign-tokens.md`.

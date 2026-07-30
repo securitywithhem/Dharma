@@ -11,6 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -53,10 +54,20 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
 
       <CardContent>
         {activities.length === 0 ? (
-          <div className="py-10 text-center">
-            <Inbox className="mx-auto h-7 w-7 text-dharma-ink-secondary" aria-hidden />
-            <p className="mt-2 text-data text-dharma-ink-secondary">No recent activity</p>
-          </div>
+          /*
+            Was a lone inbox glyph and the words "No recent activity" floating in
+            a panel that ran ~80% empty — the single worst use of space on the
+            page. Now: what lands here, and the one action that puts something
+            here. `compact` caps the footprint so an empty side panel cannot
+            out-measure the populated framework cards above it.
+          */
+          <EmptyState
+            compact
+            icon={Inbox}
+            title="No activity yet"
+            description="Evidence uploads, policy publishes and control updates will appear here as your team works."
+            action={{ label: 'Upload evidence', href: '/dashboard/evidence' }}
+          />
         ) : (
           /* A timeline rule instead of a stack of bordered boxes: the events
              share one continuous spine, so the eye tracks time rather than
