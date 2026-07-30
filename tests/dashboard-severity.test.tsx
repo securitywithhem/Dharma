@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { GapBadge, SeverityBadge } from '@/components/ui/severity-badge';
 import { ActionItemRow } from '@/components/dashboard/ActionItemRow';
 import { FrameworkStatusCard, FrameworkStatusGrid } from '@/components/dashboard/FrameworkStatusCard';
-import { DomainGapHeatmap } from '@/components/dashboard/DomainGapHeatmap';
+import { COLLAPSED_COUNT, DomainGapHeatmap } from '@/components/dashboard/DomainGapHeatmap';
 
 import type { DomainGap, FrameworkSeverity } from '@/lib/compliance/severity';
 
@@ -218,11 +218,14 @@ describe('DomainGapHeatmap', () => {
     gap: 'HIGH' as DomainGap,
   }));
 
-  it('collapses to the top five worst domains', () => {
+  it('collapses to the worst N domains', () => {
     render(<DomainGapHeatmap domains={domains} />);
 
+    // Asserted against the exported constant, not a literal: the collapsed
+    // count is a layout decision (it fills whole rows of the two-up grid) and
+    // has already changed once.
     const list = screen.getByRole('list');
-    expect(within(list).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(list).getAllByRole('listitem')).toHaveLength(COLLAPSED_COUNT);
     expect(screen.getByText('Domain 1')).toBeInTheDocument();
     expect(screen.queryByText('Domain 12')).not.toBeInTheDocument();
   });
@@ -238,12 +241,12 @@ describe('DomainGapHeatmap', () => {
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(12);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-    await user.click(screen.getByRole('button', { name: 'Show top 5 only' }));
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(5);
+    await user.click(screen.getByRole('button', { name: `Show top ${COLLAPSED_COUNT} only` }));
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(COLLAPSED_COUNT);
   });
 
   it('offers no toggle when everything already fits', () => {
-    render(<DomainGapHeatmap domains={domains.slice(0, 4)} />);
+    render(<DomainGapHeatmap domains={domains.slice(0, COLLAPSED_COUNT)} />);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 

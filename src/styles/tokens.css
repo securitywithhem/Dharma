@@ -62,7 +62,7 @@
 
      Permitted: the primary CTA, OR the active nav item, OR a single hero
      metric. Choosing two on one screen is a design defect — see the
-     one-accent audit in docs/theme-migration-checklist.md.
+     one-accent audit in Dharma-Knowledge-OS/docs/theme-migration-checklist.md.
      -------------------------------------------------------------------- */
   --dharma-accent-base: #b2481d;         /* 4.81:1 vs inverse text — AA */
   --dharma-accent-hover: #9a3d18;        /* 6.05:1 vs inverse text — AA */

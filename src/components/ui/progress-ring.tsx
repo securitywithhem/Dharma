@@ -25,7 +25,7 @@ import type { FrameworkSeverity } from '@/lib/compliance/severity';
  *    empty ring for readers who asked for no motion.
  *
  * The centre slot is sized to accept a trend delta glyph later without a
- * relayout — see docs/design/dashboard-redesign-tokens.md § 6 for why the trend
+ * relayout — see Dharma-Knowledge-OS/docs/design/dashboard-redesign-tokens.md § 6 for why the trend
  * data itself is not built yet.
  */
 
@@ -69,7 +69,7 @@ function usePrefersReducedMotion(): boolean {
 export function ProgressRing({
   value,
   severity,
-  size = 56,
+  size = 44,
   strokeWidth = 5,
   label,
   className,

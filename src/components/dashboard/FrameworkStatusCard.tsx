@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowUpRight, Layers } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { CardRow } from '@/components/ui/section';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { getFrameworkSeverity, severityNeedsAttention } from '@/lib/compliance/severity';
@@ -73,7 +74,7 @@ export function FrameworkStatusCard({
         band === 'partial' && 'border-l-dharma-warning',
       )}
     >
-      <CardContent className="flex items-center gap-3.5 pt-3.5">
+      <CardContent className="flex items-center gap-3 pt-3">
         <ProgressRing value={pct} severity={band} label={`${name} readiness`} />
 
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -148,11 +149,23 @@ export function FrameworkStatusGrid({ frameworks }: FrameworkStatusGridProps) {
   // the order the frameworks happened to be created in.
   const ranked = [...frameworks].sort((a, b) => a.progress - b.progress);
 
+  /*
+    Container-relative, not viewport-relative. `xl:grid-cols-3` decided the
+    column count from the WINDOW width while the grid actually lives in
+    (window - 240px sidebar - 48px page padding), so at window widths just over
+    the xl breakpoint it committed to three columns that the available space
+    could not hold. auto-fit asks the real container instead: it fits as many
+    18rem tracks as genuinely have room and reflows to fewer, so this grid
+    cannot cause a horizontal scrollbar at any width.
+
+    `min(18rem, 100%)` keeps the track from exceeding the container on narrow
+    screens, where a bare 18rem minimum would itself overflow.
+  */
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <CardRow minCardWidth="18rem">
       {ranked.map((framework) => (
         <FrameworkStatusCard key={framework.id} {...framework} />
       ))}
-    </div>
+    </CardRow>
   );
 }

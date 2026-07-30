@@ -51,14 +51,25 @@ export function ExportReportCard() {
     UNVERIFIED: 'secondary',
   } as const;
 
+  const lastExport = historyQuery.data?.[0];
+
   return (
-    <div className="space-y-6">
+    /*
+      h-full down the whole chain — wrapper, motion.div, Card. As a grid child
+      this stretches to the row's tallest card (Quick actions, 4 rows), but a
+      nested wrapper does not pass that height to its descendants automatically,
+      so the Card underneath kept its content height and the row looked
+      unbalanced. flex-1 on the export card lets the optional history card below
+      keep its natural height.
+    */
+    <div className="flex h-full flex-col gap-6">
       {/* Export Card */}
       <motion.div
+        className="flex flex-1 flex-col"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card>
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
@@ -69,12 +80,18 @@ export function ExportReportCard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          {/*
+            justify-between rather than a top-aligned button: once the card
+            stretches to match Quick actions there is real vertical slack, and a
+            lone CTA pinned to the top of it reads as an oversight. The CTA sits
+            at the top of the slack, the provenance line at the bottom.
+          */}
+          <CardContent className="flex flex-1 flex-col justify-between gap-4">
             <Button
               onClick={handleExport}
               disabled={isExporting}
               size="lg"
-              className="gap-2"
+              className="w-fit gap-2"
             >
               {isExporting ? (
                 <>
@@ -88,6 +105,28 @@ export function ExportReportCard() {
                 </>
               )}
             </Button>
+
+            {/*
+              Real provenance from report.getHistory, not filler. An auditor-
+              facing export is a dated artefact, so "when was the last one" is
+              the question this card should answer without a click.
+            */}
+            <p className="text-micro text-dharma-ink-secondary">
+              {lastExport ? (
+                <>
+                  Last exported{' '}
+                  <time
+                    dateTime={new Date(lastExport.timestamp).toISOString()}
+                    className="tabular-nums"
+                  >
+                    {new Date(lastExport.timestamp).toLocaleDateString()}
+                  </time>{' '}
+                  · <span className="tabular-nums">{lastExport.complianceScore}%</span> compliance
+                </>
+              ) : (
+                'No report exported yet.'
+              )}
+            </p>
           </CardContent>
         </Card>
       </motion.div>
@@ -112,10 +151,11 @@ export function ExportReportCard() {
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center justify-between p-3 rounded-lg bg-dharma-surface-hover border border-dharma-border"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <CheckCircle className="w-5 h-5 text-dharma-success-text" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{report.fileName}</p>
+                      <div className="min-w-0 flex-1">
+                        {/* Generated filenames run long (dharma-compliance-report-2026-07-30.pdf). */}
+                        <p className="truncate text-sm font-medium">{report.fileName}</p>
                         <p className="text-xs text-dharma-ink-secondary">
                           {new Date(report.timestamp).toLocaleDateString()}
                         </p>

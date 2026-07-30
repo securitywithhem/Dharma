@@ -1,19 +1,19 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-// Padding steps down from the shadcn default (p-6 → p-5) across the card
+// Padding steps down from the shadcn default (p-6 -> p-4) across the card
 // family. At dashboard density that reclaims roughly a row of table data per
 // card without the layout reading as cramped.
 //
-// `density="compact"` steps down again (p-5 → p-3.5) for cards whose content is
+// `density="compact"` steps down again (p-4 -> p-3) for cards whose content is
 // a single band rather than a stacked block — the framework status card, chip
-// rows, anything where p-5 leaves the reader crossing empty space to get from
+// rows, anything where p-4 leaves the reader crossing empty space to get from
 // the metric to its label. Comfortable stays the default so no existing call
 // site changes shape.
 
 const DENSITY_PADDING = {
-  comfortable: { block: "p-5", stacked: "p-5 pt-0" },
-  compact: { block: "p-3.5", stacked: "p-3.5 pt-0" },
+  comfortable: { block: "p-4", stacked: "p-4 pt-0" },
+  compact: { block: "p-3", stacked: "p-3 pt-0" },
 } as const;
 
 export type CardDensity = keyof typeof DENSITY_PADDING;

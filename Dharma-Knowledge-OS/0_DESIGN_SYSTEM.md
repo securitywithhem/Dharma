@@ -259,4 +259,4 @@ dashboard nav, [`src/app/onboarding/layout.tsx`](../src/app/onboarding/layout.ts
 | Audit portal (external) | `audit/portal` | [[Audit_Process]] |
 
 Migration progress is tracked in
-[`docs/theme-migration-checklist.md`](../docs/theme-migration-checklist.md).
+[`docs/theme-migration-checklist.md`](docs/theme-migration-checklist.md).

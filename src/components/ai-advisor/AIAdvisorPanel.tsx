@@ -87,7 +87,16 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
         role="dialog"
         aria-modal="true"
         aria-label="Compliance Advisor"
-        className="fixed right-0 top-0 z-50 flex h-full flex-col border-l border-dharma-border bg-dharma-surface border border-dharma-border"
+        /*
+          max-w-[100vw] is load-bearing, not belt-and-braces. This panel is
+          position:fixed, so it sits OUTSIDE the dashboard shell's
+          overflow-x-hidden and nothing else can contain it. At its 440px
+          default — and at the 360px MIN_WIDTH the resize handle enforces — it is
+          wider than a 390px phone viewport and would push the page sideways.
+          Capping to the viewport makes it full-bleed on mobile, which is the
+          right behaviour for a slide-over anyway.
+        */
+        className="fixed right-0 top-0 z-50 flex h-full max-w-[100vw] flex-col border-l border-dharma-border bg-dharma-surface"
         style={{ width }}
       >
         <div

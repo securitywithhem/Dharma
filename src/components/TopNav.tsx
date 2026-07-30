@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -19,7 +20,7 @@ function initialsFor(name?: string | null, email?: string | null): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function TopNav() {
+export function TopNav({ leading }: { leading?: React.ReactNode } = {}) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const crumbs = breadcrumbsFor(pathname ?? "/dashboard");
@@ -28,12 +29,19 @@ export function TopNav() {
   const name = session?.user?.name ?? null;
 
   return (
-    <header className="sticky top-0 z-20 border-b border-dharma-border bg-dharma-bg">
-      <div className="flex h-14 items-center justify-between gap-4 px-5">
+    // Not sticky. It sits above the shell's scroll container rather than inside
+    // it, so it is already fixed in place; a `sticky top-0` here did nothing but
+    // invite the reader to think this bar scrolls.
+    <header className="z-20 border-b border-dharma-border bg-dharma-bg">
+      <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-5">
+        {/* `leading` carries the sidebar toggle. It lives here rather than in
+            the sidebar itself because it must stay reachable when the sidebar is
+            closed — which, below md, it always was. */}
+        {leading}
         {/* The bar previously restated the page title the page itself already
             renders. A breadcrumb earns the space instead: it tells you where
             you are in a tree that is now four sections deep. */}
-        <nav aria-label="Breadcrumb" className="min-w-0">
+        <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
           <ol className="flex items-center gap-1 text-data">
             {crumbs.map((crumb, index) => {
               const last = index === crumbs.length - 1;

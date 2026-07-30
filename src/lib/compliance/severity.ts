@@ -13,7 +13,7 @@
  * implementations were replaced by `FrameworkStatusCard`; the numbers below
  * are the reconciled set.
  *
- * See docs/design/dashboard-redesign-tokens.md § 7.
+ * See Dharma-Knowledge-OS/docs/design/dashboard-redesign-tokens.md § 7.
  */
 
 /** Framework/control-set readiness bands. Ordered worst → best. */
