@@ -1,51 +1,74 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { AlertTriangle, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { OverallReadinessScore } from '@/components/dashboard/OverallReadinessScore';
-import { FrameworkProgressCards } from '@/components/dashboard/FrameworkProgressCards';
+import { CardRow, Section } from '@/components/ui/section';
+import { ActionItemRow } from '@/components/dashboard/ActionItemRow';
+import { FrameworkStatusGrid } from '@/components/dashboard/FrameworkStatusCard';
 import { DomainGapHeatmap } from '@/components/dashboard/DomainGapHeatmap';
 import { RecentActivityFeed } from '@/components/dashboard/RecentActivityFeed';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ExportReportCard } from '@/components/report/ExportReportCard';
 import { ImportedFrameworksCard } from '@/components/dashboard/ImportedFrameworksCard';
 import { api } from '@/hooks/trpc';
-import { cn } from '@/lib/utils';
-
-import type { Route } from 'next';
 
 /**
  * No entrance animation anywhere on this page. The previous version staggered
  * every section in on a 0.1–0.5s delay ladder, which meant an operator opening
  * their console several times a day waited half a second for a layout they had
  * already memorised. Motion here is reserved for interaction feedback.
+ *
+ * ---------------------------------------------------------------------------
+ * LAYOUT CONTRACT — every row below is full width. There are exactly four.
+ *
+ *   Row 1  Framework status    full width, responsive N-up grid
+ *   Row 2  Top action items (2/3) + Recent activity (1/3)   deliberately split
+ *   Row 3  Domain gap analysis  full width, standalone
+ *   Row 4  Workspace            full width, cards split evenly, equal height
+ *
+ * Width is NOT the thing to get right here — every row inherits it from the
+ * single max-w-[88rem] container below, and always did. What broke twice was
+ * TRACK OCCUPANCY: a `lg:grid-cols-3` reserves three columns whether or not
+ * three children render, so Row 3 (one col-span-2 child) and Row 4 (a child
+ * that returns null when it has no data) both rendered a full-width grid with
+ * a permanently empty third column, which reads as a narrow row.
+ *
+ * Rows whose child count is fixed may use explicit columns. Rows whose child
+ * count depends on data MUST use <CardRow>, whose auto-fit tracks collapse when
+ * a child does not render. Enforced by tests/e2e/dashboard-layout.spec.ts.
+ * ---------------------------------------------------------------------------
  */
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 text-[0.9375rem] font-semibold tracking-[-0.01em]">{children}</h2>;
-}
 
 function DashboardSkeleton() {
   // Mirrors the real layout so the page does not reflow when data lands.
   return (
-    <div className="mx-auto max-w-[88rem] space-y-6">
+    <div className="mx-auto max-w-[88rem] space-y-4">
       <div className="space-y-2">
         <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-96" />
+        <Skeleton className="h-4 w-full max-w-96" />
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-32 w-full" />
+      {/* Every row below goes through the SAME primitive and track floor as the
+          real thing, so the skeleton cannot drift out of step and make the page
+          reflow when data lands — which is the one job it has. */}
+      <CardRow minCardWidth="18rem">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-24 w-full" />
         ))}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Skeleton className="h-64 w-full lg:col-span-2" />
+      </CardRow>
+      <div
+        className="grid gap-4"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(22rem, 100%), 1fr))' }}
+      >
+        <Skeleton className="h-64 w-full [grid-column:span_2]" />
         <Skeleton className="h-64 w-full" />
       </div>
-      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-72 w-full" />
+      <CardRow>
+        <Skeleton className="h-56 w-full" />
+        <Skeleton className="h-56 w-full" />
+      </CardRow>
     </div>
   );
 }
@@ -77,20 +100,12 @@ export default function DashboardPage() {
   if (error) return <LoadFailure message={error.message} />;
   if (!stats) return <LoadFailure />;
 
-  const nextActions = stats.topIncompleteControls.slice(0, 3);
-
-  // Count critical and high gaps across all frameworks for summary
-  const gapCounts = stats.domains.reduce(
-    (acc, domain) => {
-      if (domain.gap === 'HIGH') acc.critical += 1;
-      else if (domain.gap === 'MEDIUM') acc.high += 1;
-      return acc;
-    },
-    { critical: 0, high: 0 }
-  );
+  // Five, not three. The row is now a scan line rather than a padded block, so
+  // two more fit in less vertical space than the old three occupied.
+  const nextActions = stats.topIncompleteControls.slice(0, 5);
 
   return (
-    <div className="mx-auto max-w-[88rem] space-y-6">
+    <div className="mx-auto max-w-[88rem] space-y-4">
       <header>
         <h1 className="font-display text-display-sm font-semibold text-dharma-ink">
           Compliance status
@@ -100,205 +115,88 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      {/* PRIMARY: Framework Status Cards Grid — one card per framework with readiness, gaps */}
-      <section aria-labelledby="frameworks-status">
-        <SectionHeading>
-          <span id="frameworks-status">Framework Status</span>
-        </SectionHeading>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {stats.frameworks.map((framework) => {
-            // Get domains for this framework to show gaps
-            const frameworkDomains = stats.domains; // All domains in one org
-            const compliant = framework.compliantCount;
-            const total = framework.controlCount;
-            const progress = framework.progress;
+      {/* Row 1 — framework readiness, worst-first. */}
+      <Section title="Framework status" id="frameworks-status">
+        <FrameworkStatusGrid frameworks={stats.frameworks} />
+      </Section>
 
-            // Determine status color based on progress
-            let statusColor = 'bg-dharma-success-bg';
-            let statusLabel = 'On track';
-            if (progress < 50) {
-              statusColor = 'bg-dharma-danger-bg';
-              statusLabel = 'At risk';
-            } else if (progress < 80) {
-              statusColor = 'bg-dharma-warning-bg';
-              statusLabel = 'Needs work';
-            }
+      {/* Row 2 — deliberately asymmetric 2/3 + 1/3. Fixed child count, so
+          explicit columns are correct here. */}
+      {/* Container-relative, like every other row. `lg:grid-cols-3` fired on a
+          WINDOW width of 1024 while the container there is only ~736px, which
+          squeezed the activity column to ~235px — narrower than its own nowrap
+          timestamp. auto-fit asks the real container; the 2-track span only
+          applies once three tracks genuinely fit, and below that both children
+          take one track each and stack.
 
-            return (
-              <Card
-                key={framework.id}
-                className="group relative overflow-hidden border-l-4 transition-shadow duration-150 hover:border border-dharma-border"
-                style={{
-                  borderLeftColor:
-                    progress >= 80
-                      ? 'hsl(var(--success))'
-                      : progress >= 50
-                        ? 'hsl(var(--warning))'
-                        : 'hsl(var(--critical))',
-                }}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={'/dashboard/frameworks' as Route}
-                        className="flex items-center gap-2 rounded-sm font-medium tracking-[-0.01em] text-dharma-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
-                      >
-                        <span className="truncate">{framework.name}</span>
-                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-                      </Link>
-                      <p className="mt-1 font-mono text-micro text-dharma-ink-secondary">
-                        v{framework.version}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-display text-2xl font-semibold leading-none tabular-nums text-dharma-ink">
-                        {progress}%
-                      </p>
-                      <p className={cn('mt-1 text-micro font-medium', {
-                        'text-dharma-success-text': progress >= 80,
-                        'text-dharma-ink': progress >= 50 && progress < 80,
-                        'text-dharma-danger-text': progress < 50,
-                      })}>
-                        {statusLabel}
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-3">
-                  {/* Progress bar */}
-                  <div
-                    className="h-1.5 w-full overflow-hidden rounded-full bg-dharma-surface-hover"
-                    role="meter"
-                    aria-valuenow={progress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`${framework.name} readiness ${progress}%`}
-                  >
-                    <div
-                      className={cn('h-full rounded-full', {
-                        'bg-dharma-success-bg': progress >= 80,
-                        'bg-dharma-warning-bg': progress >= 50 && progress < 80,
-                        'bg-dharma-danger-bg': progress < 50,
-                      })}
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  {/* Control count */}
-                  <p data-numeric className="text-micro tabular-nums text-dharma-ink-secondary">
-                    {compliant} of {total} controls
-                  </p>
-
-                  {/* Gap summary - key findings */}
-                  {progress < 100 && (
-                    <div className="space-y-1.5 border-t border-dharma-border pt-2">
-                      <p className="text-micro font-medium text-dharma-ink">Key gaps:</p>
-                      <p className="text-micro text-dharma-ink-secondary">
-                        {total - compliant} control{total - compliant === 1 ? '' : 's'} incomplete
-                      </p>
-                      {gapCounts.critical > 0 && (
-                        <p className="flex items-center gap-1.5 text-micro">
-                          <AlertCircle className="h-3 w-3 shrink-0 text-dharma-danger-text" />
-                          <span className="text-dharma-danger-text font-medium">{gapCounts.critical} critical gap{gapCounts.critical === 1 ? '' : 's'}</span>
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* SECONDARY: Action Items + Recent Activity — side by side */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Action Items Card (2/3 width) */}
-        <div className="lg:col-span-2">
+          min-w-0 on both: grid items default to min-width:auto and otherwise
+          refuse to shrink below their content. */}
+      <div
+        className="grid gap-4"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(22rem, 100%), 1fr))' }}
+      >
+        <div className="min-w-0 [grid-column:span_2]">
           <Card className="h-full">
             <CardHeader>
-              <h2 className="text-base font-semibold text-dharma-ink">
-                Top action items
-              </h2>
+              <h2 className="text-base font-semibold text-dharma-ink">Top action items</h2>
               <p className="mt-1 text-data text-dharma-ink-secondary">
-                Priority tasks to improve your compliance posture
+                Controls with the thinnest evidence, highest priority first.
               </p>
             </CardHeader>
             <CardContent>
               {nextActions.length === 0 ? (
-                <div className="py-8 text-center">
-                  <CheckCircle2 className="mx-auto h-7 w-7 text-dharma-success-text" aria-hidden />
-                  <p className="mt-2 text-data font-medium text-dharma-ink">All set!</p>
+                <div className="py-6 text-center">
+                  <CheckCircle2 className="mx-auto h-6 w-6 text-dharma-success-text" aria-hidden />
+                  <p className="mt-2 text-data font-medium text-dharma-ink">Nothing outstanding</p>
                   <p className="mt-1 text-micro text-dharma-ink-secondary">
-                    No priority actions. Review your compliance status regularly.
+                    Every tracked control has evidence attached.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                /*
+                  TODO(data): the seeded organisation returns several controls
+                  literally titled "Test Control", which is why this list reads
+                  as three identical rows in the current screenshots. That is
+                  placeholder seed data, not a rendering fault — replace it in
+                  the framework seed. Flagged to the owner 2026-07-30.
+                */
+                /* No negative margin. A `-mx-2` bleed to let the row hover
+                   reach the card edge makes the list wider than its own
+                   container, which at 390px pushed the whole grid column past
+                   the viewport — the row's own px-2 gives the same inset
+                   without overflowing. Caught by the 390px e2e check. */
+                <ul className="divide-y divide-dharma-border">
                   {nextActions.map((control, index) => (
-                    <Link
-                      key={control.id}
-                      href={'/dashboard/controls' as Route}
-                      className="group block rounded-lg border border-dharma-border bg-dharma-surface-hover p-3.5 transition-all duration-150 hover:border-dharma-accent hover:bg-dharma-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-dharma-accent-tint font-mono text-micro font-semibold text-dharma-accent-on-tint">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-data font-medium text-dharma-ink">
-                            {control.title}
-                          </p>
-                          <p className="mt-0.5 flex items-center gap-1 truncate text-micro text-dharma-ink-secondary">
-                            <span>{control.frameworkName}</span>
-                            <span>·</span>
-                            <span>{control.domain}</span>
-                          </p>
-                          <p className="mt-1 text-micro text-dharma-ink-secondary">
-                            {control.evidenceCount === 0 ? (
-                              <span className="font-medium text-dharma-danger-text">No evidence yet</span>
-                            ) : (
-                              <span data-numeric>
-                                {control.evidenceCount} evidence item{control.evidenceCount === 1 ? '' : 's'}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-                      </div>
-                    </Link>
+                    <ActionItemRow key={control.id} item={control} rank={index + 1} />
                   ))}
-                </div>
+                </ul>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Activity Feed (1/3 width) */}
-        <div>
+        <div className="min-w-0">
           <RecentActivityFeed activities={stats.recentActivity.slice(0, 5)} />
         </div>
       </div>
 
-      {/* TERTIARY: Domain Analysis + Workspace — secondary context */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <DomainGapHeatmap domains={stats.domains} />
-        </div>
-      </div>
+      {/* Row 3 — standalone full-width row. Was a lg:grid-cols-3 holding a single
+          lg:col-span-2 child, i.e. a third of the row was empty by construction.
+          titleHidden because the Card inside already renders the visible title. */}
+      <Section title="Domain gap analysis" id="domain-gap" titleHidden>
+        <DomainGapHeatmap domains={stats.domains} />
+      </Section>
 
-      <section aria-labelledby="workspace">
-        <SectionHeading>
-          <span id="workspace">Workspace</span>
-        </SectionHeading>
-        <div className="grid gap-4 lg:grid-cols-3">
+      {/* Row 4 — ImportedFrameworksCard returns null when the org has no imports,
+          so the child count is 2 or 3 depending on data. CardRow's auto-fit
+          tracks collapse the missing one instead of leaving a dead column. */}
+      <Section title="Workspace" id="workspace">
+        <CardRow>
           <QuickActionsCard />
           <ImportedFrameworksCard />
           <ExportReportCard />
-        </div>
-      </section>
+        </CardRow>
+      </Section>
     </div>
   );
 }

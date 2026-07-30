@@ -2,8 +2,12 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { GapBadge } from '@/components/ui/severity-badge';
 import { cn } from '@/lib/utils';
+import { LayoutGrid } from 'lucide-react';
+
+import type { DomainGap } from '@/lib/compliance/severity';
 
 interface Domain {
   name: string;
@@ -12,12 +16,22 @@ interface Domain {
   evidenceCount: number;
   policyCount: number;
   completionPercentage: number;
-  gap: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+  gap: DomainGap;
 }
 
 interface DomainGapHeatmapProps {
   domains: Domain[];
 }
+
+/**
+ * How many rows render before the reader has to ask for more. Twelve identical
+ * rows in a single scroll is not a ranking, it is a list — the top slice is
+ * what makes the ordering legible as a priority order.
+ *
+ * Six, not five: the list is two-up from `xl` and six fills three complete rows
+ * rather than leaving a ragged half-row of one.
+ */
+export const COLLAPSED_COUNT = 6;
 
 /**
  * Completion is a magnitude compared across categories, so the mark is a
@@ -35,19 +49,18 @@ function seqStep(pct: number): string {
   return 'bg-seq-1';
 }
 
-const gapVariant: Record<Domain['gap'], 'success' | 'warning' | 'critical' | 'secondary'> = {
-  NONE: 'success',
-  LOW: 'secondary',
-  MEDIUM: 'warning',
-  HIGH: 'critical',
-};
-
 export function DomainGapHeatmap({ domains }: DomainGapHeatmapProps) {
+  const [expanded, setExpanded] = React.useState(false);
+
   // Worst-first. A compliance reader is looking for what to fix, not for an
-  // alphabetical index.
-  const sortedDomains = [...domains].sort(
-    (a, b) => a.completionPercentage - b.completionPercentage,
+  // alphabetical index. Matches the "lowest first" subheading below.
+  const sortedDomains = React.useMemo(
+    () => [...domains].sort((a, b) => a.completionPercentage - b.completionPercentage),
+    [domains],
   );
+
+  const hiddenCount = Math.max(sortedDomains.length - COLLAPSED_COUNT, 0);
+  const visibleDomains = expanded ? sortedDomains : sortedDomains.slice(0, COLLAPSED_COUNT);
 
   return (
     <Card>
@@ -73,15 +86,43 @@ export function DomainGapHeatmap({ domains }: DomainGapHeatmapProps) {
 
       <CardContent>
         {sortedDomains.length === 0 ? (
-          <p className="py-6 text-center text-data text-dharma-ink-secondary">
-            No domains scored yet. Add a certification goal to begin.
-          </p>
+          <EmptyState
+            compact
+            icon={LayoutGrid}
+            title="No domains scored yet"
+            description="Domains appear once a framework is imported and its controls are grouped."
+            action={{ label: 'Add a framework', href: '/dashboard/frameworks' }}
+          />
         ) : (
-          <ul className="divide-y divide-border">
-            {sortedDomains.map((domain) => (
+          /*
+            Multi-up, container-relative. Now that this panel owns the full
+            container width, a single column would stretch each progress bar
+            into a ~1300px sliver with the badge marooned at the far right — the
+            reclaimed width has to be spent on more rows per screen, not on
+            longer rows.
+
+            `divide-y` cannot express row separators in a two-column grid (it
+            would rule between columns too), so the border moves onto the item
+            itself and is suppressed on the last row of each column.
+          */
+          <ul
+            className="grid gap-x-4"
+            // Container-relative for the same reason as the framework grid: an
+            // `xl:` breakpoint measures the window, but this list sits inside a
+            // card inside the content column, so the window is the wrong ruler.
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(22rem, 100%), 1fr))' }}
+          >
+            {visibleDomains.map((domain) => (
               <li
                 key={domain.name}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 py-2.5"
+                /*
+                  Every row is ruled, with no last-child exemption. The column
+                  count is now decided by auto-fit at runtime, so no CSS
+                  selector can reliably identify "the bottom row of each
+                  column" — a uniform rule is correct at any count. The toggle
+                  button below drops its own border-t so the two never stack.
+                */
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b border-dharma-border py-2.5"
                 title={`${domain.name} — ${domain.compliantCount}/${domain.controlCount} controls, ${domain.evidenceCount} evidence, ${domain.policyCount} policies`}
               >
                 <div className="min-w-0">
@@ -121,12 +162,23 @@ export function DomainGapHeatmap({ domains }: DomainGapHeatmapProps) {
                 </div>
 
                 {/* Status ships as a labelled chip, never colour alone. */}
-                <Badge variant={gapVariant[domain.gap]} className="shrink-0">
-                  {domain.gap === 'NONE' ? 'No gap' : `${domain.gap.toLowerCase()} gap`}
-                </Badge>
+                <GapBadge gap={domain.gap} className="shrink-0" />
               </li>
             ))}
           </ul>
+        )}
+
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+            className="mt-3 w-full rounded-dharma-md text-micro font-medium text-dharma-accent-on-tint transition-colors duration-dharma-fast ease-dharma hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dharma-accent"
+          >
+            {expanded
+              ? `Show top ${COLLAPSED_COUNT} only`
+              : `Show all ${sortedDomains.length} domains`}
+          </button>
         )}
       </CardContent>
     </Card>

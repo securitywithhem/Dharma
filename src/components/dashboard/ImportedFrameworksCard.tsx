@@ -14,7 +14,7 @@ export function ImportedFrameworksCard() {
   }
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Download className="h-5 w-5 text-dharma-accent-on-tint" />
@@ -25,9 +25,10 @@ export function ImportedFrameworksCard() {
         <ul className="space-y-3">
           {items.slice(0, 3).map((item: any) => (
             <li key={item.id} className="flex justify-between items-center group">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-dharma-ink">{item.itemName}</span>
-                <span className="text-xs text-dharma-ink-secondary">
+              <div className="flex min-w-0 flex-col">
+                {/* Import names are user-supplied and unbounded. */}
+                <span className="truncate text-sm font-medium text-dharma-ink">{item.itemName}</span>
+                <span className="truncate text-xs text-dharma-ink-secondary">
                   Imported {new Date(item.importedAt).toLocaleDateString()}
                 </span>
               </div>

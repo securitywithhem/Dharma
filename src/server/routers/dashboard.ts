@@ -1,4 +1,7 @@
+import { getFrameworkSeverityFromCounts } from '@/lib/compliance/severity';
 import { createTRPCRouter, orgProcedure } from '../trpc';
+
+import type { FrameworkSeverity } from '@/lib/compliance/severity';
 
 export interface DashboardStats {
   overallScore: number;
@@ -13,6 +16,13 @@ export interface DashboardStats {
     progress: number;
     controlCount: number;
     compliantCount: number;
+    /**
+     * Additive field. Banded by the shared lib/compliance/severity module, so
+     * the server and every client surface read the same thresholds — they
+     * previously disagreed (50/80 on the dashboard page vs 60/80 in the card
+     * component). Existing consumers that ignore this field are unaffected.
+     */
+    severity: FrameworkSeverity;
   }>;
   domains: Array<{
     name: string;
@@ -87,6 +97,9 @@ export const dashboardRouter = createTRPCRouter({
         progress,
         controlCount: fw.controls.length,
         compliantCount,
+        // Banded from counts rather than the rounded percentage so a framework
+        // at 99.6% is not reported "complete" to an auditor.
+        severity: getFrameworkSeverityFromCounts(compliantCount, fw.controls.length),
       };
     });
 

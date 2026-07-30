@@ -41,7 +41,7 @@ does not do. What survives from that brief is adopted here: the severity scale,
 > came true: per-tenant white-label theming is now inert, and the five-step
 > severity ramp is gone. Both are logged in
 > [[0_DESIGN_SYSTEM]] § Accepted costs and in
-> `docs/theme-migration-checklist.md` § Migration 2.
+> `../docs/theme-migration-checklist.md` § Migration 2.
 
 A 2026-07-29 brief proposed a fourth direction — "Warm Paper": terracotta
 `#B2481D` on `#EFEBE2`, Newsreader + Public Sans, supplied as
@@ -64,7 +64,7 @@ What was adopted from it is its one genuinely better idea: the `{role}-bg` +
 `{role}-text` pairing rule for tinted badges, which landed here as the
 `--*-on-tint` tokens (see *Component contracts*). The migration it triggered
 retokened 68 files onto the *existing* palette — see
-`docs/theme-migration-checklist.md`.
+`../docs/theme-migration-checklist.md`.
 
 What remains binding from the old docs is the *structure*, not the colour:
 `UI:UX.md`'s Key Screens & Components (Marketplace, Connectors, Pentest, AI

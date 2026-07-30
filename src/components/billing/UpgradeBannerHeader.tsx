@@ -30,9 +30,13 @@ export function UpgradeBannerHeader() {
   if (!isAtCapacity || usageStats.planName === "enterprise") return null;
 
   return (
-    <div className="bg-dharma-warning-bg border-b border-dharma-warning px-4 py-3 sm:px-6">
-      <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-        <div className="flex items-start gap-3">
+    <div className="bg-dharma-warning-bg border-b border-dharma-warning px-4 py-3 sm:px-5 lg:px-6">
+      {/* max-w-[88rem] and the shell's padding, not Tailwind's max-w-7xl (1280px)
+          with sm:px-6. The banner sits in the chrome above <main>, so if its rail
+          does not match the page container exactly its left edge misaligns with
+          the page heading beneath it — visible on any screen wider than 1280px. */}
+      <div className="mx-auto flex max-w-[88rem] items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
           <AlertTriangle className="text-dharma-ink w-5 h-5 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-dharma-ink">
@@ -43,7 +47,7 @@ export function UpgradeBannerHeader() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-4">
           <Link
             href={"/dashboard/settings/billing?tab=plans" as any}
             className="text-sm font-semibold text-dharma-ink hover:text-dharma-ink underline underline-offset-2"
