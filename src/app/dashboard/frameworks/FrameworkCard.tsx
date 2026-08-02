@@ -38,11 +38,23 @@ interface FrameworkCardProps {
  *
  * Bands intentionally match ScoreGauge's bandFor().
  */
-function getProgressStatus(pct: number): {
+function getProgressStatus(pct: number, controlCount: number): {
   colour: string;
   progressColour: string;
   label: string;
 } {
+  // A framework with no controls yet is not "0% compliant" — there is nothing
+  // to be compliant with. Colouring it danger-red made an unconfigured
+  // framework indistinguishable from one failing every control it has, so it
+  // gets its own neutral state.
+  if (controlCount === 0) {
+    return {
+      colour: "text-dharma-ink-secondary",
+      progressColour: "[&>div]:bg-dharma-border-strong",
+      label: "Not yet configured",
+    };
+  }
+
   if (pct >= 80) {
     return {
       colour: "text-dharma-info",
@@ -77,7 +89,8 @@ export function FrameworkCard({
   inProgressCount,
   notApplicableCount,
 }: FrameworkCardProps) {
-  const status = getProgressStatus(progressPercentage);
+  const isUnconfigured = controlCount === 0;
+  const status = getProgressStatus(progressPercentage, controlCount);
   const notStarted =
     controlCount - compliantCount - inProgressCount - notApplicableCount;
 
@@ -91,11 +104,13 @@ export function FrameworkCard({
         <div
           className={cn(
             "absolute inset-x-0 top-0 h-1 rounded-t-xl",
-            progressPercentage >= 80
-              ? "bg-dharma-info"
-              : progressPercentage >= 40
-                ? "bg-dharma-warning"
-                : "bg-dharma-danger",
+            isUnconfigured
+              ? "bg-dharma-border-strong"
+              : progressPercentage >= 80
+                ? "bg-dharma-info"
+                : progressPercentage >= 40
+                  ? "bg-dharma-warning"
+                  : "bg-dharma-danger",
           )}
           aria-hidden="true"
         />
@@ -137,13 +152,19 @@ export function FrameworkCard({
                 Overall Compliance
               </span>
               <span className={cn("text-xl font-bold tabular-nums", status.colour)}>
-                {Math.round(progressPercentage)}%
+                {/* An em-dash, not "0%": a framework with no controls has no
+                    compliance percentage to report. */}
+                {isUnconfigured ? "—" : `${Math.round(progressPercentage)}%`}
               </span>
             </div>
             <Progress
-              value={progressPercentage}
+              value={isUnconfigured ? 0 : progressPercentage}
               className={cn("h-2.5", status.progressColour)}
-              aria-label={`${name} compliance: ${Math.round(progressPercentage)}%`}
+              aria-label={
+                isUnconfigured
+                  ? `${name}: no controls configured yet`
+                  : `${name} compliance: ${Math.round(progressPercentage)}%`
+              }
             />
             <p className={cn("text-xs font-medium", status.colour)}>
               {status.label}

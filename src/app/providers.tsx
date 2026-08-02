@@ -5,7 +5,9 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TRPCReactProvider } from "@/hooks/trpc";
-import { StripeProvider } from "@/components/billing/StripeProvider";
+// StripeProvider is deliberately NOT mounted here. Mounting it app-wide made
+// every route load js.stripe.com on first paint, for a context no component
+// outside billing consumes. Billing screens wrap themselves in it instead.
 
 export function Providers({
   children,
@@ -18,7 +20,7 @@ export function Providers({
     <SessionProvider session={session}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TRPCReactProvider>
-          <StripeProvider>{children}</StripeProvider>
+          {children}
         </TRPCReactProvider>
         <Toaster richColors position="bottom-right" />
       </ThemeProvider>
