@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { formatPlanPrice } from "./format";
 
 export function BillingOverview() {
   const { data: currentPlan, isLoading: planLoading } = api.billing.getCurrentPlan.useQuery();
@@ -24,7 +25,14 @@ export function BillingOverview() {
 
   // Fallback shape must carry `limits` too, or the allowances section silently
   // disappears for any org whose plan has not loaded yet.
-  const plan = currentPlan || { name: "free", displayName: "Free", price: 0, features: {}, limits: {} };
+  const plan = currentPlan || {
+    name: "free",
+    displayName: "Free",
+    price: 0,
+    currency: "USD",
+    features: {},
+    limits: {},
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -60,8 +68,10 @@ export function BillingOverview() {
           
           <div className="pt-4 border-t">
             <p className="text-sm text-dharma-ink-secondary mb-1">Price per month</p>
+            {/* Currency from the Plan row, not a hardcoded "$": Razorpay
+                India sells in INR while the Stripe prices were USD. */}
             <p className="text-xl font-bold">
-              ${(plan.price || 0).toFixed(2)}
+              {formatPlanPrice(plan.price, plan.currency)}
               <span className="text-sm font-normal text-dharma-ink-secondary">/mo</span>
             </p>
           </div>
@@ -73,6 +83,21 @@ export function BillingOverview() {
                 Upgrade Plan
               </Button>
             </Link>
+            {/* Phase 3c: this used to open Stripe's hosted portal directly.
+                Razorpay has no equivalent, so it now points at Dharma's own
+                management screen, which works for both providers — and for
+                Stripe orgs that screen still offers the hosted portal. Only
+                offered on a paid plan: on Free there is nothing to manage. */}
+            {subscription?.plan && plan.name !== "free" && (
+              <Link
+                href={"/dashboard/settings/billing?tab=manage" as any}
+                className="w-full"
+              >
+                <Button variant="outline" className="w-full">
+                  Manage subscription
+                </Button>
+              </Link>
+            )}
           </CardFooter>
         )}
       </Card>
