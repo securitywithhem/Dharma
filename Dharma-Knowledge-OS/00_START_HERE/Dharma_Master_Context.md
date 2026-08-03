@@ -3,7 +3,7 @@ title: Dharma Master Context
 folder: 00_START_HERE
 tags: [dharma, overview, context, second-brain]
 source_docs: [README.md, 1_PRD.md, 2_TRD.md, 6_IMPLEMENTATION_PLAN.md, "Future Scope PRD/TRD/Appflow/BackendSchema/UI-UX/Implementationplan (absorbed 2026-07-23, source vault since deleted)", packages/db/schema.prisma]
-last_updated: 2026-07-23
+last_updated: 2026-08-04
 status: reviewed
 ---
 
@@ -27,8 +27,8 @@ The numbered planning docs (`1_PRD.md`–`6_IMPLEMENTATION_PLAN.md`) describe a 
 
 There was a second, distinctly-named document set — "Dharma Future Scope – PRD/TRD/App Flow/Backend Schema/UI-UX/Implementation Plan" — that picked up exactly where the MVP PRD's Section 6 left off, planning Phase 3b through Phase 9 (billing, marketplace, connectors, pentest, cross-walking, AI advisor, enterprise/white-label, MSSP). These lived in `obsidian-vaults/Dharma-Project/` under unnumbered filenames (`PRD.md`, `TRD.md`, `Appflow.md`, `BackendSchema.md`, `UI:UX.md`, `Implementationplan.md`) — that vault has since been deleted (its content is absorbed into this vault and remains in git history); see [[Roadmap]] for the full phase breakdown now sourced from it.
 
-The live schema (`packages/db/schema.prisma`) has **47 models**, closely matching that Future Scope spec but with real, documented deviations (e.g. embeddings stay `vector(384)`/Ollama, not the spec's `vector(1536)`/OpenAI; `AuditLog` not `AuditEvent`; MSSP cross-tenant access uses an explicit revocable `MsspGrant` allow-list, not a role-based RLS bypass). It includes everything the Future Scope docs planned, plus a few things neither doc set mentions:
-- Billing/plans (`Plan`)
+The live schema (`packages/db/schema.prisma`) has **49 models**, closely matching that Future Scope spec but with real, documented deviations (e.g. embeddings stay `vector(384)`/Ollama, not the spec's `vector(1536)`/OpenAI; `AuditLog` not `AuditEvent`; MSSP cross-tenant access uses an explicit revocable `MsspGrant` allow-list, not a role-based RLS bypass). It includes everything the Future Scope docs planned, plus a few things neither doc set mentions:
+- Billing/plans (`Plan`, `ProcessedWebhookEvent`) — provider-agnostic across Stripe and Razorpay; see [[Billing_And_Payments]]
 - Marketplace (`MarketplaceItem`, `MarketplaceReview`, `MarketplaceItemRevision`, `ImportedItem`)
 - Cloud connectors (`Connector`, `EvidenceMapping`, `Webhook`, `WebhookDelivery`)
 - Pentest/vuln management (`PenTest`, `Vulnerability`, `Asset`)
@@ -48,7 +48,7 @@ The live schema (`packages/db/schema.prisma`) has **47 models**, closely matchin
 2. Evidence management with pgvector-backed AI mapping
 3. Policy drafting via local RAG (Ollama + `RegulationSnippet`)
 4. Cryptographic audit trail (SHA-256 hash chain)
-5. Multi-tenant billing (`Plan`, Stripe per README)
+5. Multi-tenant billing (`Plan`) behind a provider-agnostic payment interface — Razorpay is the live provider, Stripe is retained; see [[Billing_And_Payments]]
 6. Marketplace for frameworks/controls
 7. Cloud connectors + evidence auto-mapping
 8. Pentest/vulnerability tracking
@@ -66,4 +66,6 @@ DPDP Act 2023, ISO 27001:2022, SOC 2 Type II — see [[ISO_27001]] and [[SOC_2]]
 - Product vision → [[Vision]], [[Mission]], [[Product_Principles]]
 - Full feature/phase breakdown → [[Feature_Backlog]], [[Roadmap]]
 - Schema detail → [[Database_Design]]
+- Billing/payments (two providers, entitlements, dunning) → [[Billing_And_Payments]]
+- Metrics, dashboards, tracing → [[Observability]]
 - Current build status → [[Development_Status]]

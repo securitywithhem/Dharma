@@ -73,9 +73,12 @@ export default function MarketplacePage() {
                 <h2 className="text-2xl font-semibold text-dharma-ink">
                   All Items
                 </h2>
+                {/* getPublicItems returns { items, count } — `total` was never
+                    a field on the response, so this rendered an empty string.
+                    The pagination controls below already read `count`. */}
                 {itemsData && (
                   <p className="text-sm text-dharma-ink-secondary">
-                    {itemsData.total} results
+                    {itemsData.count ?? 0} {itemsData.count === 1 ? "result" : "results"}
                   </p>
                 )}
               </div>

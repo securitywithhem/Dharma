@@ -72,15 +72,24 @@ describe("database foundation", () => {
     expect(result.brokenAtId).toBe("log_2");
   });
 
-  it("seeds the default organization and frameworks", async () => {
+  // Frameworks are no longer seeded here — scripts/seed-frameworks.ts owns
+  // them, sourced from data/frameworks/*.json. This seed used to createMany()
+  // stubs under different names ("ISO 27001" vs "ISO 27001:2022"), which the
+  // other script's upsert never matched, so every framework appeared twice.
+  it("seeds the default organization and removes legacy framework stubs", async () => {
     const mockClient = {
       organization: {
-        upsert: jest.fn().mockResolvedValue({
-          id: "org-default"
-        })
+        upsert: jest.fn().mockResolvedValue({ id: "org-default" })
       },
       framework: {
-        createMany: jest.fn().mockResolvedValue({ count: 3 })
+        findMany: jest.fn().mockResolvedValue([
+          // no evidence attached → disposable
+          { id: "fw-iso", name: "ISO 27001", controls: [{ _count: { evidence: 0 } }] },
+          // evidence attached → must be kept, not cascade-deleted
+          { id: "fw-soc", name: "SOC 2", controls: [{ _count: { evidence: 2 } }] }
+        ]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+        createMany: jest.fn()
       },
       user: {
         upsert: jest.fn()
@@ -91,10 +100,13 @@ describe("database foundation", () => {
 
     expect(result.organizationId).toBe("org-default");
     expect(mockClient.organization.upsert).toHaveBeenCalled();
-    expect(mockClient.framework.createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        skipDuplicates: true
-      }),
-    );
+
+    // No framework may be created by this seed any more.
+    expect(mockClient.framework.createMany).not.toHaveBeenCalled();
+
+    // Only the evidence-free stub is deleted.
+    expect(mockClient.framework.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["fw-iso"] } }
+    });
   });
 });

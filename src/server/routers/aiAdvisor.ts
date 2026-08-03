@@ -17,9 +17,50 @@ import { TRPCError } from "@trpc/server";
 import { createAuditLog } from "@/server/audit-log";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc";
 import { runAdvisorTurn } from "@/server/ai/advisorService";
+import { checkAdvisorHealth } from "@/server/ai/advisorHealth";
+import { EmbeddingDimensionError } from "@/server/ai/embeddingModels";
+import { EmbeddingFailedError } from "@/server/ai/embeddingClient";
 import { getMonthlyTokenBudget, getMonthlyTokensUsed } from "@/server/ai/usageLimits";
 
+/**
+ * Convert an embedding-layer failure into a typed, user-safe tRPC error.
+ *
+ * The raw text ("Ollama embedding failed: connect ECONNREFUSED …") used to
+ * reach the chat panel and be rendered in a toast. It leaks infrastructure
+ * detail and tells the user nothing actionable, so it now stays in the server
+ * log and the client gets SERVICE_UNAVAILABLE with plain copy. Anything that
+ * is not an embedding failure is rethrown untouched — this must not become a
+ * catch-all that swallows genuine bugs.
+ */
+function toUserSafeAdvisorError(err: unknown): never {
+  const isEmbeddingFailure =
+    err instanceof EmbeddingFailedError ||
+    err instanceof EmbeddingDimensionError ||
+    (err instanceof Error && /ollama|embedding/i.test(err.message));
+
+  if (err instanceof TRPCError || !isEmbeddingFailure) throw err;
+
+  console.error("[ai-advisor] turn failed at the embedding layer:", err);
+  throw new TRPCError({
+    code: "SERVICE_UNAVAILABLE",
+    message: "The AI assistant is temporarily unavailable — try again shortly.",
+    cause: err,
+  });
+}
+
 export const aiAdvisorRouter = createTRPCRouter({
+  /**
+   * Is the advisor actually usable right now? Called on panel mount so the UI
+   * can show a degraded banner instead of accepting a message that is
+   * guaranteed to fail. See advisorHealth.ts for what "usable" covers.
+   */
+  checkHealth: orgProcedure.query(async () => {
+    const health = await checkAdvisorHealth();
+    // The compatibility block names env vars and models — operator detail that
+    // does not belong in a tenant-facing payload. The UI only needs these three.
+    return { healthy: health.healthy, model: health.model, message: health.message };
+  }),
+
   /**
    * Send a user message. Creates a session if `sessionId` is omitted. Enforces
    * per-org rate limit + monthly token budget, runs RAG retrieval + guardrails,
@@ -33,12 +74,16 @@ export const aiAdvisorRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return runAdvisorTurn(ctx.prisma, {
-        organizationId: ctx.session.user.organizationId,
-        userId: ctx.session.user.id,
-        sessionId: input.sessionId,
-        message: input.message,
-      });
+      try {
+        return await runAdvisorTurn(ctx.prisma, {
+          organizationId: ctx.session.user.organizationId,
+          userId: ctx.session.user.id,
+          sessionId: input.sessionId,
+          message: input.message,
+        });
+      } catch (err) {
+        toUserSafeAdvisorError(err);
+      }
     }),
 
   /**

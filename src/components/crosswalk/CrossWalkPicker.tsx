@@ -211,7 +211,10 @@ export function CrossWalkPicker({ frameworkAId, frameworkBId, frameworkAName, fr
                     className="flex items-center justify-between gap-3 rounded-md border border-dharma-border bg-dharma-bg px-3 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium">
+                      <p
+                        className="truncate text-xs font-medium"
+                        title={s.code ? `${s.code} — ${s.title}` : s.title}
+                      >
                         {s.code && <span className="mr-1 font-mono text-dharma-ink-secondary">{s.code}</span>}
                         {s.title}
                       </p>

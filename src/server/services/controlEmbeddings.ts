@@ -15,8 +15,9 @@
 
 import type { PrismaClient } from "@prisma/client";
 import { getEmbedding } from "@/workers/ollama";
+import { assertEmbeddingDimension, getEmbeddingModel } from "@/server/ai/embeddingModels";
 
-const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING || "nomic-embed-text";
+const OLLAMA_MODEL_EMBEDDING = getEmbeddingModel();
 
 /** Builds the text embedded for a control — kept in one place so search relevance stays consistent. */
 export function controlEmbeddingText(c: { title: string; description: string; code?: string | null }): string {
@@ -48,7 +49,10 @@ export async function embedControl(prisma: PrismaClient, controlId: string): Pro
   }
 
   try {
-    const embedding = await getEmbedding(text, OLLAMA_MODEL_EMBEDDING);
+    const embedding = assertEmbeddingDimension(
+      await getEmbedding(text, OLLAMA_MODEL_EMBEDDING),
+      OLLAMA_MODEL_EMBEDDING,
+    );
     await prisma.$executeRawUnsafe(
       `UPDATE "Control" SET embedding = $1::vector, "embeddingStatus" = 'SUCCESS', "embeddingError" = NULL, "embeddingAttempts" = "embeddingAttempts" + 1, "lastEmbeddingAttempt" = now() WHERE id = $2`,
       `[${embedding.join(",")}]`,

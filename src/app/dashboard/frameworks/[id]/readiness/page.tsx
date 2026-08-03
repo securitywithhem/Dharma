@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { api } from "@/hooks/trpc";
@@ -15,12 +15,13 @@ import { RecommendationsList } from "@/components/readiness/RecommendationsList"
 const RECOMPUTE_COOLDOWN_MS = 60_000;
 const POLL_INTERVAL_MS = 3000;
 
+// Next.js 14: client-component `params` is a plain object, not a Promise.
 interface ReadinessPageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export default function ReadinessPage({ params }: ReadinessPageProps) {
-  const { id: frameworkId } = use(params);
+  const { id: frameworkId } = params;
   const utils = api.useUtils();
 
   const { data: framework } = api.framework.getById.useQuery({ id: frameworkId });

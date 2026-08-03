@@ -63,10 +63,42 @@ export const rolesRouter = createTRPCRouter({
   list: permissionProcedure("roles.manage").query(async ({ ctx }) => {
     const organizationId = ctx.session.user.organizationId;
     await ensureDefaultRoles(ctx.prisma, organizationId);
-    return ctx.prisma.customRole.findMany({
+    const roles = await ctx.prisma.customRole.findMany({
       where: { organizationId },
       orderBy: [{ isDefault: "desc" }, { name: "asc" }],
       include: { _count: { select: { users: true } } },
+    });
+
+    // MEMBER COUNT — why this is not just `_count.users`.
+    //
+    // `_count.users` counts only EXPLICIT assignments (User.customRoleId). A
+    // user who has never been re-assigned keeps customRoleId = null and draws
+    // their permissions from the legacy `role` enum instead — that fallback is
+    // deliberate (see the comment on User.customRoleId in schema.prisma), and
+    // the built-in roles exist precisely to mirror those enum values. So on a
+    // normally-seeded org every member sat on the legacy path and every role
+    // reported 0 members, while Settings → Team listed them correctly.
+    //
+    // The effective membership of a built-in role is therefore: explicit
+    // assignments + members still on the matching legacy enum. We resolve it
+    // at read time rather than backfilling customRoleId, because a backfill
+    // would snapshot today's permissions onto every user and silently detach
+    // them from LEGACY_ROLE_PERMISSIONS — changing authorization behaviour to
+    // fix a display bug. The legacy enum stays canonical until a user is
+    // explicitly assigned a role; that is the rule the permission middleware
+    // already enforces.
+    const legacyCounts = await ctx.prisma.user.groupBy({
+      by: ["role"],
+      where: { organizationId, customRoleId: null, isActive: true },
+      _count: { _all: true },
+    });
+    const legacyByRole = new Map(legacyCounts.map((r) => [r.role as string, r._count._all]));
+    const legacyRoleForName = new Map(DEFAULT_ROLE_SEEDS.map((s) => [s.name, s.legacyRole as string]));
+
+    return roles.map((role) => {
+      const legacyRole = role.isDefault ? legacyRoleForName.get(role.name) : undefined;
+      const legacyMembers = legacyRole ? (legacyByRole.get(legacyRole) ?? 0) : 0;
+      return { ...role, memberCount: role._count.users + legacyMembers };
     });
   }),
 

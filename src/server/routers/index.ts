@@ -29,6 +29,8 @@ import { msspRouter } from "@/server/routers/mssp";
 import { endpointRouter } from "@/server/routers/endpoint";
 import { regulatoryRouter } from "@/server/routers/regulatory";
 import { apiKeyRouter } from "@/server/routers/apiKey";
+import { organizationRouter } from "@/server/routers/organization";
+import { userRouter } from "@/server/routers/user";
 
 export const appRouter = createTRPCRouter({
   audit: auditRouter,
@@ -40,6 +42,8 @@ export const appRouter = createTRPCRouter({
   framework: frameworkRouter,
   health: healthRouter,
   settings: settingsRouter,
+  organization: organizationRouter,
+  user: userRouter,
   onboarding: onboardingRouter,
   connector: connectorRouter,
   evidenceMapping: evidenceMappingRouter,

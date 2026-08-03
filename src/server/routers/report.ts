@@ -128,7 +128,20 @@ const reportScheduleRouter = createTRPCRouter({
         action: 'REPORT_SCHEDULE_DELETED',
         entity: 'ReportSchedule',
         entityId: existing.id,
-        changes: { title: existing.title },
+        // ReportSchedule has no soft-delete, so the audit event is the only
+        // remaining record of the configuration. Capture everything needed to
+        // recreate it by hand — a title alone cannot answer "what cadence and
+        // recipients did we just destroy?", which is exactly the question an
+        // operator asks after an accidental delete.
+        changes: {
+          title: existing.title,
+          cron: existing.cron,
+          recipients: existing.recipients,
+          enabled: existing.enabled,
+          // reportConfig carries the report type and every filter the schedule
+          // was generating against.
+          reportConfig: existing.reportConfig,
+        },
       });
       return { deleted: true };
     }),

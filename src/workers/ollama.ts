@@ -64,7 +64,18 @@ export class ClassificationRetryableError extends Error {
 }
 
 /**
- * Generate 384-dimensional embedding using Ollama nomic-embed-text.
+ * Generate an embedding using the given Ollama model.
+ *
+ * Returns the model's vector AS-IS. This function used to `slice(0, 384)` the
+ * result so that a 768-dimension `nomic-embed-text` vector would fit the
+ * schema's `vector(384)` columns — but the first half of an embedding is not a
+ * smaller embedding, it is a different and meaningless vector, so every
+ * similarity search over those rows ranked on noise while nothing ever threw.
+ *
+ * Dimension is now a property of the configured model
+ * (`src/server/ai/embeddingModels.ts`) and is asserted by callers
+ * (`embeddingClient.embedText`), so a mismatch fails loudly as the
+ * configuration error it is. See embeddingModels.ts for the full rationale.
  */
 export async function getEmbedding(text: string, model: string): Promise<number[]> {
   const prompt = text.trim() || "empty query";
@@ -74,7 +85,7 @@ export async function getEmbedding(text: string, model: string): Promise<number[
     if (!Array.isArray(embedding) || embedding.length === 0) {
       throw new ClassificationRetryableError("Ollama returned an empty or invalid embedding array.");
     }
-    return embedding.slice(0, 384);
+    return embedding;
   } catch (err) {
     if (err instanceof ClassificationRetryableError) throw err;
     throw new ClassificationRetryableError(`Ollama embedding failed: ${err instanceof Error ? err.message : String(err)}`);

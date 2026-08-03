@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertTestRoutesEnabled } from "@/server/testRoutes";
 import { prisma } from "@/server/db";
 
 /**
@@ -11,9 +12,9 @@ import { prisma } from "@/server/db";
  * exercise.
  */
 export async function GET(req: NextRequest) {
-  if (process.env.NODE_ENV === "production" && process.env.ENABLE_E2E_AUTH !== "true") {
-    return new NextResponse("Not allowed in production", { status: 403 });
-  }
+  const blocked = assertTestRoutesEnabled();
+  if (blocked) return blocked;
+
 
   const email = req.nextUrl.searchParams.get("email") ?? "admin@dharma.local";
   const user = await prisma.user.findUnique({ where: { email } });

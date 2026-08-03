@@ -116,8 +116,37 @@ export default function SsoSettingsPage() {
     onError: (error) => toast.error(error.message),
   });
 
+  // A bare full-height skeleton is indistinguishable from a blank page when the
+  // query is slow, which is exactly how this page was reported. Keep the
+  // heading and section shapes so the user can always tell what is loading —
+  // and surface a real failure instead of leaving the area empty forever.
   if (configQuery.isLoading) {
-    return <Skeleton className="h-96 w-full rounded-lg" />;
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Single Sign-On</h1>
+          <p className="text-sm text-dharma-ink-secondary">Loading your identity provider configuration…</p>
+        </div>
+        <Skeleton className="h-40 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  if (configQuery.isError) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Single Sign-On</h1>
+          <p className="text-sm text-dharma-ink-secondary">
+            We could not load your identity provider configuration.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => void configQuery.refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   const config = configQuery.data;

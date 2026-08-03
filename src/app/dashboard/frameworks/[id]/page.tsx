@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -25,8 +25,12 @@ import { ControlTree } from "@/components/controls/ControlTree";
 import { DomainBreakdown } from "./DomainBreakdown";
 import { cn } from "@/lib/utils";
 
+// Next.js 14: `params` for a client-component page is a plain synchronous
+// object, not a Promise. Passing it to React's `use()` throws
+// "An unsupported type was passed to use(): [object Object]".
+// See pentests/[id]/page.tsx for the same convention.
 interface FrameworkDetailPageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 function getProgressStatus(pct: number) {
@@ -36,7 +40,7 @@ function getProgressStatus(pct: number) {
 }
 
 export default function FrameworkDetailPage({ params }: FrameworkDetailPageProps) {
-  const { id } = use(params);
+  const { id } = params;
   const utils = api.useUtils();
   const [controlView, setControlView] = useState<"tree" | "flat">("tree");
 

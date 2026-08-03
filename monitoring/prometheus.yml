@@ -1,6 +1,14 @@
 # ============================================================
 # monitoring/prometheus.yml
 # Prometheus scrape configuration for Dharma services.
+#
+# Also remote_writes every scraped sample to Grafana Cloud
+# (stack "dharma-local", region ap-south-1) so the same data is
+# viewable at https://snazzybeach1275.grafana.net without needing
+# this local Prometheus/Grafana pair to stay up. The API key lives
+# in monitoring/secrets/grafana_cloud_api_key (gitignored, generated
+# per machine) — regenerate via Connections > Add new connection >
+# Hosted Prometheus metrics > From my local Prometheus server if lost.
 # ============================================================
 
 global:
@@ -10,6 +18,13 @@ global:
   external_labels:
     environment: 'development'
     service: 'dharma'
+
+# ── Ship every scraped sample to Grafana Cloud Hosted Prometheus ────────
+remote_write:
+  - url: https://prometheus-prod-43-prod-ap-south-1.grafana.net/api/prom/push
+    basic_auth:
+      username: '3419742'
+      password_file: /etc/prometheus/secrets/grafana_cloud_api_key
 
 # ── Alerting (optional – configure Alertmanager separately) ──────────────
 # alerting:
@@ -51,6 +66,9 @@ scrape_configs:
   # Application metrics (Next.js app + worker) pushed via OTLP to the
   # OpenTelemetry Collector, which re-exposes them here. Enable by setting
   # OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 on nextjs/worker.
+  # Exposes trpc_request_duration_ms, queue_jobs_processed_total,
+  # queue_job_duration_ms, auth_attempts_total (see
+  # src/lib/observability/metrics.ts).
   - job_name: 'otel-collector'
     static_configs:
       - targets: ['otel-collector:8889']
@@ -75,3 +93,26 @@ scrape_configs:
         labels:
           component: 'proxy'
     scrape_interval: 30s
+
+  # Ollama health – Ollama has no native /metrics endpoint, so
+  # blackbox_exporter's http_2xx module hits its /api/version endpoint and
+  # Prometheus records the result as a standard `probe_success` gauge
+  # (1 = healthy, 0 = down/unreachable). This backs the "Ollama service
+  # health" panel — the same degraded-vs-healthy signal the app's own
+  # health.checkAll tRPC procedure surfaces to the Compliance Advisor banner.
+  - job_name: 'ollama_probe'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ['http://ollama:11434/api/version']
+        labels:
+          component: 'ollama'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 15s
