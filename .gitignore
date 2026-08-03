@@ -51,3 +51,6 @@ crash.log
 .claude-flow/
 .swarm/
 ruvector.db
+
+# Grafana Cloud remote_write credentials (generated per machine, never commit)
+monitoring/secrets/
