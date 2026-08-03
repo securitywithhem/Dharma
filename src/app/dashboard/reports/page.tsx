@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { humanizeCron } from "@/lib/cronHumanize";
 import {
   Select,
   SelectContent,
@@ -66,12 +68,19 @@ function ReportsTable() {
     },
     { refetchInterval: 5000 },
   );
+  // Deleting a report also deletes its stored PDF from object storage, so the
+  // action is unrecoverable and must be confirmed.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const del = api.report.delete.useMutation({
     onSuccess: () => {
       toast.success("Report deleted");
+      setPendingDelete(null);
       void utils.report.list.invalidate();
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      setPendingDelete(null);
+      toast.error(e.message);
+    },
   });
 
   return (
@@ -152,7 +161,8 @@ function ReportsTable() {
                           variant="ghost"
                           size="icon"
                           disabled={del.isPending}
-                          onClick={() => del.mutate({ id: r.id })}
+                          aria-label={`Delete report ${r.title}`}
+                          onClick={() => setPendingDelete({ id: r.id, title: r.title })}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -165,6 +175,21 @@ function ReportsTable() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Delete this report?"
+        description={
+          <>
+            &ldquo;{pendingDelete?.title}&rdquo; and its generated PDF will be permanently removed.
+            This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete report"
+        pending={del.isPending}
+        onConfirm={() => pendingDelete && del.mutate({ id: pendingDelete.id })}
+      />
     </div>
   );
 }
@@ -172,12 +197,19 @@ function ReportsTable() {
 function SchedulesTab() {
   const utils = api.useUtils();
   const listQuery = api.report.schedule.list.useQuery();
+  // Deleting a schedule is irreversible — there is no soft-delete on
+  // ReportSchedule — so the trash icon opens a confirmation instead of firing.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const del = api.report.schedule.delete.useMutation({
     onSuccess: () => {
       toast.success("Schedule deleted");
+      setPendingDelete(null);
       void utils.report.schedule.list.invalidate();
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      setPendingDelete(null);
+      toast.error(e.message);
+    },
   });
   const update = api.report.schedule.update.useMutation({
     onSuccess: () => void utils.report.schedule.list.invalidate(),
@@ -214,7 +246,9 @@ function SchedulesTab() {
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.title}</TableCell>
-                    <TableCell className="text-xs font-mono">{s.cron}</TableCell>
+                    <TableCell className="text-xs" title={s.cron}>
+                      {humanizeCron(s.cron)}
+                    </TableCell>
                     <TableCell className="text-xs">{recipients.length}</TableCell>
                     <TableCell>
                       <Button
@@ -228,7 +262,12 @@ function SchedulesTab() {
                       </Button>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => del.mutate({ id: s.id })}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete schedule ${s.title}`}
+                        onClick={() => setPendingDelete({ id: s.id, title: s.title })}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -239,6 +278,22 @@ function SchedulesTab() {
           </Table>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Delete this schedule?"
+        description={
+          <>
+            &ldquo;{pendingDelete?.title}&rdquo; will stop generating reports. Schedules cannot be
+            restored — its cadence, recipients and filters are recorded in the audit log so it can
+            be recreated by hand.
+          </>
+        }
+        confirmLabel="Delete schedule"
+        pending={del.isPending}
+        onConfirm={() => pendingDelete && del.mutate({ id: pendingDelete.id })}
+      />
     </Card>
   );
 }
