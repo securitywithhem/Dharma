@@ -11,14 +11,46 @@
 //
 // What IS real and worth surfacing: which sign-in methods are linked to this
 // account (Account rows), and whether the org enforces SSO-only login.
+import { decode } from "next-auth/jwt";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+
+/**
+ * Resolve when the caller's session actually expires.
+ *
+ * `ctx.session.expires` comes back null on the JWT strategy — NextAuth
+ * populates it on the client-side session object, not on the one
+ * `getServerSession` hands to a route handler — which is why the Security page
+ * rendered a bare dash. The JWT's own `exp` claim is the authoritative answer
+ * and is right there in the request cookie, so we read it directly.
+ *
+ * Returns null (never throws, never guesses) if the cookie is absent or
+ * undecodable — a dash is correct when we genuinely do not know.
+ */
+async function resolveSessionExpiry(headers: Headers): Promise<Date | null> {
+  const cookieHeader = headers.get("cookie");
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!cookieHeader || !secret) return null;
+
+  // `__Secure-` prefix is used whenever NextAuth issues the cookie over HTTPS.
+  for (const name of ["__Secure-next-auth.session-token", "next-auth.session-token"]) {
+    const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name.replace(/\./g, "\\.")}=([^;]+)`));
+    if (!match) continue;
+    try {
+      const token = await decode({ token: decodeURIComponent(match[1]), secret });
+      if (token?.exp && typeof token.exp === "number") return new Date(token.exp * 1000);
+    } catch {
+      // A malformed or foreign cookie is not an error worth failing the page over.
+    }
+  }
+  return null;
+}
 
 export const userRouter = createTRPCRouter({
   securityOverview: orgProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
     const organizationId = ctx.session.user.organizationId;
 
-    const [accounts, user, orgSettings] = await Promise.all([
+    const [accounts, user, orgSettings, sessionExpires] = await Promise.all([
       ctx.prisma.account.findMany({
         where: { userId },
         // Never select token columns — this feeds a client component.
@@ -32,6 +64,7 @@ export const userRouter = createTRPCRouter({
         where: { organizationId },
         select: { ssoEnforced: true },
       }),
+      resolveSessionExpiry(ctx.headers),
     ]);
 
     return {
@@ -39,7 +72,9 @@ export const userRouter = createTRPCRouter({
       emailVerified: user?.emailVerified ?? null,
       accountCreatedAt: user?.createdAt ?? null,
       role: ctx.session.user.role,
-      sessionExpires: ctx.session.expires,
+      // Prefer the JWT's `exp` claim; ctx.session.expires is null on this
+      // strategy. Falls back so a future move to database sessions still works.
+      sessionExpires: sessionExpires ?? ctx.session.expires ?? null,
       signInMethods: accounts,
       // Email magic-link logins leave no Account row, so an empty list still
       // means "email link" rather than "no way to sign in".

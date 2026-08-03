@@ -21,9 +21,10 @@ import type { DomainGap, FrameworkSeverity } from '@/lib/compliance/severity';
  * Not routed. Import it into a scratch page to view.
  */
 
-const SEVERITIES: FrameworkSeverity[] = ['critical', 'partial', 'healthy', 'complete'];
+const SEVERITIES: FrameworkSeverity[] = ['unconfigured', 'critical', 'partial', 'healthy', 'complete'];
 const GAPS: DomainGap[] = ['HIGH', 'MEDIUM', 'LOW', 'NONE'];
 const SAMPLE_PERCENT: Record<FrameworkSeverity, number> = {
+  unconfigured: 0,
   critical: 12,
   partial: 64,
   healthy: 88,

@@ -60,10 +60,25 @@ describe('getFrameworkSeverityFromCounts', () => {
     }
   });
 
-  it('reports an empty framework as critical, not complete', () => {
+  it('reports an empty framework as unconfigured — never complete', () => {
     // 0/0 is not "fully compliant" — reporting 100% ready for an unpopulated
     // framework in front of an auditor is the worst failure mode here.
-    expect(getFrameworkSeverityFromCounts(0, 0)).toBe('critical');
+    expect(getFrameworkSeverityFromCounts(0, 0)).toBe('unconfigured');
+    expect(getFrameworkSeverityFromCounts(0, 0)).not.toBe('complete');
+  });
+
+  it('distinguishes 0/0 from 0/N', () => {
+    // These used to be the same band, so a framework nobody had populated was
+    // indistinguishable from one with every control outstanding.
+    expect(getFrameworkSeverityFromCounts(0, 0)).toBe('unconfigured');
+    expect(getFrameworkSeverityFromCounts(0, 40)).toBe('critical');
+    expect(getFrameworkSeverityFromCounts(0, 0)).not.toBe(getFrameworkSeverityFromCounts(0, 40));
+    expect(SEVERITY_LABEL.unconfigured).not.toBe(SEVERITY_LABEL.critical);
+    expect(SEVERITY_ROLE.unconfigured).not.toBe(SEVERITY_ROLE.critical);
+  });
+
+  it('treats a negative control total as unconfigured rather than throwing', () => {
+    expect(getFrameworkSeverityFromCounts(0, -3)).toBe('unconfigured');
   });
 
   it('handles a fully compliant framework', () => {
@@ -75,7 +90,7 @@ describe('severity presentation maps', () => {
   it('labels every band, so severity is never hue-only', () => {
     // WCAG 1.4.1 — healthy and complete share the success role, so their
     // labels are load-bearing and must never be dropped.
-    for (const band of ['critical', 'partial', 'healthy', 'complete'] as const) {
+    for (const band of ['unconfigured', 'critical', 'partial', 'healthy', 'complete'] as const) {
       expect(SEVERITY_LABEL[band]).toBeTruthy();
       expect(SEVERITY_ROLE[band]).toBeTruthy();
     }
@@ -88,6 +103,8 @@ describe('severity presentation maps', () => {
     expect(severityNeedsAttention('partial')).toBe(true);
     expect(severityNeedsAttention('healthy')).toBe(false);
     expect(severityNeedsAttention('complete')).toBe(false);
+    // An unpopulated framework is a setup prompt, not a compliance gap.
+    expect(severityNeedsAttention('unconfigured')).toBe(false);
   });
 
   it('maps every domain gap level', () => {

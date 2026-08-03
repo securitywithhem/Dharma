@@ -22,7 +22,9 @@ export function BillingOverview() {
     );
   }
 
-  const plan = currentPlan || { name: "free", displayName: "Free", price: 0, features: {} };
+  // Fallback shape must carry `limits` too, or the allowances section silently
+  // disappears for any org whose plan has not loaded yet.
+  const plan = currentPlan || { name: "free", displayName: "Free", price: 0, features: {}, limits: {} };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -81,7 +83,30 @@ export function BillingOverview() {
           <CardTitle>Features Included</CardTitle>
           <CardDescription>What you have access to on the {plan.displayName} plan.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {/* On the Free plan every entry in `features` is false, so this card
+              used to render nothing but strikethroughs and read as "you get
+              nothing" — while the plan does include real allowances. Those live
+              in `plan.limits`, so show them first. Deliberately NOT solved by
+              adding positive keys to `features`: that map gates access in
+              src/server/services/entitlement.ts, and inventing entries there to
+              improve a card would be changing entitlements to fix copy. */}
+          {plan.limits && Object.keys(plan.limits).length > 0 && (
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-dharma-ink-secondary">
+                Included allowances
+              </p>
+              <ul className="space-y-2">
+                {Object.entries(plan.limits as Record<string, unknown>).map(([key, value]) => (
+                  <li key={key} className="flex items-center justify-between text-sm">
+                    <span className="text-dharma-ink-secondary">{formatFeatureName(key)}</span>
+                    <span className="font-medium text-dharma-ink">{formatLimit(key, value)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <ul className="space-y-4">
             {plan.features ? (
               Object.entries(plan.features).map(([key, enabled]) => (
@@ -102,6 +127,16 @@ export function BillingOverview() {
       </Card>
     </div>
   );
+}
+
+/** -1 is the convention for "no cap" in Plan.limits; storage is stored in MB. */
+function formatLimit(key: string, value: unknown): string {
+  if (typeof value !== "number") return String(value ?? "—");
+  if (value < 0) return "Unlimited";
+  if (/storageMb$/i.test(key)) {
+    return value >= 1024 ? `${(value / 1024).toFixed(value % 1024 === 0 ? 0 : 1)} GB` : `${value} MB`;
+  }
+  return value.toLocaleString();
 }
 
 function formatFeatureName(key: string): string {
