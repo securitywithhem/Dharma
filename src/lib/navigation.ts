@@ -98,14 +98,38 @@ export function isActive(pathname: string, href: string): boolean {
 }
 
 /** Turns an unrecognised slug into a readable crumb: "api-keys" → "Api Keys". */
+/**
+ * Slug words that are acronyms, not words. Without this, naive title-casing
+ * renders `sso` as "Sso" and `scim` as "Scim". Extend this map rather than
+ * special-casing at a call site, so a future acronym route cannot regress the
+ * same way.
+ */
+const ACRONYMS: Readonly<Record<string, string>> = Object.freeze({
+  sso: "SSO",
+  scim: "SCIM",
+  api: "API",
+  mssp: "MSSP",
+  ai: "AI",
+});
+
 function humanize(segment: string): string {
   return segment
     .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 
-export type Crumb = { href: string; label: string };
+/**
+ * Path segments that exist to group routes but have no page of their own.
+ *
+ * A crumb for one of these must render as plain text: linking it produced a
+ * real 404 on every Enterprise settings page, because Next prefetches
+ * breadcrumb links and `/dashboard/settings/enterprise` has no page.tsx.
+ */
+const NON_ROUTE_SEGMENTS: ReadonlySet<string> = new Set(["/dashboard/settings/enterprise"]);
+
+/** `href: null` marks a grouping segment that must not be rendered as a link. */
+export type Crumb = { href: string | null; label: string };
 
 /**
  * Builds the breadcrumb trail for a dashboard pathname, preferring the
@@ -133,7 +157,10 @@ export function breadcrumbsFor(pathname: string): Crumb[] {
     }
 
     const looksLikeId = /^[0-9a-f]{8,}$/i.test(segment) || /^c[a-z0-9]{20,}$/i.test(segment);
-    crumbs.push({ href, label: looksLikeId ? "Detail" : humanize(segment) });
+    crumbs.push({
+      href: NON_ROUTE_SEGMENTS.has(href) ? null : href,
+      label: looksLikeId ? "Detail" : humanize(segment),
+    });
   });
 
   return crumbs;

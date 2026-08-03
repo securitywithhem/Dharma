@@ -46,17 +46,23 @@ export function TopNav({ leading }: { leading?: React.ReactNode } = {}) {
             {crumbs.map((crumb, index) => {
               const last = index === crumbs.length - 1;
               return (
-                <li key={crumb.href} className="flex min-w-0 items-center gap-1">
+                <li key={crumb.href ?? crumb.label} className="flex min-w-0 items-center gap-1">
                   {index > 0 && (
                     <ChevronRight
                       aria-hidden
                       className="h-3.5 w-3.5 shrink-0 text-dharma-ink-secondary"
                     />
                   )}
-                  {last ? (
+                  {last || crumb.href === null ? (
+                    // A null href is a grouping segment with no page behind it.
+                    // Rendering it as a link 404s on prefetch.
                     <span
-                      aria-current="page"
-                      className="truncate font-medium text-dharma-ink"
+                      aria-current={last ? "page" : undefined}
+                      className={
+                        last
+                          ? "truncate font-medium text-dharma-ink"
+                          : "truncate text-dharma-ink-secondary"
+                      }
                     >
                       {crumb.label}
                     </span>

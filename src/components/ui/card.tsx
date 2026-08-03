@@ -1,3 +1,18 @@
+"use client";
+
+// This directive is load-bearing, not boilerplate. The density system below
+// calls React.createContext at module scope, and `createContext` does not
+// exist in the RSC build of React. Without "use client", any SERVER component
+// that imports Card fails at build time with "s.createContext is not a
+// function" — which is exactly what `next build` did, dying while collecting
+// page data for /auth/error and /auth/callback (both server components that
+// render a Card). Dev never caught it because the RSC boundary is resolved
+// lazily there.
+//
+// Marking the module client-side costs nothing: it already uses context and
+// forwardRef, so it could never have been a server component, and server
+// components may freely render client components.
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 

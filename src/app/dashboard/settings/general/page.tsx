@@ -32,8 +32,11 @@ function Field({
   isError: boolean;
   errorText?: string;
 }) {
+  // A <div>, not a <p>: Skeleton renders a <div>, and the browser auto-closes
+  // a <p> before nested block content — so the hydrated DOM did not match what
+  // React rendered on the server, throwing React #418/#422 on this page.
   return (
-    <p className="flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <span>{label}:</span>
       {isPending ? (
         <Skeleton className="h-4 w-40" />
@@ -42,7 +45,7 @@ function Field({
       ) : (
         <span>{value}</span>
       )}
-    </p>
+    </div>
   );
 }
 

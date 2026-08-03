@@ -49,8 +49,9 @@ async function cleanInPlaceArtifacts() {
 
   // Reviews first: MarketplaceReview cascades from the item, but deleting the
   // item is what we are about to do, so order matters for the count we report.
-  const [schedules, endpoints, apiKeys, marketplaceItems] = await Promise.all([
+  const [schedules, reports, endpoints, apiKeys, marketplaceItems] = await Promise.all([
     prisma.reportSchedule.deleteMany({ where: { title: e2eTitle } }),
+    prisma.report.deleteMany({ where: { title: e2eTitle } }),
     prisma.endpoint.deleteMany({ where: { hostname: e2ePrefix } }),
     prisma.apiKey.deleteMany({ where: { name: e2ePrefix } }),
     prisma.marketplaceItem.deleteMany({ where: { name: e2eTitle } }),
@@ -58,8 +59,8 @@ async function cleanInPlaceArtifacts() {
 
   console.log(
     `✅ Cleared in-place E2E rows — ${schedules.count} report schedules, ` +
-      `${endpoints.count} endpoints, ${apiKeys.count} API keys, ` +
-      `${marketplaceItems.count} marketplace items.`,
+      `${reports.count} generated reports, ${endpoints.count} endpoints, ` +
+      `${apiKeys.count} API keys, ${marketplaceItems.count} marketplace items.`,
   );
 }
 
@@ -91,15 +92,17 @@ async function main() {
   }
 
   if (!APPLY) {
-    const [schedules, endpoints, apiKeys, marketplaceItems] = await Promise.all([
+    const [schedules, reports, endpoints, apiKeys, marketplaceItems] = await Promise.all([
       prisma.reportSchedule.count({ where: { title: { startsWith: "E2E ", mode: "insensitive" } } }),
+      prisma.report.count({ where: { title: { startsWith: "E2E ", mode: "insensitive" } } }),
       prisma.endpoint.count({ where: { hostname: { startsWith: "e2e-", mode: "insensitive" } } }),
       prisma.apiKey.count({ where: { name: { startsWith: "e2e-", mode: "insensitive" } } }),
       prisma.marketplaceItem.count({ where: { name: { startsWith: "E2E ", mode: "insensitive" } } }),
     ]);
     console.log(
       `\nWOULD ALSO CLEAR in-place E2E rows — ${schedules} report schedules, ` +
-        `${endpoints} endpoints, ${apiKeys} API keys, ${marketplaceItems} marketplace items.`,
+        `${reports} generated reports, ${endpoints} endpoints, ${apiKeys} API keys, ` +
+        `${marketplaceItems} marketplace items.`,
     );
     console.log("\nDry run. Re-run with --apply to delete.");
     return;
