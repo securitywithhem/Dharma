@@ -3,7 +3,7 @@ title: Progress
 folder: 99_AI_MEMORY
 tags: [dharma, ai-memory, progress]
 source_docs: []
-last_updated: 2026-07-29
+last_updated: 2026-08-04
 status: stable
 ---
 
@@ -16,5 +16,7 @@ status: stable
 | 2026-07-27 | Design-system pass on top of the in-flight dashboard redesign: added the `--severity-*` ramp (+ `scripts/validate-severity-palette.js`), a single `StatusBadge`, `DharmaRing` (used by `ScoreGauge`), and `whiteLabel.resetTheme`. Fixed three real defects found on the way — the old `SeverityBadge` rendered HIGH and CRITICAL near-identically (both `destructive`); `cn()` silently stripped `text-primary-foreground` from every `size="sm"/"xs"` Button because tailwind-merge didn't know the custom `text-data`/`text-micro` font sizes (1.63:1, failed AA); and `--accent-foreground` was near-white on haldi at 2.98:1. See [[Design_System]]. |
 
 | 2026-07-29 | Retokening migration: brought 68 component files onto the existing design tokens — 534 raw Tailwind palette classes, 130 hex literals, and 143 `dark:` overrides removed. `src/components/ui/` needed no work (already clean); the drift was all at screen level. Found and fixed four real defects on the way: the white-label colour picker seeded `#d97706` (the retired saffron) so a tenant who had never set a brand colour saw a swatch matching nothing in the product; the magic-link sign-in email and the auditor HTML evidence package both still rendered in retired/generic palettes; and all four PDF report documents carried hand-copied duplicates of the same literals, now centralised in `src/lib/pdf/palette.ts`. Also consolidated the crosswalk `OverlapHeatmap`'s private blue ramp onto `--seq-*` (its old step 3 sat at 4.18:1). Added `scripts/audit-theme-drift.py` and `scripts/validate-token-contrast.js` as gates. Six pre-existing tinted-badge contrast failures fixed via `--*-on-tint`; zero regressions introduced. See [[Design_System]] and `../docs/theme-migration-checklist.md`. |
+
+| 2026-08-04 | Knowledge audit: every descriptive claim in the vault re-verified against live code rather than against other docs. Nine nodes corrected, two created ([[Billing_And_Payments]], [[Observability]]) for subsystems that had shipped undocumented. Confirmed Graphify indexes the **code tree only** — `graphify-out/.graphify_root` is the repo root and neither `graph.json` nor `manifest.json` contains a single `Dharma-Knowledge-OS` path — so no vault re-sync was applicable or run. Full report: `claude/knowledge-audit-2026-08-04.md`. |
 
 See [[Progress_Log]] in `05_DEVELOPMENT` for the code-facing mirror of this log.
