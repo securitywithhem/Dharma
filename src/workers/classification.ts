@@ -164,9 +164,10 @@ function truncateText(text: string, maxChars = 2000): string {
 // ------------------------------------------------------------------
 
 import { getEmbedding, generateText, ClassificationRetryableError } from "./ollama";
+import { getEmbeddingModel } from "@/server/ai/embeddingModels";
 
 const OLLAMA_MODEL_LLM = process.env.OLLAMA_MODEL_LLM || "llama3:8b";
-const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING || "nomic-embed-text";
+const OLLAMA_MODEL_EMBEDDING = getEmbeddingModel();
 
 /** Generate a 1-sentence compliance summary via Ollama. */
 async function generateSummary(text: string): Promise<string> {

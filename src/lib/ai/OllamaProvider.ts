@@ -7,6 +7,7 @@
 
 import type { InferenceProvider } from "./InferenceProvider";
 import { getEmbedding, generateText } from "@/workers/ollama";
+import { getEmbeddingModel } from "@/server/ai/embeddingModels";
 
 export class OllamaProvider implements InferenceProvider {
   private readonly baseUrl: string;
@@ -16,7 +17,7 @@ export class OllamaProvider implements InferenceProvider {
   constructor(
     baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
     llmModel = process.env.OLLAMA_MODEL_LLM ?? "llama3:8b",
-    embeddingModel = process.env.OLLAMA_MODEL_EMBEDDING ?? "nomic-embed-text",
+    embeddingModel = getEmbeddingModel(),
   ) {
     this.baseUrl = baseUrl;
     this.llmModel = llmModel;

@@ -180,7 +180,7 @@ services:
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_MODEL_LLM: ${OLLAMA_MODEL_LLM:-llama3:8b}
-      OLLAMA_MODEL_EMBEDDING: ${OLLAMA_MODEL_EMBEDDING:-nomic-embed-text}
+      OLLAMA_MODEL_EMBEDDING: ${OLLAMA_MODEL_EMBEDDING:-all-minilm}
     entrypoint: >
       /bin/sh -c "
         echo '⏳ Pulling embedding model: '$$OLLAMA_MODEL_EMBEDDING &&
