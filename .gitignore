@@ -15,6 +15,18 @@ playwright-report
 test-results
 
 # Environment files (NEVER commit secrets)
+#
+# Deny-by-default: ignore every envs/.env* file, then re-allow the two
+# committed templates explicitly. The previous list enumerated environments by
+# name, so a new one (envs/.env.qa, envs/.env.demo) would have been tracked by
+# default — the wrong way round for files that hold credentials.
+envs/.env*
+!envs/.env.example
+!envs/.env.docker.example
+# Intentionally committed: CI reads it for AUDIT_WRITER_MODE and the AES keys.
+# Every value in it is a throwaway test fixture — see the audit note in the
+# file itself. Nothing real may be added to it.
+!envs/.env.test
 .env
 .env.local
 .env.*.local
@@ -22,6 +34,17 @@ test-results
 .env.development
 .env.staging
 .env.production
+# Local backups taken before a credential rotation — these hold the OLD secrets.
+*.pre-rotation.bak
+
+# Standalone secret material (Grafana Cloud API key, service-account tokens).
+# monitoring/secrets/ held a live glc_ key that was untracked but NOT ignored,
+# i.e. one `git add .` away from being published.
+monitoring/secrets/
+**/secrets/
+*.pem
+*.key
+!**/*.public.key
 
 # Logs
 *.log
@@ -51,3 +74,7 @@ crash.log
 .claude-flow/
 .swarm/
 ruvector.db
+
+# Local backup output (pg dumps + MinIO snapshots). Real customer data —
+# must never be committed. The scheduler writes here via BACKUP_HOST_PATH.
+backups/

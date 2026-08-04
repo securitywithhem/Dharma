@@ -246,8 +246,15 @@ export function startPolicyWorker() {
 
   console.log(`[policy-worker] Workers started — "${REVIEW_QUEUE_NAME}" + "${POLICY_QUEUE_NAME}" (legacy drain)`);
 
-  // Return a combined "close" that drains both workers
+  // Return a combined "close" that drains both workers.
+  //
+  // `workers` is also exposed so callers can reach the underlying BullMQ
+  // instances. Without it this function's return value was the one entry in
+  // src/workers/index.ts with no `on()` method, so both of these queues were
+  // silently excluded from dead-letter alerting — a permanently failed policy
+  // review or legacy drain job would have gone unnoticed.
   return {
+    workers: [reviewWorker, legacyWorker],
     close: async () => {
       await Promise.all([reviewWorker.close(), legacyWorker.close()]);
     },

@@ -92,6 +92,50 @@ const envSchema = z.object({
   PENTEST_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
 });
 
-export const env = envSchema.parse(process.env);
+// ── Production placeholder guard ────────────────────────────────────────────
+// Every secret above keeps a development default so `npm run dev` and the test
+// suite work with no env file. That convenience is a production footgun: a
+// deploy that forgets to set NEXTAUTH_SECRET or MINIO_SECRET_KEY would boot
+// happily on a publicly-known value rather than failing. docker-compose.yml
+// already refuses to start on unset secrets (`${VAR:?...}`); this is the same
+// discipline enforced in-process, for deploys that don't go through compose
+// (k8s/helm, `next start` on a host, CI images).
+//
+// Deliberately a deny-list of the exact shipped defaults rather than "reject
+// anything short": operators may legitimately choose a value we'd otherwise
+// consider weak, but nobody legitimately chooses the string we published.
+const INSECURE_DEFAULTS: Record<string, readonly string[]> = {
+  DATABASE_URL: [
+    "postgresql://dharma:dharma_secure_password_change_me@localhost:5432/dharma_db?schema=public",
+  ],
+  NEXTAUTH_SECRET: ["replace-with-a-random-32-character-secret"],
+  MINIO_ACCESS_KEY: ["minioadmin"],
+  MINIO_SECRET_KEY: ["minioadmin", "minioadmin_change_me"],
+  ANCHOR_STORAGE_ACCESS_KEY: ["minioadmin"],
+  ANCHOR_STORAGE_SECRET_KEY: ["minioadmin", "minioadmin_change_me"],
+  CONNECTOR_ENCRYPTION_KEY: ["change-me-32-char-key-for-connectors"],
+  WEBHOOK_ENCRYPTION_KEY: ["change-me-32-char-key-for-webhooks"],
+};
+
+function assertNoInsecureDefaults(parsed: Record<string, unknown>): void {
+  if (parsed.NODE_ENV !== "production") return;
+
+  const offenders = Object.entries(INSECURE_DEFAULTS)
+    .filter(([key, bad]) => bad.includes(String(parsed[key] ?? "")))
+    .map(([key]) => key);
+
+  if (offenders.length > 0) {
+    throw new Error(
+      `Refusing to start in production with shipped placeholder secrets: ` +
+        `${offenders.join(", ")}. Set each to a unique generated value ` +
+        `(see envs/.env.example) before deploying.`,
+    );
+  }
+}
+
+const parsedEnv = envSchema.parse(process.env);
+assertNoInsecureDefaults(parsedEnv as unknown as Record<string, unknown>);
+
+export const env = parsedEnv;
 
 export type AppEnv = typeof env;

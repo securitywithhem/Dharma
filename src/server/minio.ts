@@ -8,13 +8,15 @@
  *   MINIO_ENDPOINT   – hostname or IP (default: localhost)
  *   MINIO_PORT       – port           (default: 9000)
  *   MINIO_USE_SSL    – "true" | "false" (default: false)
- *   MINIO_ACCESS_KEY – access key     (default: minioadmin)
- *   MINIO_SECRET_KEY – secret key     (default: minioadmin)
+ *   MINIO_ACCESS_KEY – access key     (dev default: minioadmin)
+ *   MINIO_SECRET_KEY – secret key     (dev default: minioadmin_change_me)
  *   MINIO_BUCKET     – bucket name    (default: dharma-evidence)
  *   MINIO_REGION     – region         (default: us-east-1)
  */
 
 import * as Minio from "minio";
+
+import { env } from "@/env";
 
 // ------------------------------------------------------------------
 // Client singleton (safe for Next.js hot-reload)
@@ -25,13 +27,19 @@ declare global {
   var __dharmaMinioClient: Minio.Client | undefined;
 }
 
+// Sourced from src/env.ts rather than process.env directly. This module and
+// src/lib/storage/minioClient.ts previously carried their OWN fallbacks that
+// disagreed on the secret ("minioadmin" here vs "minioadmin_change_me" there),
+// so a partially-configured environment gave one client valid credentials and
+// the other S3 signature-mismatch errors — see the workaround this forced in
+// .github/workflows/deploy.yml. One schema, one default, one behaviour.
 function createMinioClient(): Minio.Client {
   return new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT ?? "localhost",
-    port: parseInt(process.env.MINIO_PORT ?? "9000", 10),
-    useSSL: process.env.MINIO_USE_SSL === "true",
-    accessKey: process.env.MINIO_ACCESS_KEY ?? "minioadmin",
-    secretKey: process.env.MINIO_SECRET_KEY ?? "minioadmin",
+    endPoint: env.MINIO_ENDPOINT,
+    port: env.MINIO_PORT,
+    useSSL: env.MINIO_USE_SSL,
+    accessKey: env.MINIO_ACCESS_KEY,
+    secretKey: env.MINIO_SECRET_KEY,
   });
 }
 

@@ -1,17 +1,23 @@
 import * as Minio from 'minio';
 import { v4 as uuidv4 } from 'uuid';
 
-// Initialize MinIO client with internal Docker hostname
+import { env } from '@/env';
+
+// Credentials come from src/env.ts, not process.env directly: this module and
+// src/server/minio.ts used to declare independent fallbacks that disagreed on
+// the secret, which meant a half-configured environment authenticated one
+// client and gave the other signature errors. Endpoint keeps its local
+// scheme-stripping because callers sometimes supply a full URL here.
 const minioClient = new Minio.Client({
-  endPoint: process.env.MINIO_ENDPOINT?.replace('http://', '').replace('https://', '') || 'minio',
-  port: parseInt(process.env.MINIO_PORT || '9000', 10),
-  useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin_change_me',
+  endPoint: env.MINIO_ENDPOINT.replace('http://', '').replace('https://', ''),
+  port: env.MINIO_PORT,
+  useSSL: env.MINIO_USE_SSL,
+  accessKey: env.MINIO_ACCESS_KEY,
+  secretKey: env.MINIO_SECRET_KEY,
   region: process.env.MINIO_REGION || 'us-east-1',
 });
 
-const BUCKET_NAME = process.env.MINIO_BUCKET || 'dharma-evidence';
+const BUCKET_NAME = env.MINIO_BUCKET;
 const PRESIGNED_URL_EXPIRY = 15 * 60; // 15 minutes in seconds
 
 /**

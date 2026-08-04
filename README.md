@@ -220,13 +220,104 @@ This logs you in as an administrative user with pre-configured templates and moc
 
 Dharma provides built-in tools for maintaining self-hosted data durability.
 
-### Automated Cron Backups
-A dedicated scheduler container performs daily tar archives of PostgreSQL dumps and MinIO storage paths. Backups are saved inside the `/backups` directory in the root of the workspace.
+### Automated Nightly Backups
 
-You can trigger a backup instantly by running:
+The `backup-scheduler` container runs `scripts/backup-all.sh` once a day at
+`BACKUP_AT_UTC` (default 02:00 UTC), producing:
+
+| Path (inside the `dharma_backups` volume) | What it is |
+|---|---|
+| `/backups/pg/dharma_<ts>.sql.gz` | gzipped `pg_dump` of the whole database |
+| `/backups/pg/dharma_<ts>.log` | that dump's `--verbose` progress log |
+| `/backups/minio/dharma-evidence_<ts>/` | file-for-file mirror of the evidence bucket |
+| `/backups/minio/dharma-evidence_latest` | symlink to the newest snapshot |
+| `/backups/last-run.json` | `{"status":"ok"\|"failed", ...}` — check this first |
+
+Trigger one immediately:
+
 ```bash
-docker exec dharma-backup-scheduler /scripts/backup-all.sh
+docker compose --env-file envs/.env.docker run --rm \
+  -e RUN_BACKUP_NOW=true backup-scheduler
 ```
+
+A failed run logs a `CRITICAL` line and POSTs to `BACKUP_ALERT_WEBHOOK_URL` if set.
+
+> **Backups are verified, not assumed.** `backup-pg.sh` refuses to keep a dump
+> that isn't valid gzip, is missing pg_dump's end-of-dump marker, or has
+> progress output leaked into the SQL. Restore was last drilled end-to-end on
+> 2026-08-04 (see `claude/infra-audit-2026-08-04.md`).
+
+---
+
+### Disaster recovery — restoring from backup
+
+Read this top to bottom before typing anything. Steps 1–2 are diagnosis; the
+destructive step is 4.
+
+**1. Find out what you have.** Nothing here modifies anything.
+
+```bash
+docker run --rm -v dharma_backups:/b alpine sh -c \
+  'cat /b/last-run.json; echo; ls -lh /b/pg/ | tail -5; ls -ld /b/minio/*'
+```
+
+If `last-run.json` says `"failed"`, or the newest dump is older than you can
+accept, **stop** — restoring an older backup is a decision, not a formality.
+
+**2. Verify the dump is intact before you destroy anything.**
+
+```bash
+docker run --rm -v dharma_backups:/b alpine sh -c \
+  'F=$(ls -t /b/pg/dharma_*.sql.gz | head -1); echo "using $F";
+   gzip -t "$F" && echo "gzip OK";
+   gunzip -c "$F" | tail -3 | grep -q "dump complete" && echo "not truncated";
+   echo "leaked progress lines (must be 0): $(gunzip -c "$F" | grep -c "^pg_dump:")"'
+```
+
+All three must pass. If any fails, use the next-oldest dump.
+
+**3. Stop everything that writes.** Otherwise the app rewrites rows mid-restore.
+
+```bash
+docker compose --env-file envs/.env.docker stop nextjs worker pentest-worker
+```
+
+**4. Restore Postgres. This DROPS the current database.**
+
+```bash
+docker compose --env-file envs/.env.docker run --rm \
+  -e FORCE_RESTORE=true -e BACKUP_DIR=/backups/pg \
+  backup-scheduler bash /scripts/restore-pg.sh
+```
+
+Omit `FORCE_RESTORE=true` to be prompted for confirmation first — do that if
+you are at all unsure. Pass an explicit file as the last argument to restore a
+specific dump instead of the newest.
+
+**5. Restore the evidence files.** Safe by default: it adds and overwrites, and
+never deletes bucket objects missing from the backup. Add `-e REMOVE_EXTRA=true`
+only if you deliberately want the bucket to exactly match the snapshot.
+
+```bash
+docker compose --env-file envs/.env.docker run --rm \
+  -e BACKUP_DIR=/backups/minio \
+  backup-scheduler bash /scripts/restore-minio.sh
+```
+
+**6. Bring the app back and confirm.**
+
+```bash
+docker compose --env-file envs/.env.docker start nextjs worker pentest-worker
+curl -s localhost:3000/api/status | jq   # postgres/redis/minio must be healthy
+```
+
+Then check real data, not just health checks — log in, open an organisation,
+and download one evidence file. A green `/api/status` only proves the services
+are reachable, not that your data came back.
+
+**If the app starts but data looks wrong**, do not re-run the restore on top of
+itself. Take a dump of the current broken state first (`RUN_BACKUP_NOW=true`),
+so you still have both, then investigate.
 
 ### System Performance Monitoring
 To enable system health dashboards (Prometheus, Grafana, and Cadvisor profiles):

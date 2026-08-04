@@ -103,6 +103,29 @@ jobs:
 
       - run: npm ci
       - run: npx prisma migrate deploy --schema packages/db/schema.prisma
+
+      # Tenant isolation is the one invariant that must never regress: a
+      # failure here means one customer's org can read another's. It runs
+      # again as part of the full suite below, but as its OWN required check
+      # so it can't be lost in a 900-line log, and so the branch protection
+      # rule can name it explicitly.
+      #
+      # --listTests asserts the file is still collected at all: renaming it,
+      # or wrapping it in describe.skip, would otherwise turn this gate into a
+      # silent no-op that still reports green.
+      - name: Tenant isolation tests (must pass)
+        run: |
+          set -euo pipefail
+          # grep -c, not wc -l: jest --listTests emits a trailing blank line
+          # even when it matches nothing, so `wc -l` reports 1 for a suite
+          # that no longer exists and the guard passes vacuously.
+          COLLECTED=$(npx dotenv -e envs/.env.test -- jest --listTests tests/phase8-tenant-isolation.test.ts 2>/dev/null | grep -c 'phase8-tenant-isolation\.test\.ts' || true)
+          if [ "$COLLECTED" -eq 0 ]; then
+            echo "::error::tenant-isolation suite is no longer collected by jest"
+            exit 1
+          fi
+          npx dotenv -e envs/.env.test -- jest tests/phase8-tenant-isolation.test.ts --forceExit
+
       # --forceExit: suites that import routers pull in BullMQ queues whose
       # Redis connections keep the event loop alive, hanging jest forever.
       - run: npm test -- --forceExit
