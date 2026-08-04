@@ -2,32 +2,43 @@
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { api } from "@/hooks/trpc";
 import { BillingOverview } from "@/components/billing/BillingOverview";
 import { PlansComparison } from "@/components/billing/PlansComparison";
 import { BillingUsage } from "@/components/billing/BillingUsage";
+import { BillingManage } from "@/components/billing/BillingManage";
 import { BillingHistory } from "@/components/billing/BillingHistory";
 
 export default function BillingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  const initialTab = searchParams?.get("tab") as "overview" | "plans" | "usage" | "history" | null;
-  const [activeTab, setActiveTab] = useState<"overview" | "plans" | "usage" | "history">(
+  const initialTab = searchParams?.get("tab") as "overview" | "plans" | "usage" | "manage" | "history" | null;
+  const [activeTab, setActiveTab] = useState<"overview" | "plans" | "usage" | "manage" | "history">(
     initialTab || "overview"
   );
 
+  const utils = api.useUtils();
+
   useEffect(() => {
     if (searchParams?.get("success")) {
-      alert("✅ Payment successful! Your plan has been updated.");
+      // The plan is applied by the Stripe webhook, which may land a moment
+      // after the browser redirect. Invalidate so the page reflects the new
+      // plan once it arrives, instead of showing the pre-checkout plan and
+      // claiming success — the previous alert() asserted the update had
+      // happened without ever re-reading it.
+      toast.success("Payment received. Your plan is being updated.");
+      void utils.billing.invalidate();
       router.replace("/dashboard/settings/billing" as any);
     } else if (searchParams?.get("canceled")) {
-      alert("❌ Payment cancelled.");
+      toast.info("Checkout cancelled. Your plan is unchanged.");
       router.replace("/dashboard/settings/billing" as any);
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, utils]);
 
   // Sync tab state to URL if it changes, without full reload
-  const handleTabChange = (tab: "overview" | "plans" | "usage" | "history") => {
+  const handleTabChange = (tab: "overview" | "plans" | "usage" | "manage" | "history") => {
     setActiveTab(tab);
     router.replace(`/dashboard/settings/billing?tab=${tab}` as any, { scroll: false });
   };
@@ -49,6 +60,9 @@ export default function BillingPage() {
             { id: "overview", label: "Overview" },
             { id: "plans", label: "Plans & Upgrade" },
             { id: "usage", label: "Usage" },
+            // Phase 3c: Razorpay has no hosted billing portal, so subscription
+            // management is a real in-app screen rather than a redirect.
+            { id: "manage", label: "Manage" },
             { id: "history", label: "Billing History" },
           ].map((tab) => (
             <button
@@ -72,6 +86,7 @@ export default function BillingPage() {
         {activeTab === "overview" && <BillingOverview />}
         {activeTab === "plans" && <PlansComparison />}
         {activeTab === "usage" && <BillingUsage />}
+        {activeTab === "manage" && <BillingManage />}
         {activeTab === "history" && <BillingHistory />}
       </div>
     </div>

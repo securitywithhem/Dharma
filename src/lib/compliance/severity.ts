@@ -16,8 +16,18 @@
  * See Dharma-Knowledge-OS/docs/design/dashboard-redesign-tokens.md § 7.
  */
 
-/** Framework/control-set readiness bands. Ordered worst → best. */
-export type FrameworkSeverity = 'critical' | 'partial' | 'healthy' | 'complete';
+/**
+ * Framework/control-set readiness bands. Ordered worst → best, with
+ * `unconfigured` outside the ordering entirely.
+ *
+ * `unconfigured` exists because 0/0 and 0/N are not the same state and must not
+ * look the same. A framework nobody has populated is not "at risk" — there is
+ * nothing to be at risk about yet, and painting it the same urgent red as a
+ * framework with 40 outstanding controls tells the reader the opposite of what
+ * to do next. It is deliberately NOT `complete` either; see
+ * getFrameworkSeverityFromCounts.
+ */
+export type FrameworkSeverity = 'unconfigured' | 'critical' | 'partial' | 'healthy' | 'complete';
 
 /** Domain coverage shortfall, as already emitted by dashboardRouter. */
 export type DomainGap = 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
@@ -51,21 +61,27 @@ export function getFrameworkSeverity(percentComplete: number): FrameworkSeverity
 }
 
 /**
- * Band from raw counts. A framework with zero controls is `critical`, not
- * `complete`: an empty framework is unevidenced, and reporting 100% ready for
- * a framework nobody has populated is the single worst failure mode this
- * dashboard could have in front of an auditor.
+ * Band from raw counts. A framework with zero controls is `unconfigured`.
+ *
+ * It must never be `complete`: reporting 100% ready for a framework nobody has
+ * populated is the single worst failure mode this dashboard could have in front
+ * of an auditor. It used to return `critical` instead, which avoided that but
+ * created the opposite confusion — 0/0 rendered identically to 0/N, so a
+ * brand-new framework was indistinguishable from one with every control
+ * outstanding. `unconfigured` is neutral and separately labelled, so both
+ * states read correctly.
  */
 export function getFrameworkSeverityFromCounts(
   controlsComplete: number,
   controlsTotal: number,
 ): FrameworkSeverity {
-  if (controlsTotal <= 0) return 'critical';
+  if (controlsTotal <= 0) return 'unconfigured';
   return getFrameworkSeverity(Math.round((controlsComplete / controlsTotal) * 100));
 }
 
 /** Human label. Always rendered — severity is never encoded by hue alone (WCAG 1.4.1). */
 export const SEVERITY_LABEL: Record<FrameworkSeverity, string> = {
+  unconfigured: 'Not configured',
   critical: 'At risk',
   partial: 'Needs work',
   healthy: 'On track',
@@ -80,7 +96,9 @@ export const SEVERITY_LABEL: Record<FrameworkSeverity, string> = {
  * no fifth hue — so these two are separated by their always-visible label, the
  * same load-bearing-label constraint accepted in 634c9ec for HIGH vs CRITICAL.
  */
-export const SEVERITY_ROLE: Record<FrameworkSeverity, 'critical' | 'warning' | 'success'> = {
+export const SEVERITY_ROLE: Record<FrameworkSeverity, 'critical' | 'warning' | 'success' | 'secondary'> = {
+  // Neutral, not a severity hue: nothing is wrong with an empty framework yet.
+  unconfigured: 'secondary',
   critical: 'critical',
   partial: 'warning',
   healthy: 'success',
@@ -93,6 +111,8 @@ export const SEVERITY_ROLE: Record<FrameworkSeverity, 'critical' | 'warning' | '
  * Only true for bands that need attention. Painting a green rule on a healthy
  * card spends the reader's severity channel on "nothing is wrong here" — the
  * palette's stated intent is to sit quiet until something is actually wrong.
+ * `unconfigured` is excluded for the same reason: it is a prompt to set the
+ * framework up, not a compliance gap.
  */
 export function severityNeedsAttention(severity: FrameworkSeverity): boolean {
   return severity === 'critical' || severity === 'partial';

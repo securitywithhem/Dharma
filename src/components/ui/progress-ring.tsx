@@ -30,6 +30,8 @@ import type { FrameworkSeverity } from '@/lib/compliance/severity';
  */
 
 const ARC_STROKE: Record<FrameworkSeverity, string> = {
+  // Muted border tone: an unpopulated framework has no readiness to signal.
+  unconfigured: 'stroke-dharma-border-strong',
   critical: 'stroke-dharma-danger',
   partial: 'stroke-dharma-warning',
   healthy: 'stroke-dharma-success',

@@ -17,7 +17,7 @@ For modern businesses—particularly startups, MSMEs, and security-conscious ent
 Dharma solves these problems by providing an open-source, self-hosted compliance platform that runs **entirely local AI models**. 
 * **Zero-Cloud AI:** All document understanding, text extraction, and control mapping are performed offline via a local Ollama instance running open-source models.
 * **Tamper-Evident Ledger:** Evidence chains are cryptographically linked using a blockchain-like hashing mechanism. If any record is modified, the signature chain breaks immediately.
-* **SaaS Billing & Entitlements Built-In:** Designed to support multi-tenant workspaces, offering subscription tiers (Free, Pro, Enterprise) integrated with Stripe, self-service portals, and automated resource gating.
+* **SaaS Billing & Entitlements Built-In:** Designed to support multi-tenant workspaces, offering subscription tiers (Free, Pro, Enterprise) integrated with Razorpay or Stripe behind one provider interface, self-service subscription management, and automated resource gating.
 * **Integrated Marketplace:** Allows users to discover, publish, review, and import compliance frameworks and controls instantly.
 
 ---
@@ -77,7 +77,7 @@ Dharma implements a secure, isolated multi-tenant design that supports organic s
 sequenceDiagram
     participant User as Organization Admin
     participant App as Next.js & Entitlement Middleware
-    participant Stripe as Stripe API / Webhooks
+    participant Stripe as Payment provider API / Webhooks
     participant DB as Postgres Database
 
     User->>App: Attempts to Create 4th Framework
@@ -86,10 +86,10 @@ sequenceDiagram
     App->>App: Evaluate Limits for current Plan (Free = 3 Max)
     App-->>User: Block Creation (Entitlement Error: Upgrade Required)
     User->>App: Clicks "Upgrade to Pro"
-    App->>Stripe: Generate Checkout Session
-    Stripe-->>User: Redirect to Hosted Stripe Checkout Page
+    App->>Stripe: Create subscription / checkout session
+    Stripe-->>User: Checkout.js modal (Razorpay) or hosted page (Stripe)
     User->>Stripe: Completes Payment & Subscribes
-    Stripe->>App: Send Webhook (customer.subscription.created)
+    Stripe->>App: Send Webhook (subscription activated/created)
     App->>DB: Update Org Subscription Data (stripeSubscriptionId, plan=PRO)
     App-->>User: Redirect to App (Features Unlocked!)
     User->>App: Attempts to Create 4th Framework (Success)
@@ -204,7 +204,93 @@ npx dotenv-cli -e envs/.env.development -- npx prisma db push --schema packages/
 npm run seed:all
 ```
 
-### 5. Accessing & Authenticating the App
+### 5. Billing — optional for evaluation
+
+Everything except paid upgrades works without a payment provider. With a fresh
+clone every org sits on the Free plan and checkout fails until real test-mode
+keys are supplied. That is expected, not a bug.
+
+Dharma supports **two** providers behind one interface
+(`src/server/services/payments/provider.ts`). `PAYMENT_PROVIDER` decides where
+**new** subscriptions are created; orgs that already subscribed through the
+other provider keep being managed through it.
+
+| | Razorpay (default) | Stripe |
+|---|---|---|
+| Available in India | Yes | No — invite-only for India-based accounts |
+| Checkout | In-page Checkout.js modal | Redirect to hosted page |
+| Hosted billing portal | None — Dharma ships its own Manage screen | Yes |
+| Test keys need KYC | **No** | No |
+
+#### Razorpay (the live provider)
+
+```bash
+# 1. Sign up at https://dashboard.razorpay.com — NO KYC is required to obtain
+#    Test Mode keys. Settings → API Keys → Generate Test Key. Put them into
+#    envs/.env.development:
+#      RAZORPAY_KEY_ID=rzp_test_…
+#      RAZORPAY_KEY_SECRET=…
+#      PAYMENT_PROVIDER=razorpay
+
+# 2. Create Pro / Enterprise **Plans** (Subscriptions → Plans, or the API).
+#    A Razorpay Plan (plan_…) is its own object with its own amount and
+#    currency — it is NOT a Stripe Price ID and the two are not
+#    interchangeable. Put the IDs into:
+#      RAZORPAY_PLAN_PRO=plan_…
+#      RAZORPAY_PLAN_ENTERPRISE=plan_…
+#      BILLING_CURRENCY=INR
+#      BILLING_PRICE_PRO=…       # major units, shown in the UI
+#      BILLING_PRICE_ENTERPRISE=…
+npm run seed:plans
+
+# 3. Webhooks. Razorpay posts to a public URL, so expose the local app first:
+#      ngrok http 3000     (or any tunnel)
+#    Dashboard → Settings → Webhooks → Add New Webhook:
+#      URL:    https://<your-tunnel>/api/webhooks/razorpay
+#      Secret: a value you choose — put the SAME value into
+#              RAZORPAY_WEBHOOK_SECRET in envs/.env.development
+#      Events: subscription.activated, subscription.charged,
+#              subscription.cancelled, subscription.completed,
+#              subscription.halted, subscription.pending, payment.failed
+```
+
+**Going live needs no code change.** After completing KYC, swap
+`rzp_test_…` → `rzp_live_…` (and the matching key secret and webhook secret).
+The demo path and the real sales path are the same code; only the key differs.
+
+Test cards: `4111 1111 1111 1111` (success). Razorpay Test Mode also supports
+UPI and netbanking simulations from the modal.
+
+#### Stripe (dormant, kept for international customers)
+
+```bash
+# 1. Real test-mode keys from https://dashboard.stripe.com/test/apikeys
+#    into envs/.env.development, and set PAYMENT_PROVIDER=stripe:
+#      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_…
+#      STRIPE_SECRET_KEY=sk_test_…
+
+# 2. Create the Pro / Enterprise prices, then put the resulting price IDs
+#    (price_…, NOT product IDs prod_…) into:
+#      STRIPE_PRODUCT_PRO=price_…
+#      STRIPE_PRODUCT_ENTERPRISE=price_…
+#    These are read by packages/db/seed-plans.ts, so re-run:
+npm run seed:plans
+
+# 3. Forward webhooks to the local route and export the printed signing secret
+#    as STRIPE_WEBHOOK_SECRET (whsec_…) before starting the app:
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+Test card: `4242 4242 4242 4242`.
+
+Without a correct webhook secret every webhook is rejected with a 400 **by
+design**, and plan changes will never apply — the webhook is the source of
+truth for granting access, for both providers.
+
+The `dharma-worker` container must be running for the billing background jobs
+(daily provider reconciliation and the 14-day dunning sweep) to execute.
+
+### 6. Accessing & Authenticating the App
 The application server will listen locally at:
 *   **Web Portal:** [http://localhost:3000](http://localhost:3000)
 

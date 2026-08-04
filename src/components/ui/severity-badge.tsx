@@ -31,6 +31,7 @@ export interface SeverityBadgeProps extends React.HTMLAttributes<HTMLDivElement>
 }
 
 const DOT_FILL: Record<FrameworkSeverity, string> = {
+  unconfigured: 'bg-dharma-border-strong',
   critical: 'bg-dharma-danger',
   partial: 'bg-dharma-warning',
   healthy: 'bg-dharma-success',

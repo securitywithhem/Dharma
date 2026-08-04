@@ -6,24 +6,34 @@
  *
  * This is a thin, retry-aware wrapper over the existing Phase 2 inference
  * stack (src/lib/ai/*, src/workers/ollama.ts). It does NOT open a second HTTP
- * path to Ollama/OpenAI — it reuses `getEmbedding` (Ollama nomic-embed-text,
- * 384-dim) directly, or an org's resolved `InferenceProvider` when a
- * per-org config exists. This keeps every embedding in Dharma at the same
- * dimensionality and honours the per-org data-sovereignty rules
- * (2_TRD.md §5: "no external network dependencies"; embeddings per org).
+ * path to Ollama/OpenAI — it reuses `getEmbedding` directly, or an org's
+ * resolved `InferenceProvider` when a per-org config exists. This keeps every
+ * embedding in Dharma at the same dimensionality and honours the per-org
+ * data-sovereignty rules (embeddings per org, no external network calls).
  *
  * Dimension is 384 to match Control/Evidence/Vulnerability/RegulationSnippet
  * columns. The client REJECTS any vector whose length ≠ 384 rather than
  * padding/truncating — a dimension mismatch is a configuration bug, not
- * something to paper over (see the ingestion spec: "do not silently
- * truncate/pad vectors").
+ * something to paper over.
+ *
+ * That guard was previously unreachable: `getEmbedding` truncated with
+ * `slice(0, 384)` before this code ever saw the vector, so a misconfigured
+ * 768-dim model produced garbage embeddings instead of an error. The model /
+ * dimension contract now lives in `embeddingModels.ts`.
  */
 
 import { getEmbedding } from "@/workers/ollama";
 import { resolveInferenceProvider } from "@/lib/ai/resolveProvider";
+import {
+  EMBEDDING_DIM,
+  EmbeddingDimensionError,
+  getEmbeddingModel,
+} from "@/server/ai/embeddingModels";
 
-/** The single embedding dimension used across all Dharma pgvector columns. */
-export const EMBEDDING_DIM = 384;
+// Re-exported so existing importers of these symbols keep working; the
+// definitions live in embeddingModels.ts, which owns the model↔dimension
+// contract and has no dependency on the HTTP client.
+export { EMBEDDING_DIM, EmbeddingDimensionError };
 
 /** Default number of chunks embedded per slice — bounds concurrent load on a
  * single local Ollama instance so large documents don't time it out. */
@@ -32,7 +42,9 @@ const DEFAULT_BATCH_SIZE = 20;
 /** Default retry budget per individual embedding call. */
 const DEFAULT_MAX_RETRIES = 3;
 
-const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING || "nomic-embed-text";
+// Resolved per call rather than at module load so tests (and a worker whose
+// env is set after import) see the current value.
+const embeddingModel = () => getEmbeddingModel();
 
 /** Minimal prisma surface needed to resolve a per-org provider. */
 type ProviderPrisma = Parameters<typeof resolveInferenceProvider>[0];
@@ -45,14 +57,6 @@ export interface EmbedOptions {
   maxRetries?: number;
   /** Chunks embedded concurrently per slice in embedBatch (default 20). */
   batchSize?: number;
-}
-
-/** Thrown when a provider returns a vector of the wrong dimensionality. */
-export class EmbeddingDimensionError extends Error {
-  constructor(actual: number) {
-    super(`Embedding provider returned ${actual}-dim vector; expected ${EMBEDDING_DIM}. Refusing to pad/truncate.`);
-    this.name = "EmbeddingDimensionError";
-  }
 }
 
 /** Thrown after all retries for a single embedding call are exhausted. */
@@ -75,7 +79,7 @@ async function resolveEmbedFn(opts: EmbedOptions): Promise<(text: string) => Pro
     const provider = await resolveInferenceProvider(opts.prisma, opts.organizationId);
     return (text: string) => provider.embed(text);
   }
-  return (text: string) => getEmbedding(text, OLLAMA_MODEL_EMBEDDING);
+  return (text: string) => getEmbedding(text, embeddingModel());
 }
 
 /**
@@ -96,7 +100,7 @@ export async function embedText(text: string, opts: EmbedOptions = {}): Promise<
       const vec = await embedFn(text);
       if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIM) {
         // A dimension mismatch is not retryable — it's a misconfigured model.
-        throw new EmbeddingDimensionError(Array.isArray(vec) ? vec.length : -1);
+        throw new EmbeddingDimensionError(Array.isArray(vec) ? vec.length : -1, embeddingModel());
       }
       return vec;
     } catch (err) {

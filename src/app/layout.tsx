@@ -44,7 +44,14 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dharma | Compliance Status",
+  // `template` lets each route set just its own name (e.g. "Policies") and
+  // get "Policies | Dharma" — previously every route inherited this one
+  // literal title. Most pages are client components and cannot export
+  // metadata themselves, so each supplies it via a sibling layout.tsx.
+  title: {
+    default: "Dharma | Compliance Status",
+    template: "%s | Dharma"
+  },
   description:
     "Self-hosted compliance workspace for Indian startups and MSMEs preparing for DPDP, ISO 27001, and SOC 2."
 };

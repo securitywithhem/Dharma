@@ -15,7 +15,19 @@ model Plan {
   name          String         @unique // "free", "pro", "enterprise"
   displayName   String // "Free", "Pro", "Enterprise"
   stripePriceId String? // null for free tier
-  price         Float          @default(0) // monthly price in USD
+
+  /// Razorpay Plan ID (plan_…). NOT interchangeable with stripePriceId: a
+  /// Razorpay Plan is its own object with its own amount and currency, created
+  /// in the Razorpay dashboard or API. A plan can carry both IDs at once so the
+  /// same row can be sold through either provider.
+  razorpayPlanId String? // null for free tier
+
+  price         Float          @default(0) // monthly price, in `currency`
+  /// ISO-4217 code for `price`. Added with Razorpay: the provider Plan object
+  /// holds the authoritative amount, and Razorpay India sells in INR while the
+  /// original Stripe prices were USD. Rendering every plan with a hardcoded "$"
+  /// would misstate the price to a paying customer.
+  currency      String         @default("USD")
   limits        Json // { users: 5, frameworks: 3, storageMb: 100 }
   features      Json? // { apiAccess: false, sso: false, ...}
   isPublic      Boolean        @default(true)
@@ -72,6 +84,44 @@ model Organization {
   subscriptionStatus   SubscriptionStatus? @default(ACTIVE)
   subscriptionEndsAt   DateTime?
 
+  // Phase 3c — multi-provider billing. Stripe is invite-only for India-based
+  // accounts, so Razorpay is the live provider for this deployment; Stripe is
+  // kept intact behind the same PaymentProvider interface for international
+  // customers later. Both ID pairs coexist — an org that migrates providers
+  // keeps its historical Stripe IDs for invoice lookback.
+  //
+  // NULLABLE on purpose rather than defaulting to a provider: an org that has
+  // never paid has no provider, and stamping one would make the reconciliation
+  // and dunning workers scan free orgs against an API that knows nothing about
+  // them. It is set when a subscription is first created.
+  paymentProvider        PaymentProvider?
+  razorpayCustomerId     String?          @unique
+  razorpaySubscriptionId String?          @unique
+
+  /// The subscription being REPLACED during a payment-method update.
+  ///
+  /// Razorpay binds the payment mandate to the subscription, so there is no
+  /// "update card" call — changing the method means authorising a new
+  /// subscription and cancelling the old one. That old ID is recorded here,
+  /// server-side, rather than passed back by the browser: a client-supplied
+  /// cancellation target is a subscription ID an attacker gets to choose.
+  /// Cleared once the replacement is confirmed and the old one cancelled.
+  /// Not @unique — it transiently holds the same value as the column above.
+  razorpayPreviousSubscriptionId String?
+
+  /// Indian GST identification number, collected for invoicing. Optional and
+  /// currently display/record-only — Dharma does not yet issue GST-compliant
+  /// invoices itself (Razorpay handles GST on its own fees). Stored now so
+  /// that capability does not need a migration later. See claude/.
+  gstin String?
+
+  // Phase 3b dunning — set on the FIRST invoice.payment_failed and cleared on
+  // any successful payment. The grace period is measured from this timestamp,
+  // not from the most recent failure: Stripe retries a failed invoice several
+  // times, and restarting the clock on each retry would make the grace period
+  // unbounded. Null means "not delinquent".
+  dunningStartedAt DateTime?
+
   // 64-bit unique lock ID for safe pg_advisory_xact_lock calls
   lockKeyId BigInt @unique @default(autoincrement())
 
@@ -96,6 +146,41 @@ model Organization {
   apiKeys          ApiKey[]
 
   @@index([createdAt])
+}
+
+// Phase 3b — payment-provider webhook idempotency ledger.
+//
+// Providers guarantee at-least-once delivery and WILL redeliver events (retries
+// after a timeout, or a manual resend from the dashboard). Without this table
+// a redelivered subscription event would re-run the plan write and emit a
+// second AuditEvent, corrupting the audit trail this product sells.
+//
+// A table rather than a Redis TTL key: the audit trail is the thing being
+// protected, so the dedupe record must be as durable as the rows it guards —
+// a Redis eviction or restart would silently reopen the double-write window.
+// Rows are pruned by the billing-reconciliation worker, not kept forever.
+model ProcessedWebhookEvent {
+  id String @id @default(cuid())
+
+  /// Phase 3c — which provider issued `eventId`. Event IDs are only unique
+  /// within a provider's own namespace, and Razorpay events have no ID field
+  /// at all (the receiver synthesises one — see the Razorpay route), so a bare
+  /// unique on eventId could in principle let one provider's event suppress
+  /// another's. The composite unique below is the real dedupe lock.
+  provider PaymentProvider @default(STRIPE)
+
+  /// The provider's own event ID (Stripe `evt_…`, Razorpay synthesised).
+  eventId     String
+  eventType   String
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([processedAt])
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
 }
 
 enum SubscriptionStatus {

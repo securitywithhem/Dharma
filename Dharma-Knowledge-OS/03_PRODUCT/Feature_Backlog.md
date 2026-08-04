@@ -3,7 +3,7 @@ title: Feature Backlog
 folder: 03_PRODUCT
 tags: [dharma, product, backlog]
 source_docs: [1_PRD.md, 6_IMPLEMENTATION_PLAN.md, "Future Scope PRD (absorbed 2026-07-23, source vault since deleted)", packages/db/schema.prisma]
-last_updated: 2026-07-23
+last_updated: 2026-08-04
 status: reviewed
 ---
 
@@ -24,9 +24,10 @@ Living checklist. PRD-defined MVP features are checked as built (confirmed by ma
 
 ## Phase 3b–9 (planned in the Future Scope PRD, confirmed built via live schema)
 
-- [x] Multi-tenant billing/subscriptions (Phase 3b) — `Plan`
+- [x] Multi-tenant billing/subscriptions (Phase 3b) — `Plan`, `ProcessedWebhookEvent`, entitlement middleware, reconciliation + dunning workers
+- [x] Provider-agnostic payments with Razorpay live alongside Stripe (Phase 3c) — `PaymentProvider` enum, `src/server/services/payments/*`. **Server-side complete, not signed off**: no live provider test-mode cycle has been run end to end. See [[Billing_And_Payments]]
 - [x] Marketplace: publish/discover/import frameworks, reviews, revenue-share-ready reviews (Phase 3c) — `MarketplaceItem`, `MarketplaceReview`, `MarketplaceItemRevision`, `ImportedItem`
-- [x] Cloud connectors + auto evidence mapping: AWS/Azure/GCP/GitHub/Okta/Jira, plus Vercel not in the original plan (Phase 4) — `Connector`, `EvidenceMapping`, `Webhook`, `WebhookDelivery`
+- [~] Cloud connectors + auto evidence mapping (Phase 4) — `Connector`, `EvidenceMapping`, `Webhook`, `WebhookDelivery`. Partial: **AWS, GitHub, Okta and Jira have live adapters**; `AZURE` and `GCP` are `null` in `connectorRegistry` and throw "not yet implemented"; `VERCEL` (not in the original plan) has only a legacy Phase 2 sync worker, not an adapter
 - [x] Pentest/vulnerability tracking, CVSS scoring, sandboxed nuclei scanner (Phase 5) — `PenTest`, `Vulnerability`, `Asset`
 - [x] Advanced frameworks + cross-walking, e.g. SOC2 CC6.1 ↔ ISO27001 A.9.2.1 (Phase 6) — `ControlMapping`, `ReadinessScore`, `Recommendation`
 - [x] AI Advisor (RAG chat over org data) — built local-first (`vector(384)`/Ollama), not the Future Scope TRD's OpenAI/`vector(1536)` sketch (Phase 7) — `AIAdvisorSession`, `OrganizationEmbedding`, `IngestedDocument`, `OrgGraphNode`/`OrgGraphEdge`, `AIUsageLog`

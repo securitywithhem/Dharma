@@ -3,7 +3,7 @@ title: Security Architecture
 folder: 04_TECHNICAL
 tags: [dharma, technical, security]
 source_docs: [2_TRD.md, 1_PRD.md, packages/db/schema.prisma]
-last_updated: 2026-07-23
+last_updated: 2026-08-04
 status: reviewed
 ---
 
@@ -27,6 +27,8 @@ Two distinct patterns, chosen per whether the secret needs to be recovered later
 
 ## Rate limiting
 
-Token-bucket rate limiting (TRD), details not further specified in source docs — gap.
+The TRD called for a token bucket. What is built (`src/server/lib/rateLimit.ts`) is a **fixed-window, in-process** limiter: a module-level `Map` of `{ count, windowStart }`, throwing `TRPCError("TOO_MANY_REQUESTS")`, called at the top of a procedure keyed on something like `${organizationId}:${procedureName}`. Thresholds are passed per call site rather than defined centrally.
+
+Its own comment states the constraint honestly: this is correct only while Dharma runs one Next.js process per deployment. **Multiple replicas behind a load balancer would multiply every limit by the replica count** — that migration to a Redis-backed counter is not done. Relevant to [[Deployment]]'s Kubernetes question, since a replicated deploy silently weakens this control.
 
 Related: [[Threat_Model]], [[Authentication]], [[Authorization]], [[Database_Design]].

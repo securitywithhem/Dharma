@@ -1,3 +1,12 @@
+import type { Metadata } from "next";
+
+// `template` must be restated here: a nested layout that sets a plain string
+// title replaces the parent's template for its whole subtree, which would
+// strip "| Dharma" from every page under /dashboard.
+export const metadata: Metadata = {
+  title: { default: "Compliance Status", template: "%s | Dharma" },
+};
+
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import type { ReactNode } from "react";

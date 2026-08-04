@@ -41,7 +41,19 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
   const draggingRef = useRef(false);
 
   const usageQuery = api.aiAdvisor.getUsageSummary.useQuery(undefined, { enabled: open });
+  // Probed on mount so an unavailable model degrades the panel up front rather
+  // than letting the user compose a message into a guaranteed failure.
+  const healthQuery = api.aiAdvisor.checkHealth.useQuery(undefined, {
+    enabled: open,
+    refetchOnWindowFocus: false,
+  });
   const sendMessage = api.aiAdvisor.sendMessage.useMutation();
+
+  // Treat only a resolved unhealthy answer as degraded — while the probe is in
+  // flight we must not flash a false "unavailable" banner.
+  const degraded = healthQuery.isSuccess && !healthQuery.data.healthy;
+  const degradedMessage =
+    healthQuery.data?.message ?? "The AI assistant is temporarily unavailable — try again shortly.";
 
   const onSend = useCallback(
     async (message: string) => {
@@ -122,6 +134,15 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
           </button>
         </header>
 
+        {degraded && (
+          <div
+            role="status"
+            className="border-b border-dharma-warning bg-dharma-warning-bg px-4 py-2 text-xs text-dharma-ink"
+          >
+            {degradedMessage}
+          </div>
+        )}
+
         <ContextBar sources={contextSummary} />
         <DocumentUploadPanel />
 
@@ -141,7 +162,7 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
 
         <MessageInput
           onSend={(m) => void onSend(m)}
-          disabled={sendMessage.isPending}
+          disabled={sendMessage.isPending || degraded}
           usage={usageQuery.data}
         />
       </aside>

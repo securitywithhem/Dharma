@@ -7,6 +7,47 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, ExternalLink, ShieldCheck, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Render one read-only field across all three query states.
+ *
+ * Every field on this page used to be written as `data?.x ?? <fallback>`, which
+ * silently conflates "still loading" with "no value" — so while the queries
+ * were in flight the page asserted things that were not true: identifiers read
+ * "Unavailable", counts read 0, and the organization name read "Admin access
+ * required", accusing an admin of lacking access. Loading must render a
+ * skeleton, and only a settled query may render a negative statement.
+ */
+function Field({
+  label,
+  value,
+  isPending,
+  isError,
+  errorText = "Unavailable",
+}: {
+  label: string;
+  value: React.ReactNode;
+  isPending: boolean;
+  isError: boolean;
+  errorText?: string;
+}) {
+  // A <div>, not a <p>: Skeleton renders a <div>, and the browser auto-closes
+  // a <p> before nested block content — so the hydrated DOM did not match what
+  // React rendered on the server, throwing React #418/#422 on this page.
+  return (
+    <div className="flex items-center gap-2">
+      <span>{label}:</span>
+      {isPending ? (
+        <Skeleton className="h-4 w-40" />
+      ) : isError ? (
+        <span className="text-dharma-ink-secondary">{errorText}</span>
+      ) : (
+        <span>{value}</span>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const organizationQuery = api.settings.organization.useQuery(undefined, {
@@ -19,7 +60,12 @@ export default function SettingsPage() {
   const [generatedLink, setGeneratedLink] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
 
-  const isAdmin = sessionQuery.data?.role === "ADMIN";
+  const sessionPending = sessionQuery.isPending;
+  const orgPending = organizationQuery.isPending;
+  // Only a settled session can tell us the caller is NOT an admin. While the
+  // query is in flight `isAdmin` is false, which is why the red "you must hold
+  // the ADMIN role" panel used to flash on every load.
+  const isAdmin = sessionQuery.isSuccess && sessionQuery.data?.role === "ADMIN";
 
   const handleGenerateKey = async () => {
     try {
@@ -57,9 +103,24 @@ export default function SettingsPage() {
               <CardDescription>These values describe the signed-in workspace member.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <p>User ID: {sessionQuery.data?.id ?? "Unavailable"}</p>
-              <p>Role: {sessionQuery.data?.role ?? "Unavailable"}</p>
-              <p>Organization ID: {sessionQuery.data?.organizationId ?? "Unavailable"}</p>
+              <Field
+                label="User ID"
+                value={sessionQuery.data?.id}
+                isPending={sessionPending}
+                isError={sessionQuery.isError}
+              />
+              <Field
+                label="Role"
+                value={sessionQuery.data?.role}
+                isPending={sessionPending}
+                isError={sessionQuery.isError}
+              />
+              <Field
+                label="Organization ID"
+                value={sessionQuery.data?.organizationId}
+                isPending={sessionPending}
+                isError={sessionQuery.isError}
+              />
             </CardContent>
           </Card>
 
@@ -69,13 +130,46 @@ export default function SettingsPage() {
               <CardDescription>Counts reflect the currently authenticated organization.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <p>Name: {organizationQuery.data?.name ?? "Admin access required"}</p>
+              {/* `settings.organization` is admin-only and set to retry:false, so a
+                  rejection here genuinely does mean insufficient access — but only
+                  once the query has actually failed, never while it is pending. */}
+              <Field
+                label="Name"
+                value={organizationQuery.data?.name}
+                isPending={orgPending}
+                isError={organizationQuery.isError}
+                errorText="Admin access required"
+              />
               <Separator />
               <div className="grid gap-3 sm:grid-cols-2">
-                <p>Users: {organizationQuery.data?._count.users ?? 0}</p>
-                <p>Frameworks: {organizationQuery.data?._count.frameworks ?? 0}</p>
-                <p>Policies: {organizationQuery.data?._count.policies ?? 0}</p>
-                <p>Evidence: {organizationQuery.data?._count.evidences ?? 0}</p>
+                <Field
+                  label="Users"
+                  value={organizationQuery.data?._count.users}
+                  isPending={orgPending}
+                  isError={organizationQuery.isError}
+                  errorText="—"
+                />
+                <Field
+                  label="Frameworks"
+                  value={organizationQuery.data?._count.frameworks}
+                  isPending={orgPending}
+                  isError={organizationQuery.isError}
+                  errorText="—"
+                />
+                <Field
+                  label="Policies"
+                  value={organizationQuery.data?._count.policies}
+                  isPending={orgPending}
+                  isError={organizationQuery.isError}
+                  errorText="—"
+                />
+                <Field
+                  label="Evidence"
+                  value={organizationQuery.data?._count.evidences}
+                  isPending={orgPending}
+                  isError={organizationQuery.isError}
+                  errorText="—"
+                />
               </div>
             </CardContent>
           </Card>
@@ -144,6 +238,11 @@ export default function SettingsPage() {
                       </p>
                     </div>
                   )}
+                </div>
+              ) : sessionPending ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-full rounded-md" />
+                  <Skeleton className="h-9 w-full rounded-md" />
                 </div>
               ) : (
                 <div className="bg-dharma-danger-bg text-dharma-danger-text p-4 rounded-lg text-sm border border-dharma-danger">

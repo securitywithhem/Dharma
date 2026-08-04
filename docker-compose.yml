@@ -196,7 +196,7 @@ services:
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_MODEL_LLM: ${OLLAMA_MODEL_LLM:-llama3:8b}
-      OLLAMA_MODEL_EMBEDDING: ${OLLAMA_MODEL_EMBEDDING:-nomic-embed-text}
+      OLLAMA_MODEL_EMBEDDING: ${OLLAMA_MODEL_EMBEDDING:-all-minilm}
     entrypoint: >
       /bin/sh -c "
         echo '⏳ Pulling embedding model: '$$OLLAMA_MODEL_EMBEDDING &&
@@ -570,9 +570,38 @@ services:
         max-file: "3"
 
   # ------------------------------------------------------------
+  # Blackbox Exporter – synthetic HTTP up/down probes for services
+  # with no native Prometheus /metrics endpoint (currently: Ollama).
+  # Profile: monitoring (opt-in)
+  # ------------------------------------------------------------
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: dharma-blackbox-exporter
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    volumes:
+      - ./monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "9115:9115"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ------------------------------------------------------------
   # Prometheus – Metrics collection & storage
   # Profile: monitoring (opt-in)
   # Access: http://localhost:9090
+  # Also remote_writes to Grafana Cloud — see monitoring/prometheus.yml
+  # and monitoring/secrets/grafana_cloud_api_key (gitignored).
   # ------------------------------------------------------------
   prometheus:
     image: prom/prometheus:v2.53.0
@@ -584,6 +613,7 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/secrets/grafana_cloud_api_key:/etc/prometheus/secrets/grafana_cloud_api_key:ro
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -602,6 +632,7 @@ services:
     depends_on:
       - postgres-exporter
       - redis-exporter
+      - blackbox-exporter
     deploy:
       resources:
         limits:

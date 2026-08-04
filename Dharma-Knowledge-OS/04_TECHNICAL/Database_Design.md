@@ -3,15 +3,15 @@ title: Database Design
 folder: 04_TECHNICAL
 tags: [dharma, technical, database, prisma, pgvector]
 source_docs: [packages/db/schema.prisma, 5_BACKEND_SCHEMA.md]
-last_updated: 2026-07-23
+last_updated: 2026-08-04
 status: reviewed
 ---
 
 # Database Design
 
-PostgreSQL + `pgvector` extension (`extensions = [pgvector(map: "vector")]`), Prisma ORM. This note transcribes the **live schema** (`packages/db/schema.prisma`, 47 models), organized by the phase comments already present in the file — which makes this schema unusually self-documenting about its own build history and deviations from `obsidian-vaults/Dharma-Project/5_BACKEND_SCHEMA.md`.
+PostgreSQL + `pgvector` extension (`extensions = [pgvector(map: "vector")]`), Prisma ORM. This note transcribes the **live schema** (`packages/db/schema.prisma`, 49 models), organized by the phase comments already present in the file — which makes this schema unusually self-documenting about its own build history and deviations from `obsidian-vaults/Dharma-Project/5_BACKEND_SCHEMA.md`.
 
-**pgvector dependency**: six columns use `Unsupported("vector(384)")` — `Control.embedding`, `Evidence.embedding`, `RegulationSnippet.embedding`, `Vulnerability.embedding`, `OrganizationEmbedding.embedding`. All are 384-dimensional (Ollama `nomic-embed-text`), **not** 1536 (OpenAI) — confirms [[Dharma_Master_Context]]'s "local AI, no exceptions" principle. This is the exact pattern any new vault-embedding table (see the RAG-wiring section of this vault's bootstrap) should follow: raw SQL writes via `$1::vector`, since Prisma has no native vector type.
+**pgvector dependency**: five columns use `Unsupported("vector(384)")` — `Control.embedding`, `Evidence.embedding`, `RegulationSnippet.embedding`, `Vulnerability.embedding`, `OrganizationEmbedding.embedding`. All are 384-dimensional (Ollama `nomic-embed-text`), **not** 1536 (OpenAI) — confirms [[Dharma_Master_Context]]'s "local AI, no exceptions" principle. This is the exact pattern any new vault-embedding table (see the RAG-wiring section of this vault's bootstrap) should follow: raw SQL writes via `$1::vector`, since Prisma has no native vector type.
 
 ## Foundation (Phase 0–1, matches original PRD scope)
 
@@ -63,8 +63,12 @@ PostgreSQL + `pgvector` extension (`extensions = [pgvector(map: "vector")]`), Pr
 - **`FrameworkVersion`** → **`RegulatoryAlert`** — diffs control trees between marketplace framework versions, fans out per-org alerts.
 - **`ApiKey`** — third-party API credentials, SHA-256 hashed.
 
-## Billing
+## Billing (Phase 3b–3c)
 
-**`Plan`** (free/pro/enterprise, Stripe-linked) ← **`Organization`** (`stripeCustomerId`, `subscriptionStatus`, `subscriptionEndsAt`).
+**`Plan`** (free/pro/enterprise) carries **both** provider IDs — `stripePriceId` and `razorpayPlanId` — plus `price` and an ISO-4217 `currency`, so one row can be sold through either provider. A Razorpay Plan (`plan_…`) is its own object with its own amount and currency and is **not** interchangeable with a Stripe Price ID.
 
-Related: [[System_Architecture]], [[Security_Architecture]], [[Authentication]], [[Authorization]], [[Feature_Backlog]].
+**`Organization`** holds the per-provider subscription state: `paymentProvider` (nullable — free orgs have none, so the reconciliation and dunning workers skip them), `stripeCustomerId`/`stripeSubscriptionId`, `razorpayCustomerId`/`razorpaySubscriptionId`, `razorpayPreviousSubscriptionId` (the subscription being replaced during a payment-method update — Razorpay binds the mandate to the subscription, so a card change means create-new/cancel-old), `subscriptionStatus`, `subscriptionEndsAt`, `dunningStartedAt` (set on the *first* failed invoice and cleared on any success, so provider retries don't restart the grace clock).
+
+**`ProcessedWebhookEvent`** — webhook idempotency, unique on the composite `(provider, eventId)` rather than `eventId` alone: event IDs are only unique within a provider's namespace, and Razorpay events carry no ID at all (the receiver synthesises one). See [[Billing_And_Payments]].
+
+Related: [[System_Architecture]], [[Security_Architecture]], [[Authentication]], [[Authorization]], [[Feature_Backlog]], [[Billing_And_Payments]].

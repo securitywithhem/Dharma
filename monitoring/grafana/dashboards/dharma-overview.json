@@ -134,18 +134,84 @@
       "fieldConfig": { "defaults": { "unit": "ms" } },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
       "id": 7,
-      "title": "HTTP Response Time (p95)",
+      "title": "tRPC Response Time (p95)",
+      "description": "Requires OTEL_EXPORTER_OTLP_ENDPOINT set on nextjs/worker (see src/lib/observability/metrics.ts: trpc_request_duration_ms).",
       "type": "timeseries",
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, rate(http_request_duration_ms_bucket[5m]))", "legendFormat": "p95 latency" }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum(rate(trpc_request_duration_ms_bucket[5m])) by (le, path))", "legendFormat": "{{path}} p95" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": { "defaults": { "unit": "reqps" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
       "id": 8,
-      "title": "HTTP Request Rate",
+      "title": "tRPC Request Rate",
+      "description": "Derived from the trpc_request_duration_ms histogram's _count series.",
       "type": "timeseries",
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(http_requests_total[5m])", "legendFormat": "{{method}} {{route}}" }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(trpc_request_duration_ms_count[5m])) by (path, status)", "legendFormat": "{{path}} ({{status}})" }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 103,
+      "title": "⚙️ BullMQ Workers",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "color": { "mode": "palette-classic" } } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "id": 9,
+      "title": "Jobs Processed/sec by Queue",
+      "description": "queue_jobs_processed_total, labelled { queue, status } — see src/lib/observability/metrics.ts.",
+      "type": "timeseries",
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(queue_jobs_processed_total[5m])) by (queue, status)", "legendFormat": "{{queue}} ({{status}})" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "id": 10,
+      "title": "Job Duration (p95) by Queue",
+      "description": "queue_job_duration_ms histogram — see src/lib/observability/metrics.ts.",
+      "type": "timeseries",
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum(rate(queue_job_duration_ms_bucket[5m])) by (le, queue))", "legendFormat": "{{queue}} p95" }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "id": 104,
+      "title": "🤖 Ollama",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "Down / Degraded", "color": "red" }, "1": { "text": "Healthy", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 37 },
+      "id": 11,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Ollama Service Health",
+      "description": "probe_success from blackbox_exporter hitting ollama:11434/api/version — same signal as the app's health.checkAll.ollama check that drives the Compliance Advisor's degraded banner.",
+      "type": "stat",
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "probe_success{job=\"ollama_probe\"}", "legendFormat": "Ollama" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 10, "x": 6, "y": 37 },
+      "id": 12,
+      "title": "Ollama Probe Latency",
+      "type": "timeseries",
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "probe_duration_seconds{job=\"ollama_probe\"}", "legendFormat": "probe duration" }]
     }
   ],
   "refresh": "30s",
@@ -158,5 +224,5 @@
   "timezone": "browser",
   "title": "Dharma Platform Overview",
   "uid": "dharma-overview",
-  "version": 1
+  "version": 2
 }

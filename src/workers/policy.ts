@@ -101,9 +101,10 @@ export const policyQueue = new Queue<ProcessPolicyJobData>(POLICY_QUEUE_NAME, {
 // ------------------------------------------------------------------
 
 import { getEmbedding, generateText } from "./ollama";
+import { getEmbeddingModel } from "@/server/ai/embeddingModels";
 
 const OLLAMA_MODEL_LLM = process.env.OLLAMA_MODEL_LLM ?? "llama3:8b";
-const OLLAMA_MODEL_EMBEDDING = process.env.OLLAMA_MODEL_EMBEDDING ?? "nomic-embed-text";
+const OLLAMA_MODEL_EMBEDDING = getEmbeddingModel();
 
 // ------------------------------------------------------------------
 // Review job processor

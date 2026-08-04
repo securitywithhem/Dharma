@@ -78,3 +78,5 @@ ruvector.db
 # Local backup output (pg dumps + MinIO snapshots). Real customer data —
 # must never be committed. The scheduler writes here via BACKUP_HOST_PATH.
 backups/
+# Grafana Cloud remote_write credentials (generated per machine, never commit)
+monitoring/secrets/

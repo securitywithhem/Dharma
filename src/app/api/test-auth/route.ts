@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertTestRoutesEnabled } from "@/server/testRoutes";
 import { encode } from "next-auth/jwt";
 import { prisma } from "@/server/db";
 import { env } from "@/env";
 import { Role } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
-  // Prevent execution in production unless explicit E2E testing variable is defined
-  if (process.env.NODE_ENV === "production" && process.env.ENABLE_E2E_AUTH !== "true") {
-    return new NextResponse("Not allowed in production", { status: 403 });
-  }
+  const blocked = assertTestRoutesEnabled();
+  if (blocked) return blocked;
+
 
   const email = req.nextUrl.searchParams.get("email") ?? "admin@dharma.local";
 

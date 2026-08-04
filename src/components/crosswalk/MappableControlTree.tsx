@@ -74,7 +74,12 @@ export function MappableControlTree({ roots, mappedIds, selectedId, onSelect }: 
             {type.label}
           </Badge>
 
-          <span className="min-w-0 flex-1 truncate text-sm">
+          {/* title=: control names truncate at this width ("Purpose
+              Limita…"), leaving no way to read the full text. */}
+          <span
+            className="min-w-0 flex-1 truncate text-sm"
+            title={node.code ? `${node.code} — ${node.title}` : node.title}
+          >
             {node.code && <span className="mr-1.5 font-mono text-xs text-dharma-ink-secondary">{node.code}</span>}
             {node.title}
           </span>

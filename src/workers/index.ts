@@ -31,6 +31,10 @@ import { startReportWorker } from "@/server/queue/workers/reportWorker";
 import { startReportScheduleDispatchWorker } from "@/server/queue/workers/reportScheduleDispatchWorker";
 import { registerReportScheduleDispatch } from "@/server/queue/reportQueue";
 import { startRegulatoryFanoutWorker } from "@/server/queue/workers/regulatoryFanoutWorker";
+import { startDunningWorker } from "@/server/queue/workers/dunningWorker";
+import { registerDunningSweep } from "@/server/queue/dunningQueue";
+import { startBillingReconciliationWorker } from "@/server/queue/workers/billingReconciliationWorker";
+import { registerBillingReconciliation } from "@/server/queue/billingReconciliationQueue";
 import { attachDeadLetterAlerting } from "@/server/lib/ops/alert";
 
 console.log("🚀 Starting Dharma background workers...");
@@ -57,6 +61,12 @@ const reportWorker = startReportWorker();
 const reportScheduleDispatchWorker = startReportScheduleDispatchWorker();
 // Phase 9 Part 3 — regulatory change monitoring fanout
 const regulatoryFanoutWorker = startRegulatoryFanoutWorker();
+// Phase 3b/3c — billing lifecycle: dunning + payment-provider drift
+// reconciliation. Both workers resolve the adapter per organization, so one
+// pair of jobs covers Razorpay and Stripe orgs alike — no new queues.
+const dunningWorker = startDunningWorker();
+const billingReconciliationWorker = startBillingReconciliationWorker();
+
 // ── Dead-letter alerting ────────────────────────────────────────────────────
 // Each worker above already logs its own `failed` events, but only as free
 // text on stdout — nothing distinguishes "retry 1 of 3 failed" from "this job
@@ -91,6 +101,12 @@ const allWorkers: unknown[] = [
   reportWorker,
   reportScheduleDispatchWorker,
   regulatoryFanoutWorker,
+  // Billing workers are the highest-consequence entries in this list: a
+  // dead-lettered dunning job leaves a delinquent org on a paid plan forever,
+  // and a dead-lettered reconciliation job lets provider-side drift (a
+  // cancellation we never saw) go uncorrected. Both fail silently otherwise.
+  dunningWorker,
+  billingReconciliationWorker,
 ];
 
 // Not every entry above is a real BullMQ Worker — at least one start* function
@@ -123,6 +139,8 @@ if (alertableWorkers.length !== allWorkers.length) {
 void registerDailySweep();
 void registerEndpointStaleSweep();
 void registerReportScheduleDispatch();
+void registerDunningSweep();
+void registerBillingReconciliation();
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received — draining workers...");
@@ -145,6 +163,8 @@ process.on("SIGTERM", async () => {
     reportWorker.close(),
     reportScheduleDispatchWorker.close(),
     regulatoryFanoutWorker.close(),
+    dunningWorker.close(),
+    billingReconciliationWorker.close(),
   ]);
   process.exit(0);
 });

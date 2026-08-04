@@ -135,7 +135,12 @@ export default function RolesSettingsPage() {
                         <Badge>Custom</Badge>
                       )}
                     </TableCell>
-                    <TableCell>{role._count.users}</TableCell>
+                    {/* Effective membership (explicit assignments + members
+                        still on the matching legacy enum), not just explicit
+                        assignments — see roles.list for why. The delete guard
+                        below deliberately still uses _count.users: only an
+                        explicit assignment blocks deleting a custom role. */}
+                    <TableCell>{role.memberCount}</TableCell>
                     <TableCell>{grantedCount}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
