@@ -201,6 +201,10 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # Trivy pulls the just-built image from ghcr.io, which is private.
+      # Without this the scan job's GITHUB_TOKEN has no pull scope and the
+      # registry returns "UNAUTHORIZED: authentication required".
+      packages: read
     strategy:
       matrix:
         include:
@@ -210,6 +214,17 @@ jobs:
             suffix: "-worker"
     steps:
       - uses: actions/checkout@v4
+
+      # The scan job runs on a DIFFERENT runner than build, so the image is not
+      # in this machine's local docker daemon — Trivy has to fetch it from the
+      # registry, and therefore has to be logged in. Mirrors the build job's
+      # login step. This was masked until the image name was lowercased: the
+      # reference failed to parse before Trivy ever attempted a pull.
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # IMAGE_NAME is ${{ github.repository }} — "securitywithhem/Dharma", with a
       # capital D. OCI reference names must be lowercase, so interpolating it raw
