@@ -171,10 +171,20 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
           # The two {{branch}}-based tags are push-only: {{branch}} is empty on
           # pull_request (merge ref) and would render an invalid ":-<sha>" tag.
+          #
+          # The immutable tag is built from the SAME GitHub expressions the scan
+          # and deploy jobs use — `${{ github.ref_name }}-${{ github.sha }}` —
+          # rather than metadata-action's `{{branch}}-{{sha}}`. Those are NOT
+          # equivalent: `{{sha}}` renders the SHORT (7-char) sha, so this pushed
+          # `main-049026b` while every consumer asked for
+          # `main-049026b0c3a2...` and got MANIFEST_UNKNOWN. Deriving both sides
+          # from one expression is what makes the tag actually immutable and
+          # actually resolvable. `type=sha` below still publishes the short form
+          # as a convenience alias.
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=raw,value={{branch}}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ github.ref_name }}-${{ github.sha }},enable=${{ github.event_name != 'pull_request' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}

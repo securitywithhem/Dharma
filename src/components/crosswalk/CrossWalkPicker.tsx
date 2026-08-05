@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TreeControl } from "@/components/controls/treeUtils";
 import { MappableControlTree } from "./MappableControlTree";
+import { strengthForConfidence } from "@/lib/mappingStrength";
 
 interface CrossWalkPickerProps {
   frameworkAId: string;
@@ -44,12 +45,6 @@ interface PendingMapping {
   suggestedByAI: boolean;
   confidenceScore?: number;
   defaultStrength: MappingStrength;
-}
-
-function strengthForConfidence(score: number): MappingStrength {
-  if (score >= 0.85) return "EQUIVALENT";
-  if (score >= 0.6) return "PARTIAL";
-  return "RELATED";
 }
 
 export function CrossWalkPicker({ frameworkAId, frameworkBId, frameworkAName, frameworkBName }: CrossWalkPickerProps) {
