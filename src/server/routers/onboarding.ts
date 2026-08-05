@@ -7,6 +7,7 @@ import {
 } from '@/lib/types/onboarding';
 import { TRPCError } from '@trpc/server';
 import { createAuditLog } from '@/server/audit-log';
+import { enqueueControlEmbeddingsSafely } from '@/server/services/controlEmbeddingEnqueue';
 
 export const onboardingRouter = createTRPCRouter({
   /**
@@ -138,8 +139,9 @@ export const onboardingRouter = createTRPCRouter({
         });
 
         // Seed controls for each domain (placeholder)
+        const seededControlIds: string[] = [];
         for (const domain of metadata.domains) {
-          await prisma.control.create({
+          const control = await prisma.control.create({
             data: {
               frameworkId: framework.id,
               domain,
@@ -148,7 +150,20 @@ export const onboardingRouter = createTRPCRouter({
               status: 'NOT_STARTED',
             },
           });
+          seededControlIds.push(control.id);
         }
+
+        // One bulk enqueue after the loop, not one per control — see
+        // enqueueControlEmbeddings' note on addBulk and job priority.
+        //
+        // CAVEAT worth knowing: these are template-generated placeholders
+        // ("<Domain> Control" / "Implement and maintain <domain> controls as
+        // per <framework>"). Two frameworks sharing a domain name will embed to
+        // near-identical vectors, so cross-walk similarity over onboarding-
+        // seeded controls produces confident but meaningless matches. That is
+        // why proposeForFrameworkPair stages proposals for human review instead
+        // of writing mappings directly.
+        void enqueueControlEmbeddingsSafely(seededControlIds);
 
         createdFrameworks.push({
           id: framework.id,

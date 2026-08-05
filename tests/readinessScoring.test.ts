@@ -119,6 +119,91 @@ describe("readiness scoring", () => {
       await prisma.organization.delete({ where: { id: org.id } }).catch(() => undefined);
     });
 
+    // ------------------------------------------------------------------
+    // 4.2b — machine-proposed mappings must be invisible to scoring.
+    //
+    // Mappings move the compliance number: mappingBonus grants an unevidenced
+    // control credit when it maps to an evidenced one. If bulk embedding
+    // proposals counted, an org's compliance percentage would change based on
+    // cosine similarity nobody reviewed. Both tests below fail before the
+    // `status = 'ACCEPTED'` filter was added to readinessScoring's mapping_agg
+    // join (they'd report 7.5, the same as the PARTIAL test above).
+    // ------------------------------------------------------------------
+    it("gives a PROPOSED mapping ZERO credit until a human accepts it", async () => {
+      const { org } = await seedOrg("ProposedNoCredit");
+      const fwA = await prisma.framework.create({ data: { name: "FW-A", organizationId: org.id } });
+      const fwB = await prisma.framework.create({ data: { name: "FW-B", organizationId: org.id } });
+
+      const source = await makeRootControl(fwA.id, "A-0");
+      const target = await makeRootControl(fwB.id, "B-0");
+      await addEvidence(target.id, org.id);
+      const mapping = await prisma.controlMapping.create({
+        data: {
+          organizationId: org.id,
+          sourceControlId: source.id,
+          targetControlId: target.id,
+          mappingStrength: "PARTIAL",
+          createdById: "system",
+          status: "PROPOSED",
+        },
+      });
+
+      const proposed = await computeReadinessScore(prisma, org.id, fwA.id);
+      expect(proposed.mappingBonus).toBe(0);
+      expect(proposed.overallScore).toBe(0);
+
+      // Accepting the very same row releases the credit — proving the gate is
+      // the status field and not something else about the fixture.
+      await prisma.controlMapping.update({
+        where: { id: mapping.id },
+        data: { status: "ACCEPTED" },
+      });
+
+      const accepted = await computeReadinessScore(prisma, org.id, fwA.id);
+      expect(accepted.mappingBonus).toBe(7.5);
+      expect(accepted.overallScore).toBe(7.5);
+
+      await prisma.organization.delete({ where: { id: org.id } }).catch(() => undefined);
+    });
+
+    it("does not let a PROPOSED mapping suppress the MISSING_EVIDENCE recommendation", async () => {
+      // The subtle half of the same bug, and the reason the filter is on the
+      // JOIN rather than inside mappingCredit: `hasAnyMapping` suppresses this
+      // recommendation. Filtering only the credit would leave a proposal able
+      // to HIDE a "you have no evidence here" warning — inflating the user's
+      // sense of coverage instead of the score itself.
+      const { org } = await seedOrg("ProposedNoSuppress");
+      const fwA = await prisma.framework.create({ data: { name: "FW-A", organizationId: org.id } });
+      const fwB = await prisma.framework.create({ data: { name: "FW-B", organizationId: org.id } });
+
+      const source = await makeRootControl(fwA.id, "A-0");
+      const target = await makeRootControl(fwB.id, "B-0");
+      await addEvidence(target.id, org.id);
+      await prisma.controlMapping.create({
+        data: {
+          organizationId: org.id,
+          sourceControlId: source.id,
+          targetControlId: target.id,
+          mappingStrength: "EQUIVALENT",
+          createdById: "system",
+          status: "PROPOSED",
+        },
+      });
+
+      await generateRecommendations(prisma, org.id, fwA.id);
+      const rec = await prisma.recommendation.findFirst({
+        where: {
+          organizationId: org.id,
+          frameworkId: fwA.id,
+          controlId: source.id,
+          type: RecommendationType.MISSING_EVIDENCE,
+        },
+      });
+      expect(rec).not.toBeNull();
+
+      await prisma.organization.delete({ where: { id: org.id } }).catch(() => undefined);
+    });
+
     it("ignores expired evidence (not acceptable) and RELATED mappings (no credit)", async () => {
       const { org } = await seedOrg("ExpiredRelated");
       const fwA = await prisma.framework.create({ data: { name: "FW-A", organizationId: org.id } });

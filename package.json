@@ -22,6 +22,7 @@
     "db:deploy": "dotenv -e envs/.env.production -- prisma migrate deploy --schema packages/db/schema.prisma",
     "db:seed": "dotenv -e envs/.env.development -- tsx packages/db/seed.ts",
     "seed:frameworks": "dotenv -e envs/.env.development -- tsx scripts/seed-frameworks.ts",
+    "backfill:control-embeddings": "dotenv -e envs/.env.development -- tsx scripts/backfill-control-embeddings.ts",
     "seed:templates": "dotenv -e envs/.env.development -- tsx prisma/seed-templates.ts",
     "seed:plans": "dotenv -e envs/.env.development -- tsx packages/db/seed-plans.ts",
     "seed:all": "npm run db:seed && npm run seed:frameworks && npm run seed:templates && npm run seed:plans",

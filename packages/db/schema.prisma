@@ -350,19 +350,55 @@ model ControlMapping {
   rationale       String?         @db.Text
   suggestedByAI   Boolean         @default(false)
   confidenceScore Float?
-  createdById     String
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
 
+  /// Review state. Defaults to ACCEPTED so every pre-existing row — all of
+  /// which were created by a human through the picker — keeps its current
+  /// behaviour with no backfill.
+  ///
+  /// This exists because mappings MOVE THE COMPLIANCE SCORE:
+  /// readinessScoring's mappingBonus grants an unevidenced control up to full
+  /// credit when it maps to an evidenced one (EQUIVALENT 1.0, PARTIAL 0.5),
+  /// worth up to 15 points. Bulk machine-proposed mappings must therefore be
+  /// invisible to scoring until a human accepts them — see the
+  /// `status = 'ACCEPTED'` filter in readinessScoring.ts's mapping_agg CTE.
+  ///
+  /// REJECTED is a TOMBSTONE, not a delete: keeping the row is what stops a
+  /// re-run of proposeForFrameworkPair from resurrecting a pair a human has
+  /// already turned down.
+  status       MappingStatus @default(ACCEPTED)
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  /// NOTE: this constraint is DIRECTIONAL — it does not prevent the reverse
+  /// (target, source) pair. That predates the status column; the router
+  /// compensates by checking both directions in application code. A proper
+  /// expression index on (orgId, LEAST(src,tgt), GREATEST(src,tgt)) belongs in
+  /// its own migration, behind a pre-check for orgs that already hold both
+  /// directions, so a data problem cannot block this column.
+  ///
+  /// Status is a property of the PAIR, not a separate row: accepting is an
+  /// in-place UPDATE, never an insert, so PROPOSED and ACCEPTED rows for the
+  /// same directional pair cannot coexist.
   @@unique([organizationId, sourceControlId, targetControlId])
   @@index([organizationId, sourceControlId])
   @@index([organizationId, targetControlId])
+  @@index([organizationId, status])
 }
 
 enum MappingStrength {
   EQUIVALENT
   PARTIAL
   RELATED
+}
+
+enum MappingStatus {
+  PROPOSED
+  ACCEPTED
+  REJECTED
 }
 
 // ----- Phase 6 Part 3: Readiness Scoring & Recommendations -----

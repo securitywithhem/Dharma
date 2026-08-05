@@ -179,6 +179,10 @@ export async function buildComplianceGraphDigest(
       organizationId,
       sourceControlId: { in: [...controlIdSet] },
       targetControlId: { in: [...controlIdSet] },
+      // ACCEPTED only — a crosswalk edge in the compliance graph is an
+      // assertion that two controls are equivalent. Unreviewed proposals must
+      // not become graph structure the advisor reasons over.
+      status: "ACCEPTED",
     },
     select: { sourceControlId: true, targetControlId: true },
     take: cap * 2,

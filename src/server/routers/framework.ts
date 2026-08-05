@@ -3,6 +3,7 @@ import path from "path";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createAuditLog } from "@/server/audit-log";
+import { enqueueControlEmbeddingsSafely } from "@/server/services/controlEmbeddingEnqueue";
 import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
 
 // ------------------------------------------------------------------
@@ -265,6 +266,15 @@ export const frameworkRouter = createTRPCRouter({
           where: { frameworkId: framework.id },
           orderBy: [{ domain: "asc" }, { title: "asc" }],
         });
+
+        // Embed the seeded controls so cross-walk AI suggestions work on them.
+        // Previously only control.createChild enqueued embeddings, so every
+        // control created this way had `embedding IS NULL` and suggestMappings
+        // — which filters on IS NOT NULL — always returned nothing.
+        //
+        // Deliberately not awaited: embedding is slow, best-effort, and must
+        // never delay or fail framework creation.
+        void enqueueControlEmbeddingsSafely(controls.map((c) => c.id));
       }
 
       await createAuditLog(ctx.prisma, {

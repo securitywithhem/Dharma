@@ -80,8 +80,53 @@ export const controlMappingRouter = createTRPCRouter({
             { sourceControlId: input.targetControlId, targetControlId: input.sourceControlId },
           ],
         },
-        select: { id: true },
+        select: { id: true, status: true },
       });
+
+      // A PROPOSED or REJECTED row is not "already mapped" — it is a machine
+      // suggestion, or one a human previously turned down. In both cases an
+      // explicit human create is a decision that should WIN, so promote the
+      // existing row in place rather than reporting a conflict the user cannot
+      // resolve (the unique constraint means they could never insert over it).
+      //
+      // Update-in-place, not delete-and-insert: it preserves the row id the
+      // audit trail already references.
+      if (existing && existing.status !== "ACCEPTED") {
+        const promoted = await ctx.prisma.controlMapping.update({
+          where: { id: existing.id },
+          data: {
+            // Re-point the pair to the direction the caller asked for, since
+            // the existing row may be the reverse.
+            sourceControlId: input.sourceControlId,
+            targetControlId: input.targetControlId,
+            mappingStrength: input.mappingStrength,
+            rationale: input.rationale,
+            suggestedByAI: input.suggestedByAI,
+            confidenceScore: input.suggestedByAI ? input.confidenceScore : null,
+            status: "ACCEPTED",
+            reviewedById: ctx.session.user.id,
+            reviewedAt: new Date(),
+          },
+        });
+
+        await createAuditLog(ctx.prisma, {
+          organizationId,
+          userId: ctx.session.user.id,
+          action: "CONTROL_MAPPING_ACCEPTED",
+          entity: "ControlMapping",
+          entityId: promoted.id,
+          changes: {
+            sourceControlId: input.sourceControlId,
+            targetControlId: input.targetControlId,
+            mappingStrength: input.mappingStrength,
+            promotedFrom: existing.status,
+          },
+        });
+
+        enqueueBothSides(organizationId, source.frameworkId, target.frameworkId);
+        return promoted;
+      }
+
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "A mapping between these controls already exists." });
       }
@@ -252,14 +297,23 @@ export const controlMappingRouter = createTRPCRouter({
         }),
       ]);
 
+      // Partition by review state. A PROPOSED row is a suggestion nobody has
+      // agreed to yet, so it must NOT mark a control as mapped — otherwise
+      // running proposeForFrameworkPair would silently empty the picker's
+      // "unmapped" lists and hide exactly the controls a user still has to
+      // work through.
+      const accepted = mappings.filter((m) => m.status === "ACCEPTED");
+      const proposals = mappings.filter((m) => m.status === "PROPOSED");
+
       const mappedIds = new Set<string>();
-      for (const m of mappings) {
+      for (const m of accepted) {
         mappedIds.add(m.sourceControlId);
         mappedIds.add(m.targetControlId);
       }
 
       return {
-        mappings,
+        mappings: accepted,
+        proposals,
         unmappedA: controlsA.filter((c) => !mappedIds.has(c.id)),
         unmappedB: controlsB.filter((c) => !mappedIds.has(c.id)),
       };
