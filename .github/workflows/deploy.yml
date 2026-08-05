@@ -211,10 +211,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # IMAGE_NAME is ${{ github.repository }} — "securitywithhem/Dharma", with a
+      # capital D. OCI reference names must be lowercase, so interpolating it raw
+      # produced an unparseable image-ref and this scan had NEVER run:
+      #   could not parse reference: ghcr.io/securitywithhem/Dharma-worker:...
+      # The build job did not hit this because docker/metadata-action lowercases
+      # the name for you; every place that builds a reference by hand must do it
+      # explicitly. Consequence beyond the scan itself: deploy-production is
+      # `needs: [build, scan]`, so a permanently-failing scan had also blocked
+      # every production deploy.
+      # A step output rather than $GITHUB_ENV: both work at runtime, but an
+      # output is statically resolvable, so editors and actionlint can verify
+      # the reference instead of warning on it.
+      - name: Resolve lowercase image name
+        id: image
+        run: echo "name=$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
           format: "sarif"
           output: "trivy-results.sarif"
 
@@ -244,14 +260,18 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
 
+      # Same lowercase requirement as the scan job — see the comment there.
+      # kubectl would reject "ghcr.io/securitywithhem/Dharma:tag" as an invalid
+      # reference, so this was latently broken here too.
       - name: Update images in staging
         run: |
           IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
+          IMAGE_NAME_LC="$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
           kubectl set image deployment/nextjs \
-            "nextjs=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}" \
+            "nextjs=${{ env.REGISTRY }}/${IMAGE_NAME_LC}:${IMAGE_TAG}" \
             -n dharma
           kubectl set image deployment/worker \
-            "worker=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker:${IMAGE_TAG}" \
+            "worker=${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker:${IMAGE_TAG}" \
             -n dharma
 
       - name: Wait for rollout
@@ -280,14 +300,16 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
 
+      # Same lowercase requirement as the scan job — see the comment there.
       - name: Update images in production
         run: |
           IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
+          IMAGE_NAME_LC="$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
           kubectl set image deployment/nextjs \
-            "nextjs=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}" \
+            "nextjs=${{ env.REGISTRY }}/${IMAGE_NAME_LC}:${IMAGE_TAG}" \
             -n dharma
           kubectl set image deployment/worker \
-            "worker=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker:${IMAGE_TAG}" \
+            "worker=${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker:${IMAGE_TAG}" \
             -n dharma
 
       - name: Wait for rollout
