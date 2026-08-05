@@ -39,12 +39,12 @@ jest.mock("@/lib/razorpay", () => {
   };
 });
 
-let RazorpayProvider: new () => import("@/server/services/payments/provider").PaymentProviderAdapter;
+let RazorpayProvider: typeof import("@/server/services/payments/razorpayProvider").RazorpayProvider;
 let normalizeRazorpaySubscription: typeof import("@/server/services/payments/razorpayProvider").normalizeRazorpaySubscription;
 let mapRazorpayStatus: typeof import("@/lib/razorpay").mapRazorpayStatus;
-let ProviderUnreachableError: typeof import("@/server/services/payments/provider").ProviderUnreachableError;
+let ProviderUnreachableError: typeof import("@/server/services/payments/types").ProviderUnreachableError;
 
-let provider: import("@/server/services/payments/provider").PaymentProviderAdapter;
+let provider: InstanceType<typeof import("@/server/services/payments/razorpayProvider").RazorpayProvider>;
 
 beforeAll(async () => {
   const mod = await import("@/server/services/payments/razorpayProvider");
@@ -53,7 +53,7 @@ beforeAll(async () => {
 
   ({ mapRazorpayStatus } = await import("@/lib/razorpay"));
   ({ ProviderUnreachableError } = await import(
-    "@/server/services/payments/provider"
+    "@/server/services/payments/types"
   ));
 
   provider = new RazorpayProvider();
@@ -64,7 +64,6 @@ function planFixture(overrides: Partial<Plan> = {}): Plan {
     id: "plan_local_1",
     name: "pro",
     displayName: "Pro",
-    stripePriceId: "price_stripe_pro",
     razorpayPlanId: "plan_rzp_pro",
     price: 8000,
     currency: "INR",
@@ -89,7 +88,7 @@ describe("status mapping", () => {
   });
 
   it("keeps recoverable failure states out of CANCELED", () => {
-    // Termination is the dunning sweep's decision alone, matching Stripe.
+    // Termination is the dunning sweep's decision alone.
     expect(mapRazorpayStatus("pending")).toBe("PAST_DUE");
     expect(mapRazorpayStatus("halted")).toBe("PAST_DUE");
   });
@@ -196,7 +195,7 @@ describe("gone vs unreachable", () => {
 });
 
 describe("invoice normalisation", () => {
-  it("reports amountDue as the unpaid remainder, matching Stripe's meaning", async () => {
+  it("reports amountDue as the unpaid remainder, not the gross amount", async () => {
     allInvoices.mockResolvedValueOnce({
       items: [
         {
@@ -248,21 +247,14 @@ describe("invoice normalisation", () => {
 });
 
 describe("plan identifiers", () => {
-  it("reads the Razorpay plan ID, never the Stripe price ID", () => {
+  it("reads the Razorpay plan ID", () => {
     expect(provider.planExternalId(planFixture())).toBe("plan_rzp_pro");
-    // A plan wired up only in Stripe is correctly not sellable here.
+    // A plan with no Razorpay plan ID is correctly not sellable.
     expect(provider.planExternalId(planFixture({ razorpayPlanId: null }))).toBeNull();
   });
 
   it("looks plans up by the Razorpay column", () => {
     expect(provider.planWhereExternalId("plan_x")).toEqual({ razorpayPlanId: "plan_x" });
-  });
-});
-
-describe("no hosted portal", () => {
-  it("returns null so the UI renders the in-app management screen", async () => {
-    // Null means "this provider has no portal", not "an error occurred".
-    await expect(provider.createPortalSession("cust_1", "https://x.test")).resolves.toBeNull();
   });
 });
 
@@ -395,40 +387,5 @@ describe("subscription payment verification (checkout fast path)", () => {
         signature: withWebhookSecret,
       }),
     ).toBe(false);
-  });
-});
-
-describe("provider selection", () => {
-  it("defaults to Razorpay, and honours an explicit stripe setting", async () => {
-    const { activeProviderName } = await import("@/server/services/payments");
-    const saved = process.env.PAYMENT_PROVIDER;
-    try {
-      delete process.env.PAYMENT_PROVIDER;
-      // Stripe is invite-only for India-based accounts, so an unset variable
-      // must land on the provider that actually works.
-      expect(activeProviderName()).toBe("razorpay");
-
-      process.env.PAYMENT_PROVIDER = "stripe";
-      expect(activeProviderName()).toBe("stripe");
-    } finally {
-      process.env.PAYMENT_PROVIDER = saved;
-    }
-  });
-
-  it("routes an existing org to ITS provider, not the deployment default", async () => {
-    const { providerFor } = await import("@/server/services/payments");
-    const saved = process.env.PAYMENT_PROVIDER;
-    process.env.PAYMENT_PROVIDER = "razorpay";
-    try {
-      // Cancelling a Stripe org's subscription through Razorpay would look up
-      // a Stripe ID in Razorpay, fail, and leave a customer billed for a plan
-      // they cancelled.
-      expect(providerFor({ paymentProvider: "STRIPE" }).name).toBe("stripe");
-      expect(providerFor({ paymentProvider: "RAZORPAY" }).name).toBe("razorpay");
-      // Never paid → whatever it would use next.
-      expect(providerFor({ paymentProvider: null }).name).toBe("razorpay");
-    } finally {
-      process.env.PAYMENT_PROVIDER = saved;
-    }
   });
 });

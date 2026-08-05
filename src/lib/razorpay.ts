@@ -1,6 +1,6 @@
 // Phase 3c — Razorpay SDK client and status mapping.
 //
-// Mirrors src/lib/stripe.ts deliberately, including the placeholder fallback:
+// The placeholder fallback is deliberate:
 // the constructor must not throw at module import, because `next build`
 // executes this module while collecting page data for routes that transitively
 // import the app router, in environments with no Razorpay config. Real billing
@@ -20,10 +20,10 @@ export default razorpay;
  * Map a Razorpay subscription status onto Dharma's SubscriptionStatus enum.
  *
  * Shared by the webhook receiver, the reconciliation worker and the dunning
- * worker so the three can never disagree, exactly as mapStripeStatus is.
+ * worker so the three can never disagree.
  *
- * The mapping is NOT a transliteration of the Stripe one — Razorpay's lifecycle
- * genuinely differs:
+ * The mapping is NOT a transliteration of any other provider's — Razorpay's
+ * lifecycle is its own:
  *
  *  - `created` / `authenticated`: the subscription exists but the customer has
  *    not been charged yet (mandate authorised, first debit pending). Mapping
@@ -34,7 +34,7 @@ export default razorpay;
  *  - `pending`: a charge failed and Razorpay is retrying. Recoverable → PAST_DUE.
  *  - `halted`: Razorpay gave up retrying. Still recoverable by the customer
  *    updating their method, so PAST_DUE rather than CANCELED — termination is
- *    the dunning sweep's decision alone, matching the Stripe path.
+ *    the dunning sweep's decision alone.
  *  - `paused`: PAUSED.
  *  - `cancelled` / `completed` / `expired`: terminal → CANCELED.
  */

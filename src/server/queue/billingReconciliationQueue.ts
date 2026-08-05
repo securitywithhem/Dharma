@@ -4,7 +4,7 @@
 // delivery, an exhausted retry budget, a signing-secret rotation. Without a
 // reconciler those orgs sit on a stale plan indefinitely — either paying for
 // entitlements they cannot use, or using entitlements they stopped paying for.
-// Runs daily and treats Stripe as the source of truth.
+// Runs daily and treats Razorpay as the source of truth.
 import { Queue } from "bullmq";
 import { env } from "@/env";
 

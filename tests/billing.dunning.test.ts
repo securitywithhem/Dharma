@@ -1,27 +1,22 @@
 // Phase 3b — dunning sweep and grace period.
 //
 // The failure this suite guards against is downgrading a customer who has
-// actually paid. Stripe is therefore re-checked before any downgrade, and the
+// actually paid. Razorpay is therefore re-checked before any downgrade, and the
 // sweep must skip (not downgrade) whenever it cannot confirm delinquency.
 import { describe, it, expect, beforeAll, afterAll, jest } from "@jest/globals";
 import { PrismaClient } from "@prisma/client";
 
-// The provider boundary is stubbed so the sweep's "re-check before acting"
-// branch can be driven without a payment-provider account.
-//
-// Phase 3c moved this seam: the sweep no longer calls stripe.subscriptions
-// .retrieve() directly, it calls providerFor(org).getSubscription(). Mocking
-// @/lib/stripe therefore no longer intercepts anything. The adapter contract
-// is what matters here — a NORMALISED status ("ACTIVE", not "active"), null
-// for a confirmed-gone subscription, and a throw for "could not find out".
+// The Razorpay service is stubbed so the sweep's "re-check before acting"
+// branch can be driven without a Razorpay account. The contract is what matters
+// here — a NORMALISED status ("ACTIVE", not "active"), null for a
+// confirmed-gone subscription, and a throw for "could not find out".
 let mockGetSubscription: () => Promise<unknown> = async () => ({
   status: "PAST_DUE",
 });
 jest.mock("@/server/services/payments", () => ({
-  providerFor: () => ({
-    name: "stripe",
+  razorpayProvider: {
     getSubscription: () => mockGetSubscription(),
-  }),
+  },
 }));
 
 // Mailer is stubbed: the notify path is asserted by call, not by SMTP.
@@ -34,9 +29,9 @@ jest.mock("@/server/lib/mailer", () => ({
 // jest.mock() calls above the imports when `jest` is the global. Here `jest`
 // comes from @jest/globals, so the mocks above are registered in source order
 // — i.e. AFTER a static import would already have pulled in the real
-// @/lib/stripe. A static import here does not just skip the stub, it lets the
-// suite make live Stripe API calls. See tests/billing.webhook.test.ts for the
-// same pattern.
+// @/server/services/payments. A static import here does not just skip the
+// stub, it lets the suite make live Razorpay API calls. See
+// tests/billing.razorpay.webhook.test.ts for the same pattern.
 type DunningWorkerModule = typeof import("@/server/queue/workers/dunningWorker");
 let createDunningProcessor: DunningWorkerModule["createDunningProcessor"];
 let isGracePeriodElapsed: DunningWorkerModule["isGracePeriodElapsed"];
@@ -56,11 +51,9 @@ async function makeDelinquentOrg(daysAgo: number, subscriptionId: string | null)
       planId: proPlan.id,
       subscriptionStatus: "PAST_DUE",
       dunningStartedAt: new Date(Date.now() - daysAgo * DAY_MS),
-      // Explicitly Stripe-billed: the sweep selects stripeSubscriptionId vs
-      // razorpaySubscriptionId off this column, so leaving it null would make
-      // the org look like it has no subscription to re-check.
-      paymentProvider: "STRIPE",
-      stripeSubscriptionId: subscriptionId,
+      // The sweep re-checks this subscription before downgrading; leaving it
+      // null would make the org look like it has nothing to re-check.
+      razorpaySubscriptionId: subscriptionId,
     },
   });
 }
@@ -95,7 +88,7 @@ beforeAll(async () => {
       name: `pro-dunning-spec-${suffix}`,
       displayName: "Pro (spec)",
       price: 99,
-      stripePriceId: `price_dunning_${suffix}`,
+      razorpayPlanId: `plan_dunning_${suffix}`,
       limits: { users: 25, frameworks: 15, storageMb: 5000 },
     },
   });

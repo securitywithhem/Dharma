@@ -27,7 +27,7 @@ import { Download, ExternalLink } from "lucide-react";
 import { formatDate, formatMinorUnits } from "./format";
 
 function invoiceBadgeVariant(status: string | null) {
-  // Covers both vocabularies: Stripe (paid/open/draft) and Razorpay
+  // Covers Razorpay's invoice vocabulary
   // (paid/issued/partially_paid/expired/cancelled).
   if (status === "paid") return "success" as const;
   if (status === "open" || status === "draft" || status === "issued") {
@@ -39,7 +39,6 @@ function invoiceBadgeVariant(status: string | null) {
 
 export function BillingHistory() {
   const invoicesQuery = api.billing.listInvoices.useQuery();
-  const { data: providerInfo } = api.billing.getProviderInfo.useQuery();
 
   if (invoicesQuery.isLoading) {
     return (
@@ -51,8 +50,6 @@ export function BillingHistory() {
   }
 
   const invoices = invoicesQuery.data ?? [];
-  const providerLabel =
-    providerInfo?.provider === "stripe" ? "Stripe" : "Razorpay";
 
   return (
     <div className="space-y-6">
@@ -60,14 +57,14 @@ export function BillingHistory() {
         <CardHeader>
           <CardTitle>Invoices</CardTitle>
           <CardDescription>
-            Invoices are issued by {providerLabel} each time your subscription
+            Invoices are issued by Razorpay each time your subscription
             renews.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {invoicesQuery.isError ? (
             <div className="rounded-md border border-dharma-danger bg-dharma-danger-bg p-4 text-sm text-dharma-danger-text">
-              <p>Could not load invoices from {providerLabel}.</p>
+              <p>Could not load invoices from Razorpay.</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -106,12 +103,12 @@ export function BillingHistory() {
                     <span className="text-sm font-semibold">
                       {formatMinorUnits(invoice.amountDue, invoice.currency)}
                     </span>
-                    {/* Each control is rendered only when the provider actually
+                    {/* Each control is rendered only when Razorpay actually
                         returned the corresponding link. A download button that
                         cannot download, or a "PDF" link that opens a web page,
-                        is worse than its absence. Stripe returns a real PDF;
-                        Razorpay returns a hosted page and no PDF, so Razorpay
-                        invoices show "View" and no download. */}
+                        is worse than its absence. Razorpay commonly returns a
+                        hosted page and no PDF, in which case the invoice shows
+                        "View" and no download. */}
                     {invoice.invoicePdf && (
                       <a
                         href={invoice.invoicePdf}
@@ -144,10 +141,9 @@ export function BillingHistory() {
         </CardContent>
       </Card>
 
-      {/* The old "Manage Payment Methods" card lived here and opened Stripe's
-          hosted portal. Razorpay has no equivalent, so payment methods,
-          cancellation and billing details now live on the Manage tab — one
-          place, for both providers. */}
+      {/* The old "Manage Payment Methods" card lived here and opened a hosted
+          portal. Razorpay has no equivalent, so payment methods, cancellation
+          and billing details all live on the Manage tab instead. */}
     </div>
   );
 }

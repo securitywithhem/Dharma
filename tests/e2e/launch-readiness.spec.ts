@@ -105,11 +105,16 @@ test.describe("Launch-readiness audit regressions", () => {
     expect(new Set(seen.values()).size).toBe(seen.size);
   });
 
-  // B2 — Stripe's SDK was loaded app-wide from the root providers.
-  test("B2: Stripe SDK does not load outside billing", async ({ page }) => {
-    const stripeRequests: string[] = [];
+  // B2 — the payment SDK was once loaded app-wide from the root providers, so
+  // every route paid for a third-party script it had no use for. The Razorpay
+  // loader (useRazorpayCheckout) is deliberately lazy and billing-scoped; this
+  // guards that scoping, which has regressed once already.
+  test("B2: payment SDK does not load outside billing", async ({ page }) => {
+    const checkoutRequests: string[] = [];
     page.on("request", (request) => {
-      if (request.url().includes("js.stripe.com")) stripeRequests.push(request.url());
+      if (request.url().includes("checkout.razorpay.com")) {
+        checkoutRequests.push(request.url());
+      }
     });
 
     await page.goto("/dashboard");
@@ -117,6 +122,6 @@ test.describe("Launch-readiness audit regressions", () => {
     await page.goto("/dashboard/frameworks");
     await page.waitForLoadState("networkidle");
 
-    expect(stripeRequests).toHaveLength(0);
+    expect(checkoutRequests).toHaveLength(0);
   });
 });

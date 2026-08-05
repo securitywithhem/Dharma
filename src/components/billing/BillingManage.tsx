@@ -2,10 +2,11 @@
 
 // Phase 3c — self-serve subscription management.
 //
-// NEW WORK, not a port. Stripe customers were sent to Stripe's hosted Billing
-// Portal for status, payment methods and cancellation. Razorpay has no
-// equivalent, so leaving the old "Manage billing" button in place would have
-// produced a control that opens nothing. Everything that portal did is here.
+// Razorpay has no hosted Billing Portal for status, payment methods and
+// cancellation, so leaving a "Manage billing" button pointing at one would
+// produce a control that opens nothing. Everything such a portal would do —
+// status, payment-method replacement, cancellation, billing details — is here,
+// in-app.
 //
 // Cancellation routes through the shared ConfirmDialog. That is not ceremony:
 // this codebase already established that irreversible actions get a confirm
@@ -30,7 +31,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, CreditCard, ExternalLink } from "lucide-react";
+import { AlertTriangle, CreditCard } from "lucide-react";
 import { useRazorpayCheckout } from "./useRazorpayCheckout";
 import { formatDate, formatPlanPrice } from "./format";
 
@@ -77,13 +78,6 @@ export function BillingManage() {
       setConfirmingCancel(false);
       toast.error(error.message);
     },
-  });
-
-  const portal = api.billing.createBillingPortalSession.useMutation({
-    onSuccess: ({ url }) => {
-      window.location.href = url;
-    },
-    onError: (error) => toast.error(error.message),
   });
 
   const startMethodUpdate = api.billing.startPaymentMethodUpdate.useMutation();
@@ -204,14 +198,10 @@ export function BillingManage() {
             </div>
           )}
 
-          {providerInfo && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Billed through</span>
-              <span className="text-sm capitalize text-dharma-ink-secondary">
-                {subscription?.provider ?? providerInfo.provider}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Billed through</span>
+            <span className="text-sm text-dharma-ink-secondary">Razorpay</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -219,11 +209,11 @@ export function BillingManage() {
         <CardHeader>
           <CardTitle>Payment method</CardTitle>
           <CardDescription>
-            {providerInfo?.hasHostedPortal
-              ? "Update your card and billing details in the provider's secure portal."
-              : /* Honest about the mechanism, because the customer will see a
-                   payment screen and should know why. */
-                "Razorpay ties your payment mandate to your subscription, so updating your method re-authorises it. Your plan and billing date are unchanged."}
+            {/* Honest about the mechanism, because the customer will see a
+                payment screen and should know why. */}
+            Razorpay ties your payment mandate to your subscription, so updating
+            your method re-authorises it. Your plan and billing date are
+            unchanged.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -231,20 +221,6 @@ export function BillingManage() {
             <p className="text-sm text-dharma-ink-secondary">
               You are on the Free plan. There is no payment method to manage.
             </p>
-          ) : providerInfo?.hasHostedPortal ? (
-            <Button
-              variant="secondary"
-              className="gap-2"
-              disabled={portal.isPending}
-              onClick={() =>
-                portal.mutate({
-                  returnUrl: `${window.location.origin}/dashboard/settings/billing`,
-                })
-              }
-            >
-              {portal.isPending ? "Opening…" : "Open billing portal"}
-              <ExternalLink className="h-4 w-4" />
-            </Button>
           ) : (
             <Button
               variant="secondary"

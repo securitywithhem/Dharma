@@ -3,7 +3,7 @@ import { PrismaClient, Role, RecommendationStatus, RecommendationType } from "@p
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc";
 
 // Import only the routers under test — importing the full appRouter would pull
-// in unrelated BullMQ queues / Stripe construction at module load (same
+// in unrelated BullMQ queues / payment-client construction at module load (same
 // rationale as tests/control.hierarchy.test.ts and
 // tests/controlMapping.hierarchy.test.ts).
 // eslint-disable-next-line import/first

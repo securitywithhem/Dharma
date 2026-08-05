@@ -63,7 +63,7 @@ const reportScheduleDispatchWorker = startReportScheduleDispatchWorker();
 const regulatoryFanoutWorker = startRegulatoryFanoutWorker();
 // Phase 3b/3c — billing lifecycle: dunning + payment-provider drift
 // reconciliation. Both workers resolve the adapter per organization, so one
-// pair of jobs covers Razorpay and Stripe orgs alike — no new queues.
+// pair of jobs covers every subscribed org — no per-provider queues.
 const dunningWorker = startDunningWorker();
 const billingReconciliationWorker = startBillingReconciliationWorker();
 

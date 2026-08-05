@@ -120,6 +120,14 @@ const INSECURE_DEFAULTS: Record<string, readonly string[]> = {
 function assertNoInsecureDefaults(parsed: Record<string, unknown>): void {
   if (parsed.NODE_ENV !== "production") return;
 
+  // `next build` evaluates route modules to collect page data, with NODE_ENV
+  // already set to "production". That is a COMPILE, not a boot: the build host
+  // legitimately has no production secrets, and failing here makes the image
+  // unbuildable rather than making the deployment safer. The check that
+  // actually matters still runs when the built server starts, where the
+  // secrets are real and a placeholder is a genuine incident.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+
   const offenders = Object.entries(INSECURE_DEFAULTS)
     .filter(([key, bad]) => bad.includes(String(parsed[key] ?? "")))
     .map(([key]) => key);

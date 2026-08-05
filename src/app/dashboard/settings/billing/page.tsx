@@ -23,7 +23,7 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (searchParams?.get("success")) {
-      // The plan is applied by the Stripe webhook, which may land a moment
+      // The plan is applied by the Razorpay webhook, which may land a moment
       // after the browser redirect. Invalidate so the page reflects the new
       // plan once it arrives, instead of showing the pre-checkout plan and
       // claiming success — the previous alert() asserted the update had

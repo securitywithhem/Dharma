@@ -58,7 +58,7 @@ Help small businesses:
 | **Cache/Queue** | Redis, BullMQ (job queues) |
 | **Storage** | MinIO (S3-compatible object storage) |
 | **Auth** | NextAuth.js, SAML 2.0, local passwords |
-| **Payments** | Stripe (subscriptions) |
+| **Payments** | Razorpay (subscriptions) |
 | **AI** | Claude API (embeddings, analysis) |
 
 ### Directory Structure
@@ -152,7 +152,7 @@ Cross-org tenant isolation:
 ### Phase 3b: Billing & Subscription
 **Status:** ✅ Complete
 
-Stripe integration + plan limits:
+Razorpay integration + plan limits:
 
 **Models:**
 - `Plan` (Free, Pro, Enterprise) with JSON `limits` (max users, max connectors, etc.)
@@ -160,7 +160,7 @@ Stripe integration + plan limits:
 - `SubscriptionStatus` enum (active, canceled, etc.)
 
 **Routers:**
-- `/billing` — Manage subscription, Stripe checkout
+- `/billing` — Manage subscription, Razorpay checkout
 
 **Key files:**
 - `src/server/routers/billing.ts`
@@ -512,7 +512,7 @@ SSO, SCIM, RBAC, audit logging, MSSP:
 | **connector** | Third-party integrations |
 | **evidenceMapping** | Auto-map connector → evidence |
 | **webhook** | Webhook management |
-| **billing** | Stripe subscription |
+| **billing** | Razorpay subscription |
 | **entitlement** | Plan limits enforcement |
 | **marketplace** | Browse templates |
 | **import** | Import templates into org |

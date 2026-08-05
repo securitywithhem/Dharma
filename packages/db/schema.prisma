@@ -14,20 +14,16 @@ model Plan {
   id            String         @id @default(cuid())
   name          String         @unique // "free", "pro", "enterprise"
   displayName   String // "Free", "Pro", "Enterprise"
-  stripePriceId String? // null for free tier
-
-  /// Razorpay Plan ID (plan_…). NOT interchangeable with stripePriceId: a
-  /// Razorpay Plan is its own object with its own amount and currency, created
-  /// in the Razorpay dashboard or API. A plan can carry both IDs at once so the
-  /// same row can be sold through either provider.
+  /// Razorpay Plan ID (plan_…). A Razorpay Plan is its own object with its own
+  /// amount and currency, created in the Razorpay dashboard or API. Null for
+  /// the free tier, and a plan with no ID here is correctly not sellable.
   razorpayPlanId String? // null for free tier
 
   price         Float          @default(0) // monthly price, in `currency`
-  /// ISO-4217 code for `price`. Added with Razorpay: the provider Plan object
-  /// holds the authoritative amount, and Razorpay India sells in INR while the
-  /// original Stripe prices were USD. Rendering every plan with a hardcoded "$"
-  /// would misstate the price to a paying customer.
-  currency      String         @default("USD")
+  /// ISO-4217 code for `price`. The Razorpay Plan object holds the
+  /// authoritative amount, and Razorpay India sells in INR. Rendering every
+  /// plan with a hardcoded "$" would misstate the price to a paying customer.
+  currency      String         @default("INR")
   limits        Json // { users: 5, frameworks: 3, storageMb: 100 }
   features      Json? // { apiAccess: false, sso: false, ...}
   isPublic      Boolean        @default(true)
@@ -79,22 +75,13 @@ model Organization {
   // Billing and Subscription (Phase 3)
   planId               String?
   plan                 Plan?               @relation(fields: [planId], references: [id])
-  stripeCustomerId     String?             @unique
-  stripeSubscriptionId String?             @unique
   subscriptionStatus   SubscriptionStatus? @default(ACTIVE)
   subscriptionEndsAt   DateTime?
 
-  // Phase 3c — multi-provider billing. Stripe is invite-only for India-based
-  // accounts, so Razorpay is the live provider for this deployment; Stripe is
-  // kept intact behind the same PaymentProvider interface for international
-  // customers later. Both ID pairs coexist — an org that migrates providers
-  // keeps its historical Stripe IDs for invoice lookback.
-  //
-  // NULLABLE on purpose rather than defaulting to a provider: an org that has
-  // never paid has no provider, and stamping one would make the reconciliation
-  // and dunning workers scan free orgs against an API that knows nothing about
-  // them. It is set when a subscription is first created.
-  paymentProvider        PaymentProvider?
+  // Razorpay is the sole payment provider. There is deliberately no
+  // `paymentProvider` discriminator column: with one provider it would be the
+  // same value on every paid row and null on every free one, which
+  // `razorpaySubscriptionId IS NOT NULL` already tells us.
   razorpayCustomerId     String?          @unique
   razorpaySubscriptionId String?          @unique
 
@@ -115,11 +102,11 @@ model Organization {
   /// that capability does not need a migration later. See claude/.
   gstin String?
 
-  // Phase 3b dunning — set on the FIRST invoice.payment_failed and cleared on
-  // any successful payment. The grace period is measured from this timestamp,
-  // not from the most recent failure: Stripe retries a failed invoice several
-  // times, and restarting the clock on each retry would make the grace period
-  // unbounded. Null means "not delinquent".
+  // Dunning — set on the FIRST failed charge and cleared on any successful
+  // payment. The grace period is measured from this timestamp, not from the
+  // most recent failure: Razorpay retries a failed charge several times, and
+  // restarting the clock on each retry would make the grace period unbounded.
+  // Null means "not delinquent".
   dunningStartedAt DateTime?
 
   // 64-bit unique lock ID for safe pg_advisory_xact_lock calls
@@ -162,25 +149,14 @@ model Organization {
 model ProcessedWebhookEvent {
   id String @id @default(cuid())
 
-  /// Phase 3c — which provider issued `eventId`. Event IDs are only unique
-  /// within a provider's own namespace, and Razorpay events have no ID field
-  /// at all (the receiver synthesises one — see the Razorpay route), so a bare
-  /// unique on eventId could in principle let one provider's event suppress
-  /// another's. The composite unique below is the real dedupe lock.
-  provider PaymentProvider @default(STRIPE)
-
-  /// The provider's own event ID (Stripe `evt_…`, Razorpay synthesised).
-  eventId     String
+  /// Razorpay's `x-razorpay-event-id`, or — when that header is absent — a
+  /// SHA-256 of the signed body synthesised by the receiver. Unique on its own:
+  /// with a single provider there is no second namespace to collide with, so
+  /// the composite (provider, eventId) key this replaced bought nothing.
+  eventId     String   @unique
   eventType   String
   processedAt DateTime @default(now())
-
-  @@unique([provider, eventId])
   @@index([processedAt])
-}
-
-enum PaymentProvider {
-  STRIPE
-  RAZORPAY
 }
 
 enum SubscriptionStatus {

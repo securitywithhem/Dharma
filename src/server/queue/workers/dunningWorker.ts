@@ -4,23 +4,21 @@
 //   notify — email the org's owners that a payment failed.
 //   sweep  — daily: downgrade orgs still delinquent past the grace period.
 //
-// The downgrade decision is deliberately re-checked against the payment
-// provider rather than trusted from local state: between the failure and the
-// sweep the customer may have paid, and a webhook for that could have been
-// missed. Downgrading a paying customer is far worse than a day's delay.
+// The downgrade decision is deliberately re-checked against Razorpay rather
+// than trusted from local state: between the failure and the sweep the customer
+// may have paid, and a webhook for that could have been missed. Downgrading a
+// paying customer is far worse than a day's delay.
 //
-// Phase 3c made only the status re-check provider-aware. The GRACE-PERIOD
-// POLICY IS UNCHANGED and provider-independent by design: 14 days, clocked from
-// the FIRST failure only (restarting per retry would make it unbounded),
-// re-checked before acting, and skipped rather than guessed when the provider
-// cannot be reached.
+// GRACE-PERIOD POLICY: 14 days, clocked from the FIRST failure only (restarting
+// per retry would make it unbounded), re-checked before acting, and skipped
+// rather than guessed when Razorpay cannot be reached.
 import { Worker, type Job } from "bullmq";
 import { PrismaClient } from "@prisma/client";
 import { env } from "@/env";
 import { prisma as sharedPrisma } from "@/server/db";
 import { emitAuditEvent } from "@/server/services/audit/writer";
 import { sendMail } from "@/server/lib/mailer";
-import { providerFor } from "@/server/services/payments";
+import { razorpayProvider } from "@/server/services/payments";
 import {
   DUNNING_QUEUE_NAME,
   DUNNING_GRACE_PERIOD_DAYS,
@@ -113,9 +111,6 @@ async function handleSweep(prisma: PrismaClient, now: Date) {
       id: true,
       dunningStartedAt: true,
       planId: true,
-      paymentProvider: true,
-      stripeCustomerId: true,
-      stripeSubscriptionId: true,
       razorpayCustomerId: true,
       razorpaySubscriptionId: true,
     },
@@ -131,40 +126,36 @@ async function handleSweep(prisma: PrismaClient, now: Date) {
   for (const org of delinquent) {
     if (!isGracePeriodElapsed(org.dunningStartedAt, now)) continue;
 
-    const provider = providerFor(org);
-    const subscriptionId =
-      provider.name === "stripe"
-        ? org.stripeSubscriptionId
-        : org.razorpaySubscriptionId;
+    const subscriptionId = org.razorpaySubscriptionId;
 
-    // Re-check with the provider before acting. If the subscription is healthy
+    // Re-check with Razorpay before acting. If the subscription is healthy
     // again, the org paid and we missed the event — heal local state instead of
     // cutting them off.
     if (subscriptionId) {
       try {
-        const sub = await provider.getSubscription(subscriptionId);
-        // ACTIVE covers Stripe's active/trialing and Razorpay's active; the
-        // adapters already normalised them, so this stays one comparison
-        // rather than a per-provider status list that could drift.
+        const sub = await razorpayProvider.getSubscription(subscriptionId);
+        // mapRazorpayStatus has already normalised Razorpay's vocabulary onto
+        // Dharma's, so this is one comparison rather than a raw-status list
+        // that could drift away from the map.
         if (sub?.status === "ACTIVE") {
           await prisma.organization.update({
             where: { id: org.id },
             data: { subscriptionStatus: "ACTIVE", dunningStartedAt: null },
           });
           logger.info(
-            { organizationId: org.id, provider: provider.name },
-            "dunning: subscription healthy at provider — cleared delinquency instead of downgrading",
+            { organizationId: org.id },
+            "dunning: subscription healthy at Razorpay — cleared delinquency instead of downgrading",
           );
           continue;
         }
       } catch (err) {
-        // Cannot confirm with the provider → do not downgrade on a guess. Try
+        // Cannot confirm with Razorpay → do not downgrade on a guess. Try
         // again tomorrow; the org keeps access one more day, which is the safe
         // error. (A CONFIRMED-gone subscription returns null, not a throw, and
         // correctly falls through to the downgrade below.)
         logger.error(
-          { err, organizationId: org.id, provider: provider.name },
-          "dunning: could not verify subscription at provider — skipping downgrade this run",
+          { err, organizationId: org.id },
+          "dunning: could not verify subscription at Razorpay — skipping downgrade this run",
         );
         continue;
       }
@@ -175,10 +166,7 @@ async function handleSweep(prisma: PrismaClient, now: Date) {
       data: {
         planId: freePlan.id,
         subscriptionStatus: "CANCELED",
-        // Clear only the delinquent provider's own subscription link.
-        ...(provider.name === "stripe"
-          ? { stripeSubscriptionId: null }
-          : { razorpaySubscriptionId: null }),
+        razorpaySubscriptionId: null,
         dunningStartedAt: null,
       },
     });
@@ -190,7 +178,6 @@ async function handleSweep(prisma: PrismaClient, now: Date) {
       entity: "Organization",
       entityId: org.id,
       changes: {
-        provider: provider.name,
         from: { planId: org.planId },
         to: { planId: freePlan.id, planName: "free" },
         dunningStartedAt: org.dunningStartedAt?.toISOString() ?? null,

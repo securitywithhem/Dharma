@@ -1,29 +1,28 @@
-// Phase 3c — Razorpay behind the PaymentProvider interface.
+// The Razorpay payment service. Sole payment provider — see ./index.ts.
 //
-// This is the LIVE provider for this deployment. Three things differ materially
-// from the Stripe adapter and are handled explicitly rather than by analogy:
+// Three properties of Razorpay's model are load-bearing and are handled here
+// explicitly, because each one has already been the source of a real bug class:
 //
-// 1. CHECKOUT SHAPE. Stripe Checkout is a server-side redirect to a hosted
-//    page. Razorpay's subscription flow creates the Subscription server-side
-//    and then opens Checkout.js as an in-page modal against that subscription
-//    ID. There is no URL to redirect to, so this adapter returns a `modal`
-//    handoff (see CheckoutHandoff) and the browser does the rest.
+// 1. CHECKOUT SHAPE. Razorpay's subscription flow creates the Subscription
+//    server-side, then the browser opens Checkout.js as an in-page modal
+//    against that subscription ID. There is no hosted page to redirect to, so
+//    createCheckout returns a `modal` handoff and the browser does the rest.
 //
-// 2. METADATA PLACEMENT. The single worst bug in the Stripe implementation was
-//    metadata set on the Checkout Session, which Stripe does not propagate to
-//    the Subscription — so every subscription webhook arrived with no org and
-//    paying customers were never upgraded. The equivalent trap does not exist
-//    here for a structural reason worth stating: this adapter creates the
-//    Subscription itself, so `notes` are set directly on the object the webhook
-//    later delivers (payload.subscription.entity.notes). It is verified by test
-//    rather than assumed, and the webhook still existence-checks the org and
-//    falls back to razorpayCustomerId, so a missing note degrades gracefully.
+// 2. METADATA PLACEMENT. A payment provider that does not propagate metadata
+//    onto the object the webhook delivers produces the worst billing bug there
+//    is: the webhook arrives with no organization and the paying customer is
+//    never upgraded. That trap does not exist here for a structural reason
+//    worth stating — this module creates the Subscription itself, so `notes`
+//    sit directly on the object the webhook later delivers
+//    (payload.subscription.entity.notes). It is asserted by test rather than
+//    assumed, and the webhook still existence-checks the org and falls back to
+//    razorpayCustomerId, so a missing note degrades gracefully.
 //
-// 3. NO HOSTED PORTAL. Razorpay has no Billing Portal equivalent, so
-//    createPortalSession returns null and Dharma ships its own self-serve
-//    management screen instead of a dead "Manage billing" button.
+// 3. NO HOSTED PORTAL. Razorpay has no Billing Portal equivalent, so Dharma
+//    ships its own self-serve management screen (BillingManage.tsx) rather
+//    than a "Manage billing" button that opens nothing.
 
-import type { PaymentProvider as PaymentProviderEnum, Plan } from '@prisma/client';
+import type { Plan } from '@prisma/client';
 import razorpay, {
   mapRazorpayStatus,
   RAZORPAY_TERMINAL_STATUSES,
@@ -35,9 +34,8 @@ import {
   type ListInvoicesArgs,
   type NormalizedInvoice,
   type NormalizedSubscription,
-  type PaymentProviderAdapter,
   type WebhookVerification,
-} from './provider';
+} from './types';
 
 /**
  * Razorpay requires `total_count` — it has no "until cancelled" subscription.
@@ -73,8 +71,9 @@ function toDate(unixSeconds: number | null | undefined): Date | null {
 /**
  * Normalise a Razorpay subscription entity. Exported because the webhook route
  * receives the same entity shape inside the event payload and must interpret it
- * identically to the workers — the Stripe path's "one status map, shared by
- * receiver and reconciler" discipline, applied here.
+ * identically to the reconciliation and dunning workers: one status map, shared
+ * by receiver and reconciler, so the three can never disagree about whether an
+ * organization is paid up.
  */
 export function normalizeRazorpaySubscription(
   subscription: RazorpaySubscriptionEntity,
@@ -110,9 +109,7 @@ function isNotFound(err: unknown): boolean {
   );
 }
 
-export class RazorpayProvider implements PaymentProviderAdapter {
-  readonly name = 'razorpay' as const;
-  readonly enumValue: PaymentProviderEnum = 'RAZORPAY';
+export class RazorpayProvider {
 
   isConfigured(): boolean {
     const id = process.env.RAZORPAY_KEY_ID;
@@ -160,7 +157,6 @@ export class RazorpayProvider implements PaymentProviderAdapter {
 
     return {
       kind: 'modal',
-      provider: 'razorpay',
       reference: subscription.id,
       subscriptionId: subscription.id,
       keyId,
@@ -182,7 +178,7 @@ export class RazorpayProvider implements PaymentProviderAdapter {
       // Gone (null) vs unreachable (throw) — the dunning sweep downgrades on
       // the first and deliberately skips on the second.
       if (isNotFound(err)) return null;
-      throw new ProviderUnreachableError('razorpay', err);
+      throw new ProviderUnreachableError(err);
     }
   }
 
@@ -192,7 +188,7 @@ export class RazorpayProvider implements PaymentProviderAdapter {
   ): Promise<NormalizedSubscription> {
     const updated = await razorpay.subscriptions.update(subscriptionId, {
       plan_id: planExternalId,
-      // Apply immediately, matching the Stripe path's behaviour so an upgrade
+      // Apply immediately, so an upgrade
       // grants access at once rather than at the next cycle boundary.
       schedule_change_at: 'now',
     });
@@ -202,7 +198,7 @@ export class RazorpayProvider implements PaymentProviderAdapter {
   }
 
   async cancelSubscription(subscriptionId: string): Promise<NormalizedSubscription> {
-    // `false` = cancel immediately, matching Stripe's subscriptions.cancel().
+    // `false` = cancel immediately rather than at the end of the cycle.
     // The caller (billing router / dunning sweep) is what decides the org falls
     // back to Free, so a deferred cancellation here would desynchronise the two.
     const cancelled = await razorpay.subscriptions.cancel(subscriptionId, false);
@@ -235,7 +231,7 @@ export class RazorpayProvider implements PaymentProviderAdapter {
         number: invoice.invoice_number ?? null,
         status: invoice.status ?? null,
         // Razorpay reports the total and the paid portion; "due" is the
-        // remainder. Stripe reports amount_due directly, so this keeps both
+        // remainder. Derived here so callers see one
         // adapters returning the same meaning for the same field name.
         amountDue: Math.max(amount - amountPaid, 0),
         amountPaid,
@@ -250,12 +246,6 @@ export class RazorpayProvider implements PaymentProviderAdapter {
         invoicePdf: null,
       };
     });
-  }
-
-  async createPortalSession(): Promise<{ url: string } | null> {
-    // Razorpay has no hosted Billing Portal. Null is the honest answer and the
-    // UI renders the in-app management screen instead — see BillingManage.tsx.
-    return null;
   }
 
   /**
@@ -313,7 +303,7 @@ export class RazorpayProvider implements PaymentProviderAdapter {
 
     try {
       // HMAC-SHA256 over the RAW body with the webhook secret. This is a
-      // different scheme from Stripe's timestamped v1 signature — do not
+      // a plain HMAC over the raw body, not a timestamped scheme — do not
       // reason about one from the other. The SDK's own helper is used rather
       // than a hand-rolled HMAC so the comparison stays whatever Razorpay
       // considers correct.

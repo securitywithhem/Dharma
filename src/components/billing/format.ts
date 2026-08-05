@@ -1,8 +1,8 @@
 // Phase 3c — shared billing formatters.
 //
-// Currency is never hardcoded here. Razorpay India sells in INR, the original
-// Stripe prices were authored in USD, and both can now exist in the same Plan
-// table — a hardcoded "$" would misstate the price to a paying customer.
+// Currency is never hardcoded here. Razorpay India sells in INR, and Plan rows
+// carry their own currency — a hardcoded "$" would misstate the price to a
+// paying customer.
 
 /** Plan.price is a major-unit amount (99, not 9900) paired with Plan.currency. */
 export function formatPlanPrice(price: number, currency: string): string {

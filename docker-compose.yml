@@ -246,7 +246,7 @@ services:
       SEED_DATABASE: ${SEED_DATABASE:-false}
       # Empty = OTel disabled. With the monitoring profile up, set to
       # http://otel-collector:4318 to export traces/metrics.
-      # Ops alerting (dead-letter jobs, Stripe webhook failures). Unset =
+      # Ops alerting (dead-letter jobs, Razorpay webhook failures). Unset =
       # structured CRITICAL lines on stdout only; set to a Slack/Discord/ntfy
       # incoming webhook to also page a human. See src/server/lib/ops/alert.ts.
       OPS_ALERT_WEBHOOK_URL: ${OPS_ALERT_WEBHOOK_URL:-}
@@ -303,7 +303,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
       OLLAMA_BASE_URL: http://ollama:11434
-      # Ops alerting (dead-letter jobs, Stripe webhook failures). Unset =
+      # Ops alerting (dead-letter jobs, Razorpay webhook failures). Unset =
       # structured CRITICAL lines on stdout only; set to a Slack/Discord/ntfy
       # incoming webhook to also page a human. See src/server/lib/ops/alert.ts.
       OPS_ALERT_WEBHOOK_URL: ${OPS_ALERT_WEBHOOK_URL:-}
