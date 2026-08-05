@@ -30,6 +30,11 @@ docker exec "${CONTAINER}" psql -U "${DB_USER}" -d postgres -tc \
 docker exec "${CONTAINER}" psql -U "${DB_USER}" -d "${TEST_DB}" -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null
 
 echo "⏳ Syncing schema…"
-npx dotenv -e envs/.env.test -- npx prisma db push --schema packages/db/schema.prisma --skip-generate
+# --accept-data-loss: this script exists to be re-run after a schema change, and
+# any change that drops a column (e.g. the Stripe removal in 07d6db4) otherwise
+# halts it with a data-loss prompt. dharma_test holds only disposable fixtures —
+# the guard that matters is that TEST_DB is never dharma_db, which the CREATE
+# DATABASE above and envs/.env.test together enforce.
+npx dotenv -e envs/.env.test -- npx prisma db push --schema packages/db/schema.prisma --skip-generate --accept-data-loss
 
 echo "✅ '${TEST_DB}' ready. 'npm run test' and 'npm run test:e2e' will no longer touch dharma_db."

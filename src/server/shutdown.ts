@@ -87,6 +87,16 @@ export function setupGracefulShutdown(server?: Server | null): void {
           // Not a fatal error – worker may not be loaded in this process
         }
 
+        // WAVE 0.4 — the scan-spread counter holds its own cached ioredis
+        // connection, outside BullMQ's. Without this it keeps the event loop
+        // alive after every other resource is released.
+        try {
+          const { closeScanAnomalyRedis } = await import("@/server/pentest/scanAnomaly");
+          await closeScanAnomalyRedis();
+        } catch {
+          // Never loaded in this process — nothing to close.
+        }
+
         clearTimeout(forceExitTimer);
         console.log("[shutdown] ✅ Graceful shutdown complete. Exiting.");
         process.exit(0);

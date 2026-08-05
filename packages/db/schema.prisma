@@ -11,9 +11,9 @@ datasource db {
 }
 
 model Plan {
-  id            String         @id @default(cuid())
-  name          String         @unique // "free", "pro", "enterprise"
-  displayName   String // "Free", "Pro", "Enterprise"
+  id             String  @id @default(cuid())
+  name           String  @unique // "free", "pro", "enterprise"
+  displayName    String // "Free", "Pro", "Enterprise"
   /// Razorpay Plan ID (plan_…). A Razorpay Plan is its own object with its own
   /// amount and currency, created in the Razorpay dashboard or API. Null for
   /// the free tier, and a plan with no ID here is correctly not sellable.
@@ -53,6 +53,7 @@ model Organization {
   penTests        PenTest[]
   vulnerabilities Vulnerability[]
   assets          Asset[]
+  verifiedAssets  VerifiedAsset[]
   controlMappings ControlMapping[]
   readinessScores ReadinessScore[]
   recommendations Recommendation[]
@@ -73,17 +74,17 @@ model Organization {
   aiProvider Json?
 
   // Billing and Subscription (Phase 3)
-  planId               String?
-  plan                 Plan?               @relation(fields: [planId], references: [id])
-  subscriptionStatus   SubscriptionStatus? @default(ACTIVE)
-  subscriptionEndsAt   DateTime?
+  planId             String?
+  plan               Plan?               @relation(fields: [planId], references: [id])
+  subscriptionStatus SubscriptionStatus? @default(ACTIVE)
+  subscriptionEndsAt DateTime?
 
   // Razorpay is the sole payment provider. There is deliberately no
   // `paymentProvider` discriminator column: with one provider it would be the
   // same value on every paid row and null on every free one, which
   // `razorpaySubscriptionId IS NOT NULL` already tells us.
-  razorpayCustomerId     String?          @unique
-  razorpaySubscriptionId String?          @unique
+  razorpayCustomerId     String? @unique
+  razorpaySubscriptionId String? @unique
 
   /// The subscription being REPLACED during a payment-method update.
   ///
@@ -156,6 +157,7 @@ model ProcessedWebhookEvent {
   eventId     String   @unique
   eventType   String
   processedAt DateTime @default(now())
+
   @@index([processedAt])
 }
 
@@ -183,6 +185,12 @@ model User {
   marketplaceItems   MarketplaceItem[]   @relation("MarketplaceItemAuthor")
   marketplaceReviews MarketplaceReview[] @relation("MarketplaceReviews")
   penTestsRequested  PenTest[]
+
+  // WAVE 0.1 — scan-target ownership verification. Two relations because the
+  // admin who requests a challenge and the one who confirms it need not be the
+  // same person, and the audit trail must distinguish them.
+  verifiedAssetsRequested VerifiedAsset[] @relation("VerifiedAssetRequester")
+  verifiedAssetsVerified  VerifiedAsset[] @relation("VerifiedAssetVerifier")
 
   // Phase 7 Part 1 — AI Advisor data layer
   aiAdvisorSessions AIAdvisorSession[]
@@ -918,6 +926,79 @@ model Asset {
   vulnerabilities Vulnerability[]
 
   @@index([organizationId, createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// Scan-target ownership verification (WAVE 0.1)
+//
+// DEVIATION (deliberate, flagged per Coding_Standards.md): this does NOT extend
+// the `Asset` model above, even though the brief asks to "extend rather than
+// duplicate". `Asset` is an *inventory* record — rows are created implicitly
+// from scan findings (see autoMapVulnerabilities.ts) and carry no ownership
+// semantics or uniqueness constraint. If authorization to scan were read off
+// `Asset`, a scan finding could mint the very row that authorizes scanning it,
+// which is a self-granting privilege escalation. `VerifiedAsset` is therefore a
+// separate, append-mostly authorization record: nothing but an explicit,
+// server-checked DNS/HTTP challenge can create a verified row.
+// -----------------------------------------------------------------------------
+
+enum VerifiedAssetKind {
+  DOMAIN
+  CIDR
+}
+
+enum AssetVerificationMethod {
+  DNS_TXT
+  HTTP_FILE
+}
+
+model VerifiedAsset {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Normalized claim: a lowercased hostname (DOMAIN) or a CIDR block (CIDR).
+  /// Normalization happens in assetVerification.ts so the unique constraint
+  /// below cannot be sidestepped by casing or a trailing dot.
+  value String
+  kind  VerifiedAssetKind @default(DOMAIN)
+
+  method AssetVerificationMethod @default(DNS_TXT)
+
+  /// The challenge nonce, published by the claimant as `dharma-verify=<token>`.
+  ///
+  /// DEVIATION (deliberate): stored in PLAINTEXT, against the repo's hash-only
+  /// convention for tokens (OrganizationSettings.scimTokenHash,
+  /// Endpoint.enrollmentTokenHash). Those are bearer credentials — this is not.
+  /// It is a public proof-of-control nonce that the claimant publishes to the
+  /// world in DNS, and the server must re-read the exact string out of the TXT
+  /// record to compare it. A hash cannot be compared against a DNS answer.
+  /// Knowing the token grants nothing: using it requires controlling the zone.
+  verificationToken String
+
+  /// Null until the challenge is confirmed server-side. Only a non-null
+  /// verifiedAt (with a null revokedAt) authorizes a scan.
+  verifiedAt   DateTime?
+  verifiedById String?
+  verifiedBy   User?     @relation("VerifiedAssetVerifier", fields: [verifiedById], references: [id])
+
+  requestedById String
+  requestedBy   User   @relation("VerifiedAssetRequester", fields: [requestedById], references: [id])
+
+  /// Set when an admin withdraws the claim. Revocation is a tombstone rather
+  /// than a delete so the authorization trail survives — this row is the record
+  /// that protects the operator if a scanned party ever disputes a scan.
+  revokedAt DateTime?
+
+  /// Number of failed confirmation attempts, to bound challenge grinding.
+  failedAttempts Int       @default(0)
+  lastAttemptAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, value])
+  @@index([organizationId, verifiedAt])
 }
 
 enum Severity {
