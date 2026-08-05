@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Star, Download, Tag } from "lucide-react";
 import type { ItemType } from "@prisma/client";
+import { marketplaceAuthorLabel } from "./authorLabel";
 
 interface MarketplaceItem {
   id: string;
@@ -19,7 +20,7 @@ interface MarketplaceItem {
   logoUrl?: string | null;
   author?: {
     name: string | null;
-  };
+  } | null;
   tags: string[];
 }
 
@@ -89,7 +90,7 @@ export function MarketplaceGrid({ items }: MarketplaceGridProps) {
 
               <div className="flex items-center justify-between">
                 <span className="text-xs text-dharma-ink-secondary truncate mr-2">
-                  By {item.author?.name || "Dharma"}
+                  By {marketplaceAuthorLabel(item.author)}
                 </span>
                 <span className="text-sm font-semibold text-dharma-ink whitespace-nowrap">
                   {item.price === 0 ? "Free" : `$${(item.price / 100).toFixed(2)}`}

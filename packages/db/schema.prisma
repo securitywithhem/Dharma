@@ -746,8 +746,27 @@ model MarketplaceItem {
   slug             String   @unique
   description      String   @db.Text
   shortDescription String?
-  authorId         String
-  author           User     @relation("MarketplaceItemAuthor", fields: [authorId], references: [id])
+  /// Nullable so deleting an organization does not fail.
+  ///
+  /// MarketplaceItem and MarketplaceReview are the only two models that
+  /// reference User WITHOUT being tenant-scoped themselves. Every other User
+  /// reference (PenTest.requestedBy, VerifiedAsset.requestedBy, …) sits on a
+  /// model that cascades from Organization, so the cascade clears those rows
+  /// before the User delete is attempted. These two are global, published
+  /// artifacts — nothing cascades them — so a Restrict FK here blocked
+  /// offboarding any tenant whose members had ever published or reviewed.
+  ///
+  /// SetNull rather than Cascade, deliberately: other organizations import
+  /// these items, and ImportedItem.sourceItem is already SetNull, so the
+  /// schema already treats a published item as outliving its origin. Deleting
+  /// it would destroy another tenant's content and provenance to complete an
+  /// unrelated tenant's offboarding.
+  ///
+  /// Note this ANONYMIZES rather than erases. If a DPDP/GDPR erasure request
+  /// requires the item's content to go, that is a separate, deliberate flow —
+  /// it should not be a silent side effect of offboarding.
+  authorId         String?
+  author           User?    @relation("MarketplaceItemAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
   price    Float  @default(0)
   currency String @default("USD")
@@ -784,8 +803,19 @@ model MarketplaceReview {
   id                String          @id @default(cuid())
   marketplaceItemId String
   item              MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
-  reviewerId        String
-  reviewer          User            @relation("MarketplaceReviews", fields: [reviewerId], references: [id])
+  /// Nullable for the same reason as MarketplaceItem.authorId above — and this
+  /// one blocked more than publishing: an organization that had only ever
+  /// REVIEWED someone else's item could not be deleted.
+  ///
+  /// SetNull rather than Cascade because `ratings` and `reviewCount` on
+  /// MarketplaceItem are denormalized. Deleting review rows out from under
+  /// them would silently overstate an item's rating with no trigger or
+  /// application hook to recompute; anonymizing keeps the aggregates true.
+  ///
+  /// The @@unique below still enforces one review per user per item: Postgres
+  /// treats NULLs as distinct, so anonymized rows accumulate freely.
+  reviewerId        String?
+  reviewer          User?           @relation("MarketplaceReviews", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   rating  Int
   title   String

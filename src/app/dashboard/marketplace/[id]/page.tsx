@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Tag, ArrowLeft, Download, Star } from "lucide-react";
 import { ReviewSection } from "@/components/marketplace/ReviewSection";
 import { ImportModal } from "@/components/marketplace/ImportModal";
+import { marketplaceAuthorLabel } from "@/components/marketplace/authorLabel";
 import Link from "next/link";
 
 export default function MarketplaceDetailPage() {
@@ -107,7 +108,7 @@ export default function MarketplaceDetailPage() {
             <Card className="p-6 text-center border border-dharma-border">
               <p className="text-sm font-medium text-dharma-ink-secondary mb-1">Published By</p>
               <p className="text-xl font-semibold text-dharma-ink mt-2 line-clamp-1">
-                {item.author?.name || "Dharma"}
+                {marketplaceAuthorLabel(item.author)}
               </p>
             </Card>
           </div>

@@ -115,16 +115,17 @@ async function main() {
 
   const doomedIds = doomed.map((o) => o.id);
 
-  // Organization -> most things are onDelete: Cascade, but NOT everything.
-  // MarketplaceItem.author and MarketplaceReview.reviewer both point at User
-  // with the default (Restrict), so an organization whose members authored a
-  // marketplace listing cannot be deleted at all.
+  // Fixture marketplace rows are removed deliberately, NOT to unblock the
+  // cascade — that blocker is gone as of the migration
+  // 20260805170000_marketplace_author_reviewer_setnull_on_user_delete, which
+  // made MarketplaceItem.author and MarketplaceReview.reviewer ON DELETE SET
+  // NULL so real tenant offboarding works.
   //
-  // Worth flagging beyond this script: that is the same code path a real
-  // tenant offboarding would take, so "delete this organization" is currently
-  // blocked in production for any org that has ever published to the
-  // marketplace. Clearing them here is safe (fixture data); the schema-level
-  // fix belongs in a migration, not a cleanup script.
+  // The consequence is exactly why this block stays: an org delete now
+  // ANONYMIZES its marketplace rows rather than failing, so without this the
+  // fixture listings would survive the clean as "Removed account" items
+  // cluttering a real marketplace. Deleting them is correct for fixture data
+  // specifically, and must not be generalized into the offboarding path.
   const doomedUsers = await prisma.user.findMany({
     where: { organizationId: { in: doomedIds } },
     select: { id: true },
@@ -139,7 +140,7 @@ async function main() {
       where: { authorId: { in: doomedUserIds } },
     });
     console.log(
-      `  cleared ${items.count} marketplace items and ${reviews.count} reviews blocking the cascade`,
+      `  removed ${items.count} fixture marketplace items and ${reviews.count} reviews`,
     );
   }
 
