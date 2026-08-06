@@ -13,7 +13,8 @@
 import { PolicyType } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { reviewPolicyQueue, type ReviewPolicyJobData } from "@/workers/policy";
 import { Job } from "bullmq";
 import { TRPCError } from "@trpc/server";
@@ -89,7 +90,7 @@ export const policyRouter = createTRPCRouter({
    * badge a lie. Re-publishing is one click, and the audit entry records the
    * version transition.
    */
-  update: managerProcedure
+  update: permissionProcedure("policies.write")
     .input(
       z.object({
         id: z.string().min(1),
@@ -159,7 +160,7 @@ export const policyRouter = createTRPCRouter({
    * Publish a policy. This is the step User_Journeys.md flow 3 described and
    * the router never implemented.
    */
-  publish: managerProcedure
+  publish: permissionProcedure("policies.write")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.prisma.policy.findFirst({
@@ -208,7 +209,7 @@ export const policyRouter = createTRPCRouter({
    * published in error otherwise has no route back except deletion, which is a
    * far heavier action and loses the draft.
    */
-  unpublish: managerProcedure
+  unpublish: permissionProcedure("policies.write")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.prisma.policy.findFirst({
@@ -247,7 +248,7 @@ export const policyRouter = createTRPCRouter({
    * Soft-delete a policy — see the schema comment on Policy.deletedAt for why
    * this is not a hard delete.
    */
-  delete: managerProcedure
+  delete: permissionProcedure("policies.write")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.prisma.policy.findFirst({
@@ -289,7 +290,7 @@ export const policyRouter = createTRPCRouter({
   /**
    * Create or update a policy (manual save — does not call LLM).
    */
-  create: managerProcedure
+  create: permissionProcedure("policies.write")
     .input(
       z.object({
         title: z.string().min(3).max(160),
@@ -348,7 +349,7 @@ export const policyRouter = createTRPCRouter({
    * No LLM call — pure Handlebars substitution.
    * Returns rendered markdown immediately.
    */
-  generateFromTemplate: managerProcedure
+  generateFromTemplate: permissionProcedure("policies.write")
     .input(
       z.object({
         templateId: z.string().min(1),
@@ -395,7 +396,7 @@ export const policyRouter = createTRPCRouter({
    * Submit a policy draft for AI review (audit-only — no rewrites).
    * Enqueues a review-policy-draft BullMQ job.
    */
-  reviewDraft: managerProcedure
+  reviewDraft: permissionProcedure("policies.write")
     .input(
       z.object({
         policyContent: z.string().min(50).max(50_000),
@@ -413,7 +414,7 @@ export const policyRouter = createTRPCRouter({
   /**
    * Poll the status of a policy review job.
    */
-  getReviewStatus: managerProcedure
+  getReviewStatus: permissionProcedure("policies.write")
     .input(z.object({ jobId: z.string().min(1) }))
     .query(async ({ input }) => {
       const job = await Job.fromId(reviewPolicyQueue, input.jobId);

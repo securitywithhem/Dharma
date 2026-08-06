@@ -16,7 +16,6 @@ import {
   createTRPCRouter,
   publicProcedure,
   orgProcedure,
-  publisherProcedure,
   platformAdminProcedure,
 } from "@/server/trpc";
 import {
@@ -24,6 +23,7 @@ import {
   MarketplaceAuthorizationError,
   MarketplaceNotFoundError,
 } from "@/server/services/marketplace";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { parseMarketplaceMetadata } from "@/server/services/marketplace/metadataSchema";
 import { emitAuditEvent } from "@/server/services/audit/writer";
 
@@ -155,7 +155,7 @@ export const marketplaceRouter = createTRPCRouter({
   // ----------------------------------------------------------------
   // Publisher operations
   // ----------------------------------------------------------------
-  publishItem: publisherProcedure
+  publishItem: permissionProcedure("marketplace.publish")
     .input(
       z.object({
         id: z.string().optional(),
@@ -208,7 +208,7 @@ export const marketplaceRouter = createTRPCRouter({
       return item;
     }),
 
-  getPublisherItems: publisherProcedure.query(async ({ ctx }) => {
+  getPublisherItems: permissionProcedure("marketplace.publish").query(async ({ ctx }) => {
     return ctx.prisma.marketplaceItem.findMany({
       where: { authorId: ctx.session.user.id },
       orderBy: { createdAt: "desc" },

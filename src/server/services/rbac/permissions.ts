@@ -70,7 +70,12 @@ export const LEGACY_ROLE_PERMISSIONS: Record<Role, PermissionMap> = {
     "connectors.manage",
     "pentest.request",
     "vulns.manage",
-    "reports.generate",
+    // NOTE: reports.generate is deliberately NOT in the manager set — same
+    // reasoning as audit.read above. Report generation has always been
+    // adminProcedure-gated (routers/report.ts). WAVE 9.1 made this key actually
+    // enforce, and granting it to every COMPLIANCE_MANAGER in the same change
+    // would have silently widened access to reports as a side effect of a
+    // security fix. A custom role can still grant it explicitly.
   ]),
   [Role.PUBLISHER]: grant([...READ_ONLY, "marketplace.publish"]),
   [Role.VIEWER]: grant(READ_ONLY),

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { ConnectorType, ConnectorStatus } from "@prisma/client";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { createAuditLog } from "@/server/audit-log";
 import { encryptConnectorConfig, decryptConnectorConfig } from "@/server/lib/crypto/connectorVault";
 import { getConnectorAdapter } from "@/server/connectors/registry";
@@ -51,7 +52,7 @@ export const connectorRouter = createTRPCRouter({
       return connector;
     }),
 
-  listAvailableEvidenceTypes: managerProcedure
+  listAvailableEvidenceTypes: permissionProcedure("connectors.manage")
     .input(z.object({ type: z.nativeEnum(ConnectorType) }))
     .query(async ({ input }) => {
       try {
@@ -66,7 +67,7 @@ export const connectorRouter = createTRPCRouter({
     }),
 
   // Pre-save test used by the config wizard, before a Connector row exists.
-  precheckConnection: managerProcedure
+  precheckConnection: permissionProcedure("connectors.manage")
     .input(z.object({
       type: z.nativeEnum(ConnectorType),
       config: ConfigSchema,
@@ -87,7 +88,7 @@ export const connectorRouter = createTRPCRouter({
 
   // Re-tests an existing, saved connector: decrypts its stored config and
   // updates status/lastError based on the result.
-  testConnection: managerProcedure
+  testConnection: permissionProcedure("connectors.manage")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -137,7 +138,7 @@ export const connectorRouter = createTRPCRouter({
       return updated;
     }),
 
-  create: managerProcedure
+  create: permissionProcedure("connectors.manage")
     .input(z.object({
       type: z.nativeEnum(ConnectorType),
       name: z.string().min(1).max(120),
@@ -187,7 +188,7 @@ export const connectorRouter = createTRPCRouter({
       return connector;
     }),
 
-  update: managerProcedure
+  update: permissionProcedure("connectors.manage")
     .input(z.object({
       id: z.string(),
       name: z.string().min(1).max(120).optional(),
@@ -240,7 +241,7 @@ export const connectorRouter = createTRPCRouter({
       return updated;
     }),
 
-  delete: managerProcedure
+  delete: permissionProcedure("connectors.manage")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;

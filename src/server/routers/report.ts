@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { createTRPCRouter, orgProcedure, adminProcedure } from '@/server/trpc';
+import { createTRPCRouter, orgProcedure } from '@/server/trpc';
+import { permissionProcedure } from '@/server/middleware/requirePermission';
 import { aggregateReportData } from '@/lib/services/reportGenerator';
 import { signPdf, uploadSignedPdf } from '@/lib/pdf/pdfSigner';
 import { TRPCError } from '@trpc/server';
@@ -44,7 +45,7 @@ const reportScheduleRouter = createTRPCRouter({
     });
   }),
 
-  create: adminProcedure
+  create: permissionProcedure("reports.generate")
     .input(
       z.object({
         title: z.string().trim().min(2).max(200),
@@ -76,7 +77,7 @@ const reportScheduleRouter = createTRPCRouter({
       return schedule;
     }),
 
-  update: adminProcedure
+  update: permissionProcedure("reports.generate")
     .input(
       z.object({
         id: z.string().min(1),
@@ -113,7 +114,7 @@ const reportScheduleRouter = createTRPCRouter({
       return updated;
     }),
 
-  delete: adminProcedure
+  delete: permissionProcedure("reports.generate")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -257,7 +258,7 @@ export const reportRouter = createTRPCRouter({
   /**
    * Trigger generation of a full offline auditor export ZIP.
    */
-  exportAuditorPackage: adminProcedure
+  exportAuditorPackage: permissionProcedure("reports.generate")
     .input(
       z.object({
         frameworkIds: z.array(z.string()).default([]),
@@ -282,7 +283,7 @@ export const reportRouter = createTRPCRouter({
    * Poll the status of an auditor package export job.
    * Returns downloadUrl + expiresAt when completed.
    */
-  getExportStatus: adminProcedure
+  getExportStatus: permissionProcedure("reports.generate")
     .input(z.object({ jobId: z.string().min(1) }))
     .query(async ({ input }) => {
       const { auditorPackageQueue } = await import('@/workers/auditorPackage');
@@ -305,7 +306,7 @@ export const reportRouter = createTRPCRouter({
   /**
    * List previous auditor export packages for the org.
    */
-  listExports: adminProcedure.query(async ({ ctx }) => {
+  listExports: permissionProcedure("reports.generate").query(async ({ ctx }) => {
     return ctx.prisma.auditExport.findMany({
       where: { organizationId: ctx.session.user.organizationId },
       orderBy: { createdAt: 'desc' },
@@ -445,7 +446,7 @@ export const reportRouter = createTRPCRouter({
     }),
 
   /** Delete a report row and its underlying MinIO object (admin-only). */
-  delete: adminProcedure
+  delete: permissionProcedure("reports.generate")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
