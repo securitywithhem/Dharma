@@ -236,6 +236,40 @@ const enforceAdminRole = t.middleware(({ ctx, next }) => {
   return next();
 });
 
+// WAVE 5.2 — marketplace authorship. The Role enum has carried PUBLISHER since
+// the marketplace was added (see 04_TECHNICAL/Authorization.md), but nothing
+// ever checked it: marketplace.publishItem had the comment "Basic check, in
+// reality verify role is PUBLISHER or ADMIN" above a mutation with no check at
+// all, so any signed-in user could publish content every other tenant imports.
+const enforcePublisherRole = t.middleware(({ ctx, next }) => {
+  const role = ctx.session?.user.role as Role | undefined;
+  if (role !== Role.PUBLISHER && !isAdminRole(role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Publishing to the marketplace requires the Publisher role."
+    });
+  }
+  return next();
+});
+
+// WAVE 5.2 — operator of THIS deployment, not an admin of any tenant.
+//
+// approveItem/getPendingItems previously gated on `role === "ADMIN"`, which is
+// the caller's role inside their OWN organization — so any customer's admin
+// could approve any other tenant's submission into the shared catalogue. This
+// reads the dedicated User.isPlatformAdmin flag, which no API sets and which is
+// never carried in the JWT.
+const enforcePlatformAdmin = t.middleware(({ ctx, next }) => {
+  const identity = (ctx as { identity?: { isPlatformAdmin?: boolean } }).identity;
+  if (!identity?.isPlatformAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This action is restricted to platform administrators."
+    });
+  }
+  return next();
+});
+
 const preventAuditorMutations = t.middleware(({ ctx, type, next }) => {
   if (ctx.isAuditor && type !== "query") {
     throw new TRPCError({
@@ -256,3 +290,11 @@ export const protectedProcedure = t.procedure
 export const orgProcedure = protectedProcedure.use(enforceOrganizationContext);
 export const managerProcedure = orgProcedure.use(enforceManagementRole);
 export const adminProcedure = orgProcedure.use(enforceAdminRole);
+/** orgProcedure + PUBLISHER (or ADMIN) — marketplace authorship. */
+export const publisherProcedure = orgProcedure.use(enforcePublisherRole);
+/**
+ * orgProcedure + User.isPlatformAdmin — moderation of the shared catalogue.
+ * Built on orgProcedure rather than protectedProcedure so it inherits the
+ * WAVE 5.1 identity re-read, which is what populates ctx.identity.
+ */
+export const platformAdminProcedure = orgProcedure.use(enforcePlatformAdmin);

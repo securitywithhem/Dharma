@@ -1,25 +1,39 @@
 import {
   Bell,
   Bug,
+  Building2,
   FileBarChart,
   FileCheck2,
   FileText,
   Grid3x3,
   LayoutDashboard,
   MonitorSmartphone,
+  PackageOpen,
   Radar,
   Settings2,
   Shield,
+  ShieldCheck,
   Store,
 } from "lucide-react";
 
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
 
+/**
+ * Capability required to see a nav item, resolved server-side by
+ * `user.navCapabilities`. Undefined means every org member sees it.
+ *
+ * Deliberately a capability name rather than a role: the sidebar must not
+ * re-implement an authorization rule that a router already owns, or the two
+ * drift and the menu starts advertising sections the API refuses.
+ */
+export type NavGate = "mssp" | "publisher" | "platformAdmin";
+
 export type NavItem = {
   href: Route;
   label: string;
   icon: LucideIcon;
+  gate?: NavGate;
 };
 
 export type NavGroup = {
@@ -71,6 +85,28 @@ export const navGroups: NavGroup[] = [
       // Phase 9 Part 3 — regulatory change monitoring (notification bell)
       { href: "/dashboard/regulatory-alerts" as Route, label: "Regulatory", icon: Bell },
       { href: "/dashboard/marketplace" as Route, label: "Marketplace", icon: Store },
+    ],
+  },
+  /**
+   * WAVE 5.2 — the seven routes that shipped with zero inbound links.
+   *
+   * `/dashboard/mssp`, `/dashboard/publisher/*` and `/dashboard/admin/*` all
+   * existed and worked, but nothing anywhere in the app linked to them: the
+   * MSSP dashboard is a headline Phase 8 deliverable a customer could only
+   * reach by typing the URL. Grouped rather than appended to Insight, because
+   * these are a different *kind* of destination — they are not part of one
+   * tenant's compliance work, and mixing them into Comply/Defend/Insight would
+   * blur the grouping that makes the sidebar scan as sections.
+   *
+   * Every item is gated, so for an ordinary member this group renders as
+   * nothing at all and the sidebar is unchanged from before.
+   */
+  {
+    label: "Manage",
+    items: [
+      { href: "/dashboard/mssp" as Route, label: "Client Portfolio", icon: Building2, gate: "mssp" },
+      { href: "/dashboard/publisher/items" as Route, label: "My Listings", icon: PackageOpen, gate: "publisher" },
+      { href: "/dashboard/admin/marketplace" as Route, label: "Catalogue Review", icon: ShieldCheck, gate: "platformAdmin" },
     ],
   },
 ];
@@ -126,7 +162,20 @@ function humanize(segment: string): string {
  * real 404 on every Enterprise settings page, because Next prefetches
  * breadcrumb links and `/dashboard/settings/enterprise` has no page.tsx.
  */
-const NON_ROUTE_SEGMENTS: ReadonlySet<string> = new Set(["/dashboard/settings/enterprise"]);
+const NON_ROUTE_SEGMENTS: ReadonlySet<string> = new Set([
+  "/dashboard/settings/enterprise",
+  // WAVE 5.2 — the same defect, found by checking every segment rather than
+  // only the one that was reported. `/dashboard/admin` and
+  // `/dashboard/publisher` are grouping directories: their children
+  // (admin/marketplace, publisher/items, publisher/publish) have pages, they
+  // do not. Linking them 404s exactly as `/dashboard/settings/enterprise` did.
+  "/dashboard/admin",
+  "/dashboard/publisher",
+  // `/dashboard/controls` has no list page either — controls are reached by
+  // drilling into a framework, so only `controls/[id]` exists. Every control
+  // detail page was rendering a "Controls" crumb linking to a 404.
+  "/dashboard/controls",
+]);
 
 /** `href: null` marks a grouping segment that must not be rendered as a link. */
 export type Crumb = { href: string | null; label: string };

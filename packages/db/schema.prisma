@@ -208,10 +208,35 @@ model User {
   // but can no longer sign in.
   isActive       Boolean     @default(true)
 
+  // WAVE 5.2 — operator of THIS Dharma deployment, not an admin of any tenant.
+  //
+  // Deliberately a separate flag rather than a `Role` value, because `role` is
+  // scoped to the user's own organization: marketplace.approveItem previously
+  // gated on `role === "ADMIN"`, which meant ANY customer's org admin could
+  // approve any other tenant's submission into the shared catalogue. Tenant
+  // role and platform authority are different questions and must not share a
+  // field.
+  //
+  // Not following the MsspGrant pattern (see 04_TECHNICAL/Authorization.md)
+  // even though that is this schema's other cross-org mechanism: a grant is
+  // the right shape when one *tenant* is given scoped, revocable, time-boxed
+  // read access to named other tenants. Platform administration is not
+  // tenant-to-tenant and has no scope list — it is a property of whoever runs
+  // the deployment.
+  //
+  // There is deliberately NO API that sets this. It is granted out of band
+  // (SQL/console by the deployment operator), so it cannot be escalated
+  // through the application at all, and every grant leaves a trail outside a
+  // surface an attacker who reached the app could reach.
+  isPlatformAdmin Boolean @default(false)
+
   @@unique([organizationId, scimExternalId])
   @@index([organizationId])
   @@index([email])
   @@index([customRoleId])
+  // No index on isPlatformAdmin: the only access path is findUnique by id
+  // (sessionIdentity.ts reads the flag off the already-fetched row), so an
+  // index would be write cost for no read benefit.
 }
 
 enum Role {
