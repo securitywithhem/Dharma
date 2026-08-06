@@ -54,7 +54,7 @@ commit, evidence cited · **MOOT** = premise no longer exists.
 | 0.1 Domain ownership verification (`VerifiedAsset`, DNS TXT challenge, gate on create) | **DONE** | Was open: `grep VerifiedAsset` → 0 hits, and `scanner.ts:21-27` carried an explicit `TODO(targetVerification)` saying ownership was asserted *only* by the `ownershipConfirmed` checkbox. Now: `VerifiedAsset` model + migration `20260805150000_…`, `src/server/pentest/assetVerification.ts`, `pentest.assets.{list,checkTarget,requestVerification,confirmVerification,revokeVerification}`, gate in `pentest.create` **and** in `pentestScanWorker`, UI sub-flow in `VerifyOwnershipPanel.tsx` + `NewScanModal.tsx`. | `tests/assetVerification.test.ts` (40), `tests/pentest.router.test.ts` "scan authorization gate" (12), `tests/pentestScanWorker.test.ts` (3 new) |
 | 0.2 SSRF blocklist server-side | **DONE** | `validateScanTarget()` already existed (`scanner.ts`) covering RFC1918 / 127/8 / 169.254/16 / ::1 / fc00::/7 and IPv4-mapped v6, and was already called inside `runNucleiScan` — i.e. in the worker at dispatch time, which is what closes the DNS-rebinding window. The gap was that `pentest.create` never called it, so a `127.0.0.1` scan was *accepted* and queued, failing later instead of being rejected up front. Now called at create via `authorizeScanTarget()`. | `tests/pentest.router.test.ts` — 4 parameterized cases (127.0.0.1, 169.254.169.254, 10.0.0.5, ::1) |
 | 0.3 Scan-authorization audit trail | **DONE** | New `PENTEST_SCAN_AUTHORIZED` action recording the authorizing asset, its verification method/timestamp, the admin who verified it and the admin who attested at scan time; plus `ASSET_VERIFICATION_{REQUESTED,CONFIRMED,FAILED,REVOKED}`. All through the existing hash-chained `createAuditLog`, not a parallel log. | `tests/pentest.router.test.ts` — "writes a PENTEST_SCAN_AUTHORIZED audit entry naming the authorizing asset" |
-| 0.4 Distinct-asset anomaly signal | **DONE** | `src/server/pentest/scanAnomaly.ts` — Redis SET of distinct targets per org on a sliding 1h window, threshold 15. Advisory only: emits `PENTEST_SCAN_SPREAD_ANOMALY` to the audit log, never blocks, and returns null (no signal) if Redis is down. | Covered indirectly; the create path exercises it in `pentest.router.test.ts`. **Gap: no dedicated unit test** — see below. |
+| 0.4 Distinct-asset anomaly signal | **DONE** | `src/server/pentest/scanAnomaly.ts` — Redis SET of distinct targets per org on a sliding 1h window, threshold 15. Advisory only: emits `PENTEST_SCAN_SPREAD_ANOMALY` to the audit log, never blocks, and returns null (no signal) if Redis is down. | `tests/scanAnomaly.test.ts` (5) — threshold boundary, breadth-not-volume, per-org isolation, and the Redis-unreachable→null path. Added 2026-08-06 via Cowork device bridge, where it could not be run (that sandbox had no network to fetch the missing SWC binary). **Executed 2026-08-06 on the owner's macOS host: 5/5 green in 0.26 s.** This row is now closed on evidence, and the "no dedicated unit test for 0.4" gap recorded under *Known gaps carried forward* is closed with it. |
 | 0.5 AUP + abuse-response runbook | **DONE** | `docs/security/acceptable-use-policy.md` — what may be scanned, what the software does and does not enforce, and a 5-step abuse-response runbook with a revoke-first containment order. | n/a (doc) |
 
 ### WAVE 1
@@ -114,9 +114,9 @@ commit, evidence cited · **MOOT** = premise no longer exists.
   against an injected resolver, and the E2E asserts the *negative* half (confirming
   without the record published must fail). Closing this needs a real test domain
   from the owner.
-- **WAVE 0.4 has no dedicated unit test** — `recordScanTarget` is exercised only
-  incidentally through the create path. The threshold/sliding-window behaviour
-  itself is unverified.
+- ~~**WAVE 0.4 has no dedicated unit test**~~ — closed 2026-08-06.
+  `tests/scanAnomaly.test.ts` covers the threshold boundary, breadth-not-volume,
+  per-org isolation and the Redis-down path, and has now actually been run green.
 - **Jest does not exit on its own** (82 open handles from module-scope BullMQ
   `new Queue(...)` across 11 queue files). Pre-existing and already compensated:
   CI runs `npm test -- --forceExit`, documented at `.github/workflows/deploy.yml:130`.
