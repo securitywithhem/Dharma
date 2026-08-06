@@ -15,6 +15,55 @@ status: reviewed
 - **Access control**: every tRPC endpoint requires a valid session; org ID filters enforced at the DB query layer, not just the UI. See [[Authorization]].
 - **Presigned URLs**: 15-minute expiry on MinIO file access (TRD) — `AuditExport` uses a longer 24h window for export packages, a deliberate exception for a different use case (download-and-review vs. direct upload/access).
 
+## Session revocation and the identity re-read
+
+Auth is a JWT session (`strategy: "jwt"`, `maxAge: 30 days`). NextAuth's `jwt`
+callback populates `role`/`organizationId` only when `user` is present — i.e.
+only at sign-in — so for a long time the token was an **unrevokable bearer
+credential**: deactivating a member (`organization.removeMember`) or
+SCIM-deprovisioning them set `isActive: false` but did not end their open
+session, and a role demotion left the old privilege in force until the token
+expired. Only the 6 routers using `permissionProcedure` were protected, because
+that middleware re-read the user row.
+
+Since WAVE 5.1, `orgProcedure` itself re-reads the caller's `User` row on every
+request (`src/server/lib/sessionIdentity.ts`) and **overwrites the session's
+`role`/`organizationId` with the database's values** before any downstream
+procedure sees them. The JWT is now treated as carrying only an unverified
+`sub`. This applies to all org routers, so `managerProcedure`/`adminProcedure`
+became revocation-aware without individual changes. A deactivated user gets
+`FORBIDDEN`, a deleted user `UNAUTHORIZED`, and a token naming an org the user
+has left `FORBIDDEN`.
+
+**Staleness window: 30 seconds.** The row is cached in Redis
+(`IDENTITY_CACHE_TTL_SECONDS`) because this read runs on every authenticated
+request across 3–10 app replicas. Two mechanisms bound staleness:
+
+1. **The TTL is the guarantee.** Any change to a `User` row takes effect
+   everywhere within 30s, including changes made out of band (a DBA, a restored
+   backup, a future code path).
+2. **Eager invalidation is an optimization**, applied by a Prisma middleware on
+   `User` writes (`src/server/db.ts`), which collapses the window to ~0 for
+   writes that go through the app. It is deliberately *not* the correctness
+   mechanism — there are ~14 `user.update`/`updateMany` call sites (7 in SCIM
+   alone), and a scheme depending on each author remembering to invalidate
+   fails silently the first time someone adds another.
+
+`SessionIdentity` deliberately caches **only `User` scalars, never the joined
+`CustomRole.permissions` map**. Editing a custom role is not a `User` write, so
+a cached copy would go stale for up to the TTL and break the Phase 8 guarantee
+that permission changes take effect immediately; `requirePermission` therefore
+reads the `CustomRole` fresh off the cached `customRoleId`.
+
+If Redis is unreachable the resolver falls through to a direct database read
+rather than failing the request — failing closed would turn a Redis blip into a
+total authentication outage, while falling through preserves the security
+property exactly and costs only the cache benefit.
+
+Note this also removes the strongest objection to the multi-replica production
+topology, though **not** the rate-limiter one below, which is unrelated and
+still open.
+
 ## Secrets handling patterns (consistent across the schema)
 
 Two distinct patterns, chosen per whether the secret needs to be recovered later:

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
+import { seedRoleUser } from "./fixtures/seedRoleUser";
 import { PrismaClient, Role, ConnectorType, ConnectorStatus } from "@prisma/client";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc";
 import { TRPCError } from "@trpc/server";
@@ -126,7 +127,8 @@ describe("evidenceMapping router", () => {
   });
 
   it("enforces RBAC — a VIEWER cannot create a mapping", async () => {
-    const caller = createCaller(orgA.org.id, orgA.user.id, Role.VIEWER);
+    const viewer = await seedRoleUser(prisma, orgA.org.id, Role.VIEWER, "evmap");
+    const caller = createCaller(orgA.org.id, viewer.id, Role.VIEWER);
     await expect(
       caller.evidenceMapping.create({
         connectorId: orgA.connector.id,

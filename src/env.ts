@@ -117,6 +117,37 @@ const INSECURE_DEFAULTS: Record<string, readonly string[]> = {
   WEBHOOK_ENCRYPTION_KEY: ["change-me-32-char-key-for-webhooks"],
 };
 
+// WAVE 10.5 (fullstack-audit-2026-08-06 DEV-6) — the Helm chart's placeholder
+// vocabulary.
+//
+// The deny-list above covers the exact strings shipped in envs/.env.example.
+// helm/dharma/values.yaml ships a DIFFERENT set: `nextauthSecret: "CHANGE_ME"`,
+// `databaseUrl: "postgresql://dharma:CHANGE_ME@postgres:5432/…"`. None of them
+// matched, so `helm install` at default values with `secrets.create: true`
+// booted happily in production with NEXTAUTH_SECRET=CHANGE_ME. CI's own path
+// was already safe (staging/production set `secrets.create: false` and CI
+// preflights the Secret) — this closes the manual-install path.
+//
+// A SUBSTRING check, unlike everything above, and deliberately so: CHANGE_ME
+// appears embedded in a connection URL, so an exact match would miss an
+// operator who set a real host and left the placeholder password. The
+// exact-match discipline exists so we never reject a value an operator
+// legitimately chose — and "CHANGE_ME" is a token we publish precisely to be
+// replaced, so nobody legitimately chooses it inside a secret.
+const PLACEHOLDER_TOKENS = ["CHANGE_ME"] as const;
+
+const PLACEHOLDER_SCANNED_KEYS = [
+  "DATABASE_URL",
+  "REDIS_URL",
+  "NEXTAUTH_SECRET",
+  "MINIO_ACCESS_KEY",
+  "MINIO_SECRET_KEY",
+  "ANCHOR_STORAGE_ACCESS_KEY",
+  "ANCHOR_STORAGE_SECRET_KEY",
+  "CONNECTOR_ENCRYPTION_KEY",
+  "WEBHOOK_ENCRYPTION_KEY",
+] as const;
+
 function assertNoInsecureDefaults(parsed: Record<string, unknown>): void {
   if (parsed.NODE_ENV !== "production") return;
 
@@ -128,9 +159,16 @@ function assertNoInsecureDefaults(parsed: Record<string, unknown>): void {
   // secrets are real and a placeholder is a genuine incident.
   if (process.env.NEXT_PHASE === "phase-production-build") return;
 
-  const offenders = Object.entries(INSECURE_DEFAULTS)
+  const exactOffenders = Object.entries(INSECURE_DEFAULTS)
     .filter(([key, bad]) => bad.includes(String(parsed[key] ?? "")))
     .map(([key]) => key);
+
+  const placeholderOffenders = PLACEHOLDER_SCANNED_KEYS.filter((key) => {
+    const value = String(parsed[key] ?? "");
+    return value !== "" && PLACEHOLDER_TOKENS.some((token) => value.includes(token));
+  });
+
+  const offenders = Array.from(new Set([...exactOffenders, ...placeholderOffenders]));
 
   if (offenders.length > 0) {
     throw new Error(

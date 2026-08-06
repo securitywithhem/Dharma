@@ -1,4 +1,24 @@
 # ============================================================
+# DEPRECATED — superseded by helm/dharma
+# ============================================================
+# This file defined the app + worker Deployment, Service, ServiceAccount, PodDisruptionBudget, HorizontalPodAutoscaler for the app layer
+# before helm/dharma existed. CI (.github/workflows/deploy.yml) no longer
+# applies this file — it runs `helm upgrade --install` against helm/dharma
+# instead, which renders equivalent (but differently-named and
+# differently-labeled) resources.
+#
+# Kept for reference / manual bootstrap only. Do NOT `kubectl apply -f` this
+# alongside a Helm-managed release: you'll get two independent sets of
+# Deployments/Services answering to different label selectors, and the
+# NetworkPolicies in k8s/namespace.yaml (which ARE still in use) only match
+# the Helm chart's labels — see that file's own banner.
+#
+# k8s/namespace.yaml, k8s/postgres.yaml, k8s/redis.yaml, and
+# k8s/minio-ollama-worker.yaml remain in use for the data layer; only the
+# app/worker/ingress resources in this file are superseded.
+# ============================================================
+
+# ============================================================
 # Next.js Application Deployment
 # ============================================================
 

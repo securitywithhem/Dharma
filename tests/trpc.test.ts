@@ -17,9 +17,28 @@ jest.mock("@/server/auth", () => ({
 
 import { createInnerTRPCContext } from "@/server/trpc";
 import { appRouter } from "@/server/routers";
+import {
+  invalidateSessionIdentity,
+  closeSessionIdentityRedis
+} from "@/server/lib/sessionIdentity";
 
-function createMockPrisma() {
+// WAVE 5.1: orgProcedure re-reads the caller's User row on every request
+// (src/server/lib/sessionIdentity.ts), and treats the role it finds there as
+// authoritative over the one in the session. A mock prisma therefore has to
+// model that row, and — for the VIEWER case below — has to model it with the
+// role actually under test, since asserting a role only in the session is no
+// longer a way to hold it.
+function createMockPrisma(
+  user: { id: string; role: string; organizationId: string } = {
+    id: "user_1",
+    role: "ADMIN",
+    organizationId: "org_1"
+  }
+) {
   return {
+    user: {
+      findUnique: jest.fn().mockResolvedValue({ ...user, isActive: true, customRoleId: null })
+    },
     framework: {
       findMany: jest.fn().mockResolvedValue([])
     },
@@ -39,6 +58,18 @@ function createMockPrisma() {
 }
 
 describe("tRPC foundation", () => {
+  beforeEach(async () => {
+    // user_1/user_2 are fixed ids and the identity cache lives in a real Redis
+    // that outlives this process — clear them so a previous run (or another
+    // suite using the same ids) can never satisfy these lookups.
+    await invalidateSessionIdentity("user_1");
+    await invalidateSessionIdentity("user_2");
+  });
+
+  afterAll(async () => {
+    await closeSessionIdentityRedis();
+  });
+
   it("rejects protected procedures without a session", async () => {
     const mockPrisma = createMockPrisma();
     const ctx = await createInnerTRPCContext({
@@ -83,7 +114,11 @@ describe("tRPC foundation", () => {
   });
 
   it("blocks admin routes for viewer roles", async () => {
-    const mockPrisma = createMockPrisma();
+    const mockPrisma = createMockPrisma({
+      id: "user_2",
+      role: "VIEWER",
+      organizationId: "org_1"
+    });
     const ctx = await createInnerTRPCContext({
       headers: new Headers(),
       session: {

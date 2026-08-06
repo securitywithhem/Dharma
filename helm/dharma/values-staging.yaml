@@ -1,0 +1,56 @@
+# ============================================================
+# Staging overrides
+# ============================================================
+# Applied as: helm upgrade --install dharma ./helm/dharma -n dharma
+#               -f values-staging.yaml --set app.image.tag=... (CI does this)
+#
+# Image repository/tag are intentionally left at values.yaml's defaults here
+# -- CI supplies the real values per-build via --set so a fixed tag never
+# goes stale in this file.
+
+app:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+podDisruptionBudget:
+  enabled: false # single replica in staging -- a PDB with minAvailable:1 would block all voluntary evictions
+
+# NetworkPolicy is left disabled in staging by default: the data-layer
+# NetworkPolicies in k8s/namespace.yaml assume the production namespace's
+# default-deny posture. Enable once you've confirmed staging runs those too
+# (see docs/ops/secrets-management.md's neighbour note in that file's header).
+networkPolicy:
+  enabled: false
+
+# This chart never creates dharma-app-secrets itself in staging or production
+# (secrets.create: false) -- see docs/ops/secrets-management.md for how it
+# gets there via Sealed Secrets, and the CI preflight step that checks for it
+# before every deploy.
+secrets:
+  create: false
+  existingSecret: dharma-app-secrets
+
+ingress:
+  enabled: true
+  host: staging.dharma.example.com # replace with your real staging hostname
+  tls:
+    enabled: true
+    secretName: dharma-staging-tls

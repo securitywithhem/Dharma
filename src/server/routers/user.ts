@@ -12,7 +12,10 @@
 // What IS real and worth surfacing: which sign-in methods are linked to this
 // account (Account rows), and whether the org enforces SSO-only login.
 import { decode } from "next-auth/jwt";
+import { Role } from "@prisma/client";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { resolveSessionIdentity } from "@/server/lib/sessionIdentity";
+import { resolvePermission } from "@/server/services/rbac/permissions";
 
 /**
  * Resolve when the caller's session actually expires.
@@ -88,6 +91,49 @@ export const userRouter = createTRPCRouter({
         mfa: false as const,
         passwordChange: false as const,
       },
+    };
+  }),
+
+  /**
+   * WAVE 5.2 — which gated sections of the app this caller may see.
+   *
+   * The MSSP dashboard, Publisher and Admin Marketplace pages (7 routes) had
+   * zero inbound links anywhere in the app: they existed only for someone who
+   * typed the URL. Linking them needs a server-resolved answer to "may this
+   * user see this section", because the alternative — reading role off the
+   * client session — is the `?? fallback` permission-gating anti-pattern WAVE
+   * 2.3 removed, and would render an MSSP link for everyone during loading.
+   *
+   * Returns capabilities, not roles, so the sidebar never re-implements an
+   * authorization rule. Each flag is resolved the same way its routers gate:
+   * `mssp.viewAllClients` through the permission resolver, publishing through
+   * the PUBLISHER/ADMIN role check, moderation through User.isPlatformAdmin.
+   */
+  navCapabilities: orgProcedure.query(async ({ ctx }) => {
+    const identity = await resolveSessionIdentity(ctx.prisma, ctx.session.user.id);
+
+    if (!identity) {
+      return { mssp: false, publisher: false, platformAdmin: false };
+    }
+
+    const customRole = identity.customRoleId
+      ? await ctx.prisma.customRole.findUnique({
+          where: { id: identity.customRoleId },
+          select: { organizationId: true, permissions: true },
+        })
+      : null;
+
+    const permissionSubject = {
+      role: identity.role,
+      organizationId: identity.organizationId,
+      customRole,
+    };
+
+    return {
+      mssp: resolvePermission(permissionSubject, "mssp.viewAllClients"),
+      publisher:
+        identity.role === Role.PUBLISHER || identity.role === Role.ADMIN,
+      platformAdmin: identity.isPlatformAdmin,
     };
   }),
 });

@@ -1,6 +1,14 @@
 import { onboardingRouter } from '@/server/routers/onboarding';
 import { createInnerTRPCContext } from '@/server/trpc';
+import {
+  invalidateSessionIdentity,
+  closeSessionIdentityRedis,
+} from '@/server/lib/sessionIdentity';
 import { Role } from '@prisma/client';
+
+afterAll(async () => {
+  await closeSessionIdentityRedis();
+});
 
 // Mock the prisma context
 const mockPrisma = {
@@ -41,9 +49,24 @@ describe('onboarding router', () => {
   let ctx: any;
   let caller: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    
+
+    // WAVE 5.1: orgProcedure now re-reads the caller's User row on every
+    // request (src/server/lib/sessionIdentity.ts), so a mocked prisma has to
+    // model that row or every call 401s as "This account no longer exists".
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      role: Role.ADMIN,
+      organizationId: 'org-1',
+      isActive: true,
+      customRoleId: null,
+    });
+    // These fixed ids are shared across suites, and the identity cache lives
+    // in a real Redis that outlives this process — clear it so a neighbouring
+    // suite's 'user-1' can never satisfy this one's lookup.
+    await invalidateSessionIdentity('user-1');
+
     // Create an authenticated context
     ctx = {
       prisma: mockPrisma as any,

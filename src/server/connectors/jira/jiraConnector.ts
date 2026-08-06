@@ -1,4 +1,5 @@
 import { ConnectorAdapter, EvidenceItem } from "../types";
+import { safeFetch } from "@/server/lib/net/assertPublicHttpTarget";
 
 interface JiraConnectorConfig {
   siteUrl: string;
@@ -40,7 +41,12 @@ function sanitizeJiraError(error: unknown): string {
 async function jiraFetch(path: string, config: JiraConnectorConfig): Promise<any> {
   assertHttps(config.siteUrl);
   const base = config.siteUrl.replace(/\/$/, "");
-  const response = await fetch(`${base}${path}`, { headers: authHeaders(config) });
+  // WAVE 8 (BE-4). siteUrl comes from user-supplied connector config; the
+  // https:// check above says nothing about where the host resolves.
+  const response = await safeFetch(`${base}${path}`, {
+    maxRedirects: 0,
+    headers: authHeaders(config),
+  });
   if (!response.ok) {
     throw new Error(`Jira API ${response.status} for ${path}`);
   }

@@ -64,6 +64,42 @@ worker:
       cpu: "1"
       memory: 1Gi
 
+# ── Database migrations (WAVE 6.2) ──
+# Rendered as a pre-install,pre-upgrade Helm hook Job running `npm run
+# db:deploy`. Without it, new pods roll out against the old schema and pass
+# their health probe while the app is broken — see templates/job-migrate.yaml.
+migrations:
+  # 0, deliberately: `prisma migrate deploy` failing is nearly always a
+  # migration that cannot apply, not a transient error, and retrying it
+  # concurrently against shared schema state is worse than failing fast.
+  backoffLimit: 0
+  activeDeadlineSeconds: 600
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+# ── Pentest scanning (WAVE 6.1) ──
+# This chart deploys NO scan consumer. The scan runner shells out to a Docker
+# daemon (src/server/pentest/scanner.ts); Kubernetes nodes do not provide one,
+# and mounting the host Docker socket into a Pod would grant node-level root in
+# a shared cluster — worse than the single-host isolation Compose provides.
+#
+# With `enabled: true` you MUST state where scans run, or the chart refuses to
+# install (templates/deployment-pentest-worker.yaml). Previously a Helm-deployed
+# Dharma accepted scans and queued them forever with no consumer and no error.
+pentest:
+  enabled: false
+  # "external"        — the pentest worker runs outside this chart (e.g. the
+  #                     Compose pentest-worker on a dedicated host) against the
+  #                     same Redis. Nothing is deployed here.
+  # "kubernetes-job"  — per-scan Job with a scoped ServiceAccount. NOT YET
+  #                     IMPLEMENTED; the chart fails loudly if selected.
+  scanBackend: ""
+
 # ── NetworkPolicy (requires a CNI that enforces them, e.g. Calico/Cilium) ──
 # Disabled by default because the data services live outside this chart and
 # their location (in-cluster vs managed) determines the egress rules.

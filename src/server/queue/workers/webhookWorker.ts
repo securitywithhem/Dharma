@@ -17,6 +17,7 @@ import {
   WEBHOOK_DELIVERY_QUEUE_NAME,
   type WebhookDeliveryJobData,
 } from "@/server/queue/webhookQueue";
+import { safeFetch } from "@/server/lib/net/assertPublicHttpTarget";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -65,7 +66,11 @@ export async function processWebhookDeliveryJob(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
     try {
-      const response = await fetch(webhook.url, {
+      // WAVE 8 (BE-4). The router enforces https:// (routers/webhook.ts),
+      // which blocks the plain-HTTP metadata endpoints — but https://10.0.0.5/
+      // and redirect-to-internal were both still reachable.
+      const response = await safeFetch(webhook.url, {
+        maxRedirects: 0,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
