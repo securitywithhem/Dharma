@@ -160,6 +160,28 @@ default → render) behaves correctly.
 > per Pod) makes the Ollama Pod unschedulable, given Compose grants Ollama 8GB
 > — **remains ASSUMED**. It is not upgraded to VERIFIED here.
 
+### WAVE 8 — generalize the SSRF guard (extends WAVE 0.2)
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 8.1–8.3 `assertPublicHttpTarget` + all 5 call sites + redirect handling (BE-4) | **DONE** — `431e35a` | WAVE 0.2 built the right control and left it in `src/server/pentest/scanner.ts`, where only the scanner could use it — pattern P1 exactly. Lifted to `src/server/lib/net/assertPublicHttpTarget.ts`; **`scanner.ts` now imports it rather than keeping a copy**, so the two cannot drift. Wired into `siem-export.ts` (highest priority — it ships the *audit log*, so an unguarded target is an SSRF **and** an exfiltration channel), `webhookWorker.ts`, `saml.service.ts`, `jiraConnector.ts`, `oktaConnector.ts`. Hardened past the original: HTTPS-only unless a caller opts in (plain HTTP is what reaches the metadata endpoints); **every** resolved address must be public (one public + one private A-record is a rebinding primitive, not a partial success); redirects re-validated per hop with `maxRedirects: 0` at all five sites and `redirect: "manual"` forced so the platform can never follow a hop unvalidated; resolved addresses returned so a caller can pin the connection. | `tests/ssrfGuard.test.ts` (42). Every assertion is on the **rejection** path, with `global.fetch` replaced by a throw so a pass proves refusal happened **before any network I/O**. Includes a static check that no call site regressed to bare `fetch(` — **verified to fail when one call site is reverted.** |
+
+**WAVE 8 GATE: PASSED** — typecheck clean, lint clean, **95 suites / 835 tests green**.
+
+> **Residual gap (8.4, stated rather than claimed):** full **DNS-rebind
+> simulation was not performed**. It needs a domain whose resolution can be
+> changed between the check and the fetch, which this environment cannot
+> provide. The re-resolution is instead asserted *structurally* — the guard
+> resolves immediately before use and returns the addresses it checked. Closing
+> this properly needs a controllable test domain (the same blocker already
+> recorded for WAVE 0.1's DNS challenge).
+
+Four existing unit suites (`siem-export`, `jira`, `okta`, `webhookWorker`) now
+mock the guard. They test signing/auth/payload behaviour, and their fixture
+hosts — including siem-export's **local 127.0.0.1 stub, which the guard now
+correctly blocks** — are not reachable under a real guard. The static
+no-bare-`fetch` check above means this mocking cannot hide a reintroduced hole.
+
 ---
 
 ## Remaining real work
