@@ -360,24 +360,50 @@ jobs:
           kubectl config current-context
           kubectl version --request-timeout=15s
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.15.3"
+
+      # Fails fast, before Helm touches anything, if the Sealed-Secrets-managed
+      # Secret this release reads from was never applied to this cluster.
+      # `helm upgrade` does not create it (secrets.existingSecret in
+      # values-staging.yaml) -- without this check, a missing Secret shows up
+      # as pods crashlooping on a missing DATABASE_URL instead of a clear
+      # error here. See docs/ops/secrets-management.md.
+      - name: Verify application secret exists
+        run: |
+          set -euo pipefail
+          if ! kubectl get secret dharma-app-secrets -n dharma >/dev/null 2>&1; then
+            echo "::error::Secret 'dharma-app-secrets' not found in namespace 'dharma'. Apply the SealedSecret first -- see docs/ops/secrets-management.md."
+            exit 1
+          fi
+
       # Same lowercase requirement as the scan job — see the comment there.
       # kubectl would reject "ghcr.io/securitywithhem/Dharma:tag" as an invalid
       # reference, so this was latently broken here too.
-      - name: Update images in staging
+      #
+      # Replaces the old `kubectl set image deployment/nextjs|worker`. That
+      # only worked against the raw k8s/nextjs.yaml manifest (Deployments
+      # literally named "nextjs"/"worker") and would silently 404 against a
+      # Helm-installed release, whose Deployments are named
+      # "dharma-app"/"dharma-worker" — see k8s/nextjs.yaml's deprecation
+      # banner. `helm upgrade --install --atomic` is also idempotent against a
+      # cluster that has never seen this release before, and rolls back
+      # automatically if the new pods never become healthy within --timeout,
+      # which `kubectl set image` + a separate rollout-status check did not.
+      - name: Deploy via Helm
         run: |
           IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
           IMAGE_NAME_LC="$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
-          kubectl set image deployment/nextjs \
-            "nextjs=${{ env.REGISTRY }}/${IMAGE_NAME_LC}:${IMAGE_TAG}" \
-            -n dharma
-          kubectl set image deployment/worker \
-            "worker=${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker:${IMAGE_TAG}" \
-            -n dharma
-
-      - name: Wait for rollout
-        run: |
-          kubectl rollout status deployment/nextjs -n dharma --timeout=5m
-          kubectl rollout status deployment/worker -n dharma --timeout=5m
+          helm upgrade --install dharma ./helm/dharma \
+            --namespace dharma --create-namespace \
+            -f ./helm/dharma/values-staging.yaml \
+            --set app.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}" \
+            --set app.image.tag="${IMAGE_TAG}" \
+            --set worker.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker" \
+            --set worker.image.tag="${IMAGE_TAG}" \
+            --wait --timeout 5m --atomic
 
   # ============================================================
   # STAGE 6: Deploy to Kubernetes (Production)
@@ -411,22 +437,34 @@ jobs:
           kubectl config current-context
           kubectl version --request-timeout=15s
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.15.3"
+
+      - name: Verify application secret exists
+        run: |
+          set -euo pipefail
+          if ! kubectl get secret dharma-app-secrets -n dharma >/dev/null 2>&1; then
+            echo "::error::Secret 'dharma-app-secrets' not found in namespace 'dharma'. Apply the SealedSecret first -- see docs/ops/secrets-management.md."
+            exit 1
+          fi
+
       # Same lowercase requirement as the scan job — see the comment there.
-      - name: Update images in production
+      # Replaces the old `kubectl set image` — see the staging job's note for
+      # the full rationale (name mismatch against a Helm release, no rollback).
+      - name: Deploy via Helm
         run: |
           IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
           IMAGE_NAME_LC="$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
-          kubectl set image deployment/nextjs \
-            "nextjs=${{ env.REGISTRY }}/${IMAGE_NAME_LC}:${IMAGE_TAG}" \
-            -n dharma
-          kubectl set image deployment/worker \
-            "worker=${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker:${IMAGE_TAG}" \
-            -n dharma
-
-      - name: Wait for rollout
-        run: |
-          kubectl rollout status deployment/nextjs -n dharma --timeout=5m
-          kubectl rollout status deployment/worker -n dharma --timeout=5m
+          helm upgrade --install dharma ./helm/dharma \
+            --namespace dharma --create-namespace \
+            -f ./helm/dharma/values-production.yaml \
+            --set app.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}" \
+            --set app.image.tag="${IMAGE_TAG}" \
+            --set worker.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker" \
+            --set worker.image.tag="${IMAGE_TAG}" \
+            --wait --timeout 5m --atomic
 
       - name: Verify deployment
         run: |

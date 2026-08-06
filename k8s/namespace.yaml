@@ -1,6 +1,27 @@
 # ============================================================
 # Kubernetes Namespace + NetworkPolicy
 # ============================================================
+#
+# STILL IN USE (unlike k8s/nextjs.yaml and k8s/ingress.yaml, which are
+# deprecated — see their own banners). The app/worker Deployments now come
+# from helm/dharma, but this Namespace, its default-deny NetworkPolicy, and
+# the data-layer allow rules below are still how you get postgres/redis/minio
+# actually reachable, and are not part of the Helm chart (see
+# helm/dharma/README.md: "does NOT deploy data services").
+#
+# IMPORTANT — label selectors below were updated for the Helm migration.
+# The app/worker *source* selectors in the "allow-ingress" and
+# "allow-nextjs-{postgres,redis,minio}" / "allow-ollama" / "allow-worker-redis"
+# rules used to match `app: nextjs` / `app: worker`, which is what the old
+# raw k8s/nextjs.yaml Pods carried. helm/dharma's Pods carry
+# `app.kubernetes.io/name: dharma` + `app.kubernetes.io/component: app|worker`
+# instead (see helm/dharma/templates/_helpers.tpl's selectorLabels). Under
+# this Namespace's default-deny policy, a label mismatch here doesn't error —
+# it just silently drops every app/worker -> postgres/redis/minio/ollama
+# packet, which is a much worse failure mode to debug than a rejected apply.
+# Apply this file to a namespace BEFORE the first `helm upgrade --install`,
+# and re-apply it if you ever change fullnameOverride/nameOverride in Helm
+# values (that changes the label values these rules must match).
 
 ---
 apiVersion: v1
@@ -33,7 +54,8 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: nextjs
+      app.kubernetes.io/name: dharma
+      app.kubernetes.io/component: app
   policyTypes:
     - Ingress
   ingress:
@@ -62,10 +84,12 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app: nextjs
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: app
         - podSelector:
             matchLabels:
-              app: worker
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: worker
       ports:
         - protocol: TCP
           port: 5432
@@ -87,10 +111,12 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app: nextjs
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: app
         - podSelector:
             matchLabels:
-              app: worker
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: worker
       ports:
         - protocol: TCP
           port: 6379
@@ -112,10 +138,12 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app: nextjs
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: app
         - podSelector:
             matchLabels:
-              app: worker
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: worker
       ports:
         - protocol: TCP
           port: 9000
@@ -137,10 +165,12 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app: nextjs
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: app
         - podSelector:
             matchLabels:
-              app: worker
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: worker
       ports:
         - protocol: TCP
           port: 11434
@@ -162,7 +192,8 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app: worker
+              app.kubernetes.io/name: dharma
+              app.kubernetes.io/component: worker
       ports:
         - protocol: TCP
           port: 6379

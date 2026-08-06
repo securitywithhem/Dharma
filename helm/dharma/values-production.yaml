@@ -1,0 +1,61 @@
+# ============================================================
+# Production overrides
+# ============================================================
+# Applied as: helm upgrade --install dharma ./helm/dharma -n dharma
+#               -f values-production.yaml --set app.image.tag=... (CI does this)
+
+app:
+  replicaCount: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+worker:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+podDisruptionBudget:
+  enabled: true
+  app:
+    minAvailable: 1
+  worker:
+    minAvailable: 1
+
+# k8s/namespace.yaml applies a default-deny NetworkPolicy plus explicit allow
+# rules for the data layer (postgres/redis/minio/ollama). Those allow rules'
+# *source* selectors were written for the old raw k8s/nextjs.yaml Pod labels
+# (app: nextjs / app: worker) and have been updated to match this chart's
+# labels (app.kubernetes.io/name: dharma, app.kubernetes.io/component:
+# app|worker) -- see k8s/namespace.yaml's own note. Apply that file to the
+# production namespace BEFORE the first `helm upgrade --install` here, or
+# every pod-to-pod call (app -> postgres, worker -> redis, etc.) will be
+# silently dropped by the default-deny policy with no error in this chart.
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx
+
+secrets:
+  create: false
+  existingSecret: dharma-app-secrets
+
+ingress:
+  enabled: true
+  host: dharma.example.com # replace with your real production hostname
+  tls:
+    enabled: true
+    secretName: dharma-tls
