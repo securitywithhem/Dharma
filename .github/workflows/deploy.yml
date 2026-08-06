@@ -252,12 +252,34 @@ jobs:
         id: image
         run: echo "name=$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Run Trivy vulnerability scanner
+      # Two Trivy steps on purpose. `format: sarif` reports every severity and
+      # must never fail the job, otherwise a single CRITICAL would abort the run
+      # before the report is written and there would be nothing to read. The
+      # gate below is a second, cached pass whose only job is the exit code.
+      - name: Run Trivy vulnerability scanner (report)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
           format: "sarif"
           output: "trivy-results.sarif"
+          exit-code: "0"
+
+      # The actual gate. CRITICAL only, and ignore-unfixed, deliberately:
+      # node/alpine base images routinely carry unfixed HIGH (and some
+      # unfixable CRITICAL) CVEs, and a gate that fails on things nobody can
+      # act on gets routed around within a week — which is worse than no gate,
+      # because it also teaches people to ignore the ones that matter.
+      #
+      # Runs after the report step so a failure here still leaves the SARIF
+      # artifact uploaded below (`if: always()`).
+      - name: Fail on unpatched CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
+          format: "table"
+          severity: "CRITICAL"
+          ignore-unfixed: true
+          exit-code: "1"
 
       # Always retrievable, with or without Advanced Security. Without this the
       # scan runs and its results go nowhere on this repo (see below).
@@ -295,7 +317,18 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: [build, scan]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    # vars.ENABLE_K8S_DEPLOY gates the Kubernetes deploy jobs.
+    #
+    # Until 848d430 these jobs had never actually run — the scan job they
+    # depend on failed on every commit — so nothing had ever exercised them.
+    # The moment the scan was fixed they ran for the first time and failed:
+    # there is no kubeconfig secret on this repo, in any environment.
+    #
+    # Skipping is the honest default. A job that cannot deploy should not
+    # report red forever, and it must certainly not report GREEN having
+    # deployed nothing. To enable: add the kubeconfig secret to the
+    # environment and set the repo variable ENABLE_K8S_DEPLOY=true.
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push' && vars.ENABLE_K8S_DEPLOY == 'true'
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -304,11 +337,28 @@ jobs:
         with:
           version: "latest"
 
+      # Fail HERE, with a usable message, rather than three steps later.
+      # Previously an unset secret produced an empty ~/.kube/config, this step
+      # exited 0, and the first kubectl call died with
+      #   "The connection to the server localhost:8080 was refused"
+      # — kubectl's default when it has no cluster configured, which reads like
+      # a networking fault rather than a missing credential.
       - name: Configure kubectl
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_STAGING }}
         run: |
+          set -euo pipefail
+          if [ -z "${KUBE_CONFIG}" ]; then
+            echo "::error::KUBE_CONFIG_STAGING is not set. Add the base64-encoded kubeconfig as a secret on the 'staging' environment (or unset vars.ENABLE_K8S_DEPLOY to skip deploys)."
+            exit 1
+          fi
           mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > "$HOME/.kube/config"
+          printf '%s' "${KUBE_CONFIG}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
+          # Proves the credential actually works before we start mutating
+          # deployments, instead of discovering it mid-rollout.
+          kubectl config current-context
+          kubectl version --request-timeout=15s
 
       # Same lowercase requirement as the scan job — see the comment there.
       # kubectl would reject "ghcr.io/securitywithhem/Dharma:tag" as an invalid
@@ -335,7 +385,8 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: [build, scan]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Gated on vars.ENABLE_K8S_DEPLOY — see the staging job's note.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.ENABLE_K8S_DEPLOY == 'true'
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -344,11 +395,21 @@ jobs:
         with:
           version: "latest"
 
+      # See the staging job's note — same fail-fast rationale.
       - name: Configure kubectl
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
         run: |
+          set -euo pipefail
+          if [ -z "${KUBE_CONFIG}" ]; then
+            echo "::error::KUBE_CONFIG_PRODUCTION is not set. Add the base64-encoded kubeconfig as a secret on the 'production' environment (or unset vars.ENABLE_K8S_DEPLOY to skip deploys)."
+            exit 1
+          fi
           mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > "$HOME/.kube/config"
+          printf '%s' "${KUBE_CONFIG}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
+          kubectl config current-context
+          kubectl version --request-timeout=15s
 
       # Same lowercase requirement as the scan job — see the comment there.
       - name: Update images in production
