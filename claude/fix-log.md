@@ -134,6 +134,32 @@ only access path is `findUnique` by id. Two drifts remain and are
 **pre-existing, not from this wave** (confirmed identical at HEAD): the
 `vector` extension, and a removed `Control.path` index.
 
+### WAVE 6 — Kubernetes/Helm parity with the (correct) Compose topology
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 6.1 Pentest worker on Helm (ARCH-1) | **BLOCKED** (gap made explicit) — `72431e6` | Compose isolates `pentest-worker` so only it holds the host Docker socket; `src/workers/index.ts` (the chart's worker entrypoint) never imports `pentestScanRunner`, so a Helm-deployed Dharma **accepted scans that then sat in Redis forever** — no consumer, no error, no UI signal. Deliberately **not** closed by mounting `/var/run/docker.sock` into a Pod: on Compose's single host that socket grants root on a host the operator already owns, but in a shared cluster it grants root on a node running other tenants' workloads — a silent **downgrade** of `Security_Architecture.md`'s isolation intent, not an equivalent. Instead the chart now **fails at template time** unless the operator states where scans run (`pentest.scanBackend=external`, or `kubernetes-job` which fails as not-implemented). An install that refuses beats a queue that swallows every scan. | `tests/helmChart.test.ts` — 5 guard cases incl. "never mounts the host Docker socket into a pod"; CI asserts the guard still refuses (`infra-validate.yml`) so it cannot be "fixed" by deletion |
+| ↳ **What is needed to unblock 6.1** | — | (1) A **live Kubernetes cluster** to validate against — none is available in this environment (`helm`/`kubectl` are installed; no kind/k3d/minikube, no current-context). (2) An **owner decision on isolation approach**: per-scan Job with a scoped ServiceAccount, vs. a sandboxed runtime (gVisor/Kata), vs. a dedicated node pool with PodSecurity restrictions. The scan runner in `src/server/pentest/scanner.ts` shells out to `docker run`/`docker network create` and needs rewriting for whichever is chosen. | n/a |
+| 6.2 `prisma migrate deploy` as a pre-upgrade hook (DEV-1) | **DONE** — `72431e6` | Neither deploy job ran a migration; `npm run db:deploy` existed and was never called by CI. New pods rolled out against the old schema. `--atomic` made this **worse**: pods pass `/api/health` (which doesn't exercise the changed queries), Helm declares the release healthy, and the app is broken with a green deploy. Now `templates/job-migrate.yaml` at `pre-install,pre-upgrade` / weight `-5`, `backoffLimit: 0` (a failed `migrate deploy` is rarely transient, and retrying concurrently against shared schema state is worse than failing fast). Failure aborts the release without touching running Deployments. | `tests/helmChart.test.ts` — hook annotations, command, no-retry, and rendering under **both** real values files |
+| 6.3 `deploy.yml` verify step + smoke host (DEV-2) | **DONE** — `72431e6` | `describe deployment nextjs` NotFounds *after* a successful production rollout; `get pods -l app=nextjs` exits 0 printing nothing — a check that **looked** like it passed while verifying nothing, which is the worse of the two. Now uses the chart's real names/labels and asserts the selector matched a running pod. Smoke host moved off the hardcoded `dharma.example.com` placeholder to `vars.PRODUCTION_URL`, skipping loudly when unset. | `tests/helmChart.test.ts` "deployment naming" pins `dharma-app`/`dharma-worker` and the `app.kubernetes.io/name` label the NetworkPolicies select on |
+| 10.3 `notify` job dependency graph (DEV-7) | **DONE** — `72431e6` | `needs: [deploy-production, deploy-staging]` only. When lint/test/build/scan failed those jobs were **skipped, not failed**, so `if: failure()` never matched — a red test on `main` sent no Slack message at all. Now `needs` every upstream job with `always() && contains(needs.*.result, 'failure')`. | Asserted by parsing the workflow (`needs`/`if` verified); actionlint in CI |
+| 10.4 `infra-validate` templates the real values files + validates `k8s/` (DEV-5) | **DONE** — `72431e6` | The `helm` job templated **default** values plus a synthetic all-toggles-on `--set`, never `values-staging.yaml`/`values-production.yaml` — the only two files a real deploy uses. Both are now linted and templated. New `k8s-manifests` job runs `kubeconform -strict` over `k8s/*.yaml`; the workflow already triggered on `k8s/**` while validating nothing there. | CI job; `helm lint` verified locally against all three values files |
+| 10.5 `CHANGE_ME` in the production secret guard (DEV-6) | **DONE** — `72431e6` | Adds a **substring** check, deliberately unlike the exact-match discipline elsewhere, because `CHANGE_ME` appears embedded in a connection URL — an operator can set a real host and keep the placeholder password, which no exact match catches. **Correction to the audit:** DEV-6's headline example overstated slightly — bare `nextauthSecret: "CHANGE_ME"` (9 chars) was **already** refused by the schema's existing `min(32)` rule. The real exposure was the URL-embedded and MinIO placeholders. | `tests/envInsecureDefaults.test.ts` (8); **3 fail pre-fix**. The suite asserts the guard's own message, not just that the variable is named — the first draft passed for the wrong reason because a ZodError also names it. |
+
+**WAVE 6 GATE: PASSED at the verification level available** — `tsc --noEmit`
+clean, **94 suites / 793 tests green**, `helm lint` passes against all three
+values files, every workflow YAML parses, and the guard matrix
+(`enabled+no-backend` → fail, `kubernetes-job` → fail, `external` → render,
+default → render) behaves correctly.
+
+> **VERIFICATION HONESTY — read before treating WAVE 6 as cluster-proven.**
+> There is **no live cluster** in this environment. Everything above is
+> verified by **client-side rendering only** (`helm lint`, `helm template`).
+> `kubectl apply --dry-run=server` was **not** run, and the audit's ASSUMED
+> item — whether `k8s/namespace.yaml`'s `LimitRange` max (cpu 2 / memory 4Gi
+> per Pod) makes the Ollama Pod unschedulable, given Compose grants Ollama 8GB
+> — **remains ASSUMED**. It is not upgraded to VERIFIED here.
+
 ---
 
 ## Remaining real work
