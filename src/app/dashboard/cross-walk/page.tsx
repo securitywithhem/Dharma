@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, Grid3x3, ListTree, Sparkles } from "lucide-react";
 import { api } from "@/hooks/trpc";
+import { QueryError } from "@/components/ui/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FrameworkPairSelector } from "@/components/crosswalk/FrameworkPairSelector";
@@ -18,7 +19,8 @@ export default function CrossWalkPage() {
   const [view, setView] = useState<ViewMode>("heatmap");
   const [drillDown, setDrillDown] = useState<{ familyAId: string; familyBId: string } | null>(null);
 
-  const { data: frameworks } = api.framework.list.useQuery();
+  const frameworksQuery = api.framework.list.useQuery();
+  const frameworks = frameworksQuery.data;
   const frameworkAName = frameworks?.find((f) => f.id === frameworkAId)?.name ?? "Framework A";
   const frameworkBName = frameworks?.find((f) => f.id === frameworkBId)?.name ?? "Framework B";
 
@@ -31,6 +33,19 @@ export default function CrossWalkPage() {
     { enabled: bothSelected },
   );
   const pendingProposals = proposalCount.data?.length ?? 0;
+
+  // WAVE 9.2 (§6 HIGH-1) — this page had no loading, error or empty state at
+  // all. Without the framework list the pair selector renders empty, which
+  // reads as "you have no frameworks" rather than "we could not load them".
+  if (frameworksQuery.isError) {
+    return (
+      <QueryError
+        title="Failed to load frameworks"
+        message={frameworksQuery.error?.message}
+        onRetry={() => frameworksQuery.refetch()}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -6,9 +6,12 @@
 // explicitly skipped per the doc's "not required" note.
 import React, { useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import {
+  toast,
+} from "sonner";
 import { Building2, FileDown, ShieldAlert, Settings2 } from "lucide-react";
 import { api } from "@/lib/trpc";
+import { QueryError } from "@/components/ui/query-error";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +50,18 @@ export default function MsspDashboardPage() {
   });
 
   if (groupsQuery.isLoading) return <Skeleton className="h-96 w-full rounded-lg" />;
+
+  // WAVE 9.2 (§6 HIGH-1) — a failed request previously fell through to the
+  // "no client grants" state, which reads as "you have no clients" to an MSSP.
+  if (groupsQuery.isError) {
+    return (
+      <QueryError
+        title="Failed to load your client portfolio"
+        message={groupsQuery.error?.message}
+        onRetry={() => groupsQuery.refetch()}
+      />
+    );
+  }
 
   const groups = groupsQuery.data ?? [];
   if (groups.length === 0) {

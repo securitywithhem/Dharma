@@ -4,9 +4,12 @@
 // modal with a permission-checkbox matrix grouped by resource
 // (UI_UX doc "Enterprise Settings" / RBAC screens).
 import React, { useMemo, useState } from "react";
-import { toast } from "sonner";
+import {
+  toast,
+} from "sonner";
 import { Plus, Pencil, Trash2, Lock } from "lucide-react";
 import { api } from "@/lib/trpc";
+import { QueryError } from "@/components/ui/query-error";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +84,19 @@ export default function RolesSettingsPage() {
     () => groupPermissionKeys(keysQuery.data ?? []),
     [keysQuery.data],
   );
+
+  // WAVE 9.2 (§6 HIGH-1) — an outage rendering as "no custom roles" on the
+  // RBAC screen is the worst possible place for this defect: it invites an
+  // admin to recreate roles that already exist.
+  if (rolesQuery.isError) {
+    return (
+      <QueryError
+        title="Failed to load roles"
+        message={rolesQuery.error?.message}
+        onRetry={() => rolesQuery.refetch()}
+      />
+    );
+  }
 
   if (rolesQuery.isLoading) {
     return <Skeleton className="h-96 w-full rounded-lg" />;

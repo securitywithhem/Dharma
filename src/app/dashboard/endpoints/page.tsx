@@ -9,6 +9,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Plus, Copy, MonitorSmartphone, ShieldOff, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/trpc";
+import { QueryError } from "@/components/ui/query-error";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,16 @@ export default function EndpointsPage() {
         </Button>
       </div>
 
-      {listQuery.isLoading ? (
+      {/* WAVE 9.2 (§6 HIGH-1) — a failed request used to render as "no endpoints
+          enrolled", i.e. "nothing is being monitored", which for an EDR view is
+          a security-relevant lie rather than a cosmetic gap. */}
+      {listQuery.isError ? (
+        <QueryError
+          title="Failed to load endpoints"
+          message={listQuery.error?.message}
+          onRetry={() => listQuery.refetch()}
+        />
+      ) : listQuery.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-36 w-full rounded-lg" />

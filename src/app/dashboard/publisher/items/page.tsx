@@ -1,6 +1,7 @@
 "use client";
 
 import { api as trpc } from "@/lib/trpc";
+import { QueryError } from "@/components/ui/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,7 +13,8 @@ import { useRouter } from "next/navigation";
 
 export default function PublisherItemsPage() {
   const router = useRouter();
-  const { data: items, isLoading } = trpc.marketplace.getPublisherItems.useQuery();
+  const { data: items, isLoading, isError, error, refetch } =
+    trpc.marketplace.getPublisherItems.useQuery();
 
   return (
     <div className="space-y-6">
@@ -29,7 +31,15 @@ export default function PublisherItemsPage() {
 
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {/* WAVE 9.2 (§6 HIGH-1) — an outage rendering as "you have published
+              nothing" is misleading for a publisher checking their listings. */}
+          {isError ? (
+            <QueryError
+              title="Failed to load your listings"
+              message={error?.message}
+              onRetry={() => refetch()}
+            />
+          ) : isLoading ? (
             <div className="flex justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-dharma-ink-secondary" />
             </div>
