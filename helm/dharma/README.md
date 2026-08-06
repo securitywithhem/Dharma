@@ -20,6 +20,43 @@ This keeps the chart self-contained and lintable offline. For an all-in-one
 in-cluster stack instead, use the manifests under `k8s/` or add Bitnami
 postgresql/redis subchart dependencies to `Chart.yaml`.
 
+- **Runs database migrations** as a `pre-install,pre-upgrade` hook Job
+  (`templates/job-migrate.yaml`, `npm run db:deploy`). It completes before any
+  Deployment is updated, and a failure aborts the release without touching the
+  running pods. Before this existed, new pods rolled out against the old schema
+  and passed their health probe while the app was broken.
+- **Does NOT deploy a pentest scan worker** — and, since WAVE 6.1, says so
+  loudly instead of silently. See below.
+
+## Pentest scanning is not deployed by this chart
+
+`docker-compose.yml` isolates `pentest-worker` into its own container: it is the
+only process with the host Docker socket, so a compromised scan cannot reach the
+connector/webhook/AI queues or their decrypted credentials. This chart's
+`worker` Deployment runs `src/workers/index.ts`, which does **not** import
+`pentestScanRunner`.
+
+The result, before this was addressed, was a silent gap: `pentest.create`
+accepted a scan, the `PenTest` row went to a queued state, and the job sat in
+Redis forever with no consumer — no error, no timeout, no UI signal.
+
+There is deliberately no default implementation. `src/server/pentest/scanner.ts`
+shells out to `docker run`; Kubernetes nodes generally do not run Docker, and
+mounting `/var/run/docker.sock` into a Pod would grant **node-level root in a
+shared cluster** — a downgrade from Compose's single-host model, not an
+equivalent to it. The chart will not make that trade on your behalf.
+
+So with `pentest.enabled: true` you must state where scans run:
+
+| `pentest.scanBackend` | Behaviour |
+|---|---|
+| `external` | The pentest worker runs outside this chart (e.g. the Compose `pentest-worker` on a dedicated host) against the same Redis. The chart deploys no scan consumer — correct, and now explicit. |
+| `kubernetes-job` | Per-scan Job with a scoped ServiceAccount and no host socket. **Not implemented**; the chart fails loudly if selected. Tracked in `claude/fix-log.md` WAVE 6.1. |
+| unset | `helm upgrade` **fails at template time** with an explanation. An install that refuses beats a queue that swallows every scan. |
+
+`pentest.enabled` defaults to `false`, so this changes nothing for a deployment
+that does not offer pentest features.
+
 ## Validation status
 
 - ✅ `helm lint helm/dharma` — passes (0 failures)

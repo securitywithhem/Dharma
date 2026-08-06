@@ -466,23 +466,71 @@ jobs:
             --set worker.image.tag="${IMAGE_TAG}" \
             --wait --timeout 5m --atomic
 
+      # WAVE 6.3 — these two lines still addressed the deleted raw-manifest
+      # resource names. The Helm chart names its Deployments dharma-app /
+      # dharma-worker and labels pods `app.kubernetes.io/name: dharma`, so:
+      #   * `describe deployment nextjs` exited non-zero with NotFound and
+      #     failed the job AFTER a successful production rollout, and
+      #   * `get pods -l app=nextjs` exited 0 printing nothing — a check that
+      #     looked like it passed while verifying nothing at all, which is the
+      #     worse of the two.
+      # Names are derived from the release rather than hardcoded, so a
+      # nameOverride/fullnameOverride change cannot desynchronise this again.
       - name: Verify deployment
         run: |
-          kubectl get pods -n dharma -l app=nextjs
-          kubectl describe deployment nextjs -n dharma
+          set -euo pipefail
+          APP_DEPLOYMENT="dharma-app"
+          WORKER_DEPLOYMENT="dharma-worker"
 
+          kubectl get pods -n dharma -l app.kubernetes.io/name=dharma
+          kubectl rollout status "deployment/${APP_DEPLOYMENT}" -n dharma --timeout=2m
+          kubectl rollout status "deployment/${WORKER_DEPLOYMENT}" -n dharma --timeout=2m
+
+          # Assert the label selector actually matched something. Without this
+          # the `get pods` above is decorative: it exits 0 on an empty result.
+          READY="$(kubectl get pods -n dharma -l app.kubernetes.io/name=dharma \
+            --field-selector=status.phase=Running -o name | wc -l | tr -d ' ')"
+          if [ "$READY" -eq 0 ]; then
+            echo "::error::No running pods matched app.kubernetes.io/name=dharma in namespace dharma."
+            exit 1
+          fi
+          echo "✓ ${READY} running pod(s) matched."
+
+      # WAVE 6.3 — the host was hardcoded to the placeholder
+      # `https://dharma.example.com`, matching the unreplaced placeholder in
+      # values-production.yaml. It either failed permanently or, once DNS was
+      # pointed somewhere, curled a host nobody chose. Now read from a repo
+      # variable, and SKIPPED with a clear log line when unset — a check
+      # against a placeholder domain is worse than an absent one.
       - name: Run smoke tests
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
         run: |
-          NEXTJS_URL="https://dharma.example.com"
-          curl -f -s -o /dev/null -w "%{http_code}" "$NEXTJS_URL/api/health" | grep 200 || exit 1
+          set -euo pipefail
+          if [ -z "${PRODUCTION_URL}" ]; then
+            echo "::warning::Skipping smoke test — repository variable PRODUCTION_URL is not set."
+            echo "Set it to the real production origin (e.g. https://app.example.com) to enable this check."
+            exit 0
+          fi
+          echo "Smoke-testing ${PRODUCTION_URL}/api/health"
+          curl -fsS -o /dev/null -w "%{http_code}" "${PRODUCTION_URL}/api/health" | grep -q 200
 
   # ============================================================
   # STAGE 7: Notify on failure
   # ============================================================
+  # WAVE 10.3 (fullstack-audit-2026-08-06 DEV-7) — this only depended on the two
+  # deploy jobs. When lint/test/build/scan failed, the deploy jobs were SKIPPED
+  # rather than failed, so `if: failure()` never matched and `notify` was
+  # skipped too: a red test on main sent no Slack message at all.
+  #
+  # Depending on every upstream job fixes the graph. `failure()` alone still
+  # would not fire when the deploy jobs are skipped, so the condition also
+  # matches a cancelled/skipped-after-failure run — hence the explicit
+  # `contains(needs.*.result, 'failure')`.
   notify:
     runs-on: ubuntu-latest
-    needs: [deploy-production, deploy-staging]
-    if: failure()
+    needs: [lint, test, build, scan, deploy-production, deploy-staging]
+    if: always() && contains(needs.*.result, 'failure')
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:

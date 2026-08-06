@@ -1,0 +1,68 @@
+{{/*
+============================================================
+Database migration hook — WAVE 6.2 (fullstack-audit-2026-08-06 DEV-1)
+============================================================
+
+Neither deploy-staging nor deploy-production ran a migration step. `npm run
+db:deploy` existed in package.json and was never called by CI, and there was no
+migration Job, initContainer or Helm hook anywhere in this chart. Merging a
+schema migration therefore rolled new pods out against the OLD schema, and
+every query touching a new column threw until someone ran the migration by
+hand.
+
+`--atomic` made that worse rather than better: the pods pass their /api/health
+probe (which does not exercise the changed queries), Helm declares the release
+healthy, and the application is broken in production with a green deploy.
+
+Runs as a pre-upgrade,pre-install hook so it completes BEFORE any Deployment is
+updated. hook-weight -5 orders it ahead of other hooks. hook-delete-policy
+keeps a FAILED Job around for inspection — the pod logs are the only record of
+why the migration failed — while clearing it before the next attempt so a
+stale Job name cannot block the re-run.
+
+If this Job fails, the hook fails, and Helm aborts the release without touching
+the running Deployments. That is the entire point: an old-but-working app is a
+far better outcome than new pods against an unmigrated database.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dharma.fullname" . }}-migrate
+  labels:
+    {{- include "dharma.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  # The schema is shared state: two concurrent migration runs against the same
+  # database is exactly the situation `prisma migrate deploy` is not safe under.
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  # Bounds a migration that hangs on a lock rather than letting it block the
+  # release indefinitely.
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "dharma.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "dharma.serviceAccountName" . }}
+      containers:
+        - name: migrate
+          # The app image: it already carries the Prisma schema, the migrations
+          # directory and the prisma CLI. A separate migration image would be a
+          # second thing to keep in lockstep with the schema.
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          command: ["npm", "run", "db:deploy"]
+          env:
+            {{- range $key, $value := .Values.app.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- include "dharma.secretEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
