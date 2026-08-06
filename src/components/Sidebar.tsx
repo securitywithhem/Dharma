@@ -88,7 +88,7 @@ export function Sidebar({ id, open = true, overlay = false, onNavigate }: Sideba
   // fallback form is the permission-gating anti-pattern WAVE 2.3 removed, and
   // here it would briefly render an MSSP link to every user on each load.
   // Hidden until the server has actually said yes.
-  const capabilitiesQuery = api.user.navCapabilities.useQuery(undefined, {
+  const capabilitiesQuery = api.user.capabilities.useQuery(undefined, {
     staleTime: 5 * 60_000,
   });
 

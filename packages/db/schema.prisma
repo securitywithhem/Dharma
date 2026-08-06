@@ -564,8 +564,31 @@ model Policy {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // WAVE 7 — the policy lifecycle. Before this, `isPublished` was settable only
+  // at create time and there was no detail route, no update/publish/delete
+  // mutation and no way to open a generated policy again: the flagship
+  // "AI-drafted policy" feature produced write-only documents.
+
+  /// When the current version was published. Null while it is a draft, and
+  /// cleared on unpublish. Separate from updatedAt because "when did this
+  /// become the policy we attest to" is the question an auditor asks, and
+  /// updatedAt moves on every edit.
+  publishedAt DateTime?
+
+  /// Soft delete. A policy that was ever published is an attestable artifact:
+  /// an auditor asking "what was your access-control policy in March" must not
+  /// be met with a row that no longer exists. Hard-deleting would also orphan
+  /// the AuditLog entries that reference this id — those are hash-chained and
+  /// deliberately immutable, so the referenced entity has to outlive the user's
+  /// decision to remove it from their working list.
+  deletedAt DateTime?
+
   @@index([organizationId])
   @@index([policyType])
+  // Every list query filters on (organizationId, deletedAt) — an org's live
+  // policies. Composite so the soft-delete filter does not degrade into a scan
+  // of the org's whole policy history.
+  @@index([organizationId, deletedAt])
 }
 
 enum PolicyType {

@@ -21,7 +21,7 @@ import type { LucideIcon } from "lucide-react";
 
 /**
  * Capability required to see a nav item, resolved server-side by
- * `user.navCapabilities`. Undefined means every org member sees it.
+ * `user.capabilities`. Undefined means every org member sees it.
  *
  * Deliberately a capability name rather than a role: the sidebar must not
  * re-implement an authorization rule that a router already owns, or the two
