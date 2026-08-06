@@ -102,6 +102,40 @@ commit, evidence cited · **MOOT** = premise no longer exists.
 
 ---
 
+## Remediation pass 2 — `claude/fullstack-audit-2026-08-06.md`
+
+Started 2026-08-06. Baseline before any change: **90 suites / 736 tests green**,
+`tsc --noEmit` clean, lint clean (6 pre-existing warnings). A live Postgres +
+Redis are available, so every test below is a real-DB integration test unless
+stated.
+
+### Precondition — the uncommitted infra tree (DEV-3, DEV-10)
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| Commit the Helm-authoritative deploy tree | **DONE** — `ff8e091` | CI's deploy jobs referenced `helm/dharma/values-{staging,production}.yaml` by path while those files existed only in the working tree — a fresh clone of `main` would fail `helm upgrade -f ...` on a missing file. Reviewed each file rather than `git add -A`: DEPRECATED banners on `k8s/{nextjs,ingress}.yaml`, the NetworkPolicy selector migration in `k8s/namespace.yaml` (`app: nextjs` → `app.kubernetes.io/name: dharma`, which had to move *with* the banners because under default-deny a selector mismatch silently drops every app→data packet), `deploy.yml`'s move to `helm upgrade --install --atomic`, and the seal-secrets runbook. Answers `04_TECHNICAL/Deployment.md`'s k8s-vs-Helm Open Question in favour of Helm. | n/a (infra); verified by inspection of each diff |
+
+### WAVE 5 — session revocation + marketplace authorization
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 5.1 Re-read the user row in `orgProcedure` (BE-1) | **DONE** — `c27d964` | See WAVE 2.1b above — logged there rather than duplicated, since it extends that item. | `tests/sessionRevocation.test.ts` (8); 6 fail pre-fix |
+| 5.2 Marketplace hardening (BE-2, BE-5, BE-6, BE-7, BE-8) + orphaned routes (§4 HIGH-1, MEDIUM-1) | **DONE** — `5bfeb67` | Treated as **one** work item per audit pattern P2 — this was one module built to a different standard, not six defects. (a) `publishItem` had `// Basic check, in reality verify role is PUBLISHER or ADMIN` above a mutation with **no check** → `publisherProcedure`. (b) `isPublic` was client-settable and passed into `create`, making the whole `approveItem` moderation step bypassable with one boolean → removed from the input entirely; only approve/reject write it. (c) `approveItem` gated on `role === "ADMIN"`, i.e. *any tenant's* admin, so any customer could approve any other tenant's submission into the shared catalogue → new `User.isPlatformAdmin`, deliberately **not** a `Role` value (role is org-scoped) and **not** an `MsspGrant` (that shape fits scoped tenant-to-tenant reads, not deployment ownership), with **no API that sets it** so it cannot be escalated through the app. (d) `metadata: z.any()` → discriminated union per `ItemType` with `kind` injected server-side from the declared type, and every string bounded, because this JSON is imported by *other* tenants. (e) `importItem` now refuses never-approved items. (f) 4 × `throw new Error` → typed domain errors mapped to `TRPCError`; genuinely unexpected errors are rethrown rather than laundered into a friendly 4xx. (g) service takes `prisma` instead of importing the singleton. (h) `redis.keys("marketplace:public:*")` on every publish → O(1) generation counter in the cache key; `KEYS` blocks the single Redis thread shared by **all 14 BullMQ queues**, so this was shared-infrastructure risk, not a marketplace nit. (i) the 7 zero-inbound-link routes became a gated **Manage** nav group resolved by `user.navCapabilities` server-side — not client role-reading, which is the `?? fallback` anti-pattern WAVE 2.3 removed. (j) `/dashboard/{admin,publisher,controls}` are grouping segments with no `page.tsx`; breadcrumbs linked all three, prefetching a 404 — same defect `afe724f` fixed for `settings/enterprise`, found by checking *every* segment rather than the reported one. | `tests/marketplace.router.test.ts` (16) — **12 fail pre-fix**, verified by reverting router+service; 4 passing are controls. `tests/import.router.test.ts` (4), `tests/navCapabilities.test.ts` (9), 4 new cases in `tests/breadcrumbs.test.ts`. **Both replaced suites were mock-only and passed throughout the entire window the vulnerability was open** — that is why they were rewritten against the real DB. |
+
+**WAVE 5 GATE: PASSED** — `tsc --noEmit` clean, lint clean (same 6 pre-existing
+warnings), **92 suites / 774 tests green**, `npm run build` succeeds.
+
+Migration `20260806120000_wave5_platform_admin_flag` verified with
+`prisma migrate diff --from-migrations` against a pgvector-enabled shadow DB
+(the 3.4b convention). The first attempt declared a **partial** index in SQL
+that Prisma cannot express in the schema, so the two would never have matched —
+caught by this check and resolved by dropping the index entirely, since the
+only access path is `findUnique` by id. Two drifts remain and are
+**pre-existing, not from this wave** (confirmed identical at HEAD): the
+`vector` extension, and a removed `Control.path` index.
+
+---
+
 ## Remaining real work
 
 1. ~~**WAVE 0.1–0.5**~~ — done (`27f3981`, `f65e661`).
