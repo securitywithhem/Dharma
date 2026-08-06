@@ -259,7 +259,32 @@ jobs:
           format: "sarif"
           output: "trivy-results.sarif"
 
-      - uses: github/codeql-action/upload-sarif@v2
+      # Always retrievable, with or without Advanced Security. Without this the
+      # scan runs and its results go nowhere on this repo (see below).
+      - name: Upload SARIF as a build artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-${{ matrix.service }}-sarif
+          path: trivy-results.sarif
+          retention-days: 30
+
+      # Publishing to the Security tab requires GitHub Advanced Security on a
+      # PRIVATE repository. This repo is private and does not have code scanning
+      # enabled, so this step returned "Resource not accessible by integration"
+      # and failed the job — which in turn blocked deploy-production, since that
+      # is `needs: [build, scan]`.
+      #
+      # Gated on an explicit repo variable rather than continue-on-error: a
+      # swallowed failure here would mean nobody notices the day uploads break
+      # for a real reason. To turn it on, enable Advanced Security / code
+      # scanning and set the repo variable ENABLE_CODE_SCANNING=true.
+      #
+      # Bumped v2 -> v3 at the same time: v2 is deprecated and already emits an
+      # error-annotation on every run.
+      - name: Upload SARIF to code scanning
+        if: vars.ENABLE_CODE_SCANNING == 'true'
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
           category: trivy-${{ matrix.service }}
