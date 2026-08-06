@@ -1,0 +1,239 @@
+# ============================================================
+# .github/workflows/backup-restore-drill.yml — WAVE 10.6
+# ============================================================
+# fullstack-audit-2026-08-06 DEV-10 ("Restore capability is real but
+# unrepeatable"): a genuine end-to-end restore drill was performed by hand on
+# 2026-08-04, including a byte-identical MD5 and a live boot against restored
+# data. But `grep -rln restore tests/` returned nothing and no CI job exercised
+# it, so "the backup works" was true as of one manual run by a session that has
+# ended — not continuously.
+#
+# This closes the repeatability gap: the drill now runs on a schedule against
+# throwaway containers and asserts the data actually came back.
+#
+# SCHEDULED, NOT PER-PR, deliberately. It stands up Postgres and MinIO, seeds
+# them, backs them up, destroys them and restores — minutes of runner time for
+# a property that changes when the backup SCRIPTS change, not when application
+# code changes. Running it per-PR would make it the slowest check in the repo
+# and it would get skipped. `paths` still triggers it on changes to the backup
+# scripts themselves, which is when it genuinely needs to re-prove itself.
+
+name: Backup restore drill
+
+on:
+  schedule:
+    # 03:30 UTC daily — after the nightly backup window, before working hours
+    # in IST (the primary operating timezone).
+    - cron: "30 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/backup-*.sh"
+      - "scripts/restore-*.sh"
+      - ".github/workflows/backup-restore-drill.yml"
+  workflow_dispatch:
+
+jobs:
+  postgres-restore:
+    name: Postgres backup → destroy → restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: dharma
+          POSTGRES_PASSWORD: dharmapass
+          POSTGRES_DB: dharma_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dharma"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: dharma
+      POSTGRES_PASSWORD: dharmapass
+      POSTGRES_DB: dharma_db
+      BACKUP_DIR: ${{ github.workspace }}/.drill/pg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install postgres client
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      # Distinctive, verifiable content — not "does the script exit 0", which
+      # a backup producing an empty file also does. That is exactly how the
+      # pre-2026-08-04 state (backups had never produced a file) went unnoticed.
+      - name: Seed recognisable data
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="$POSTGRES_PASSWORD"
+          psql -h localhost -U dharma -d dharma_db -v ON_ERROR_STOP=1 <<'SQL'
+            CREATE EXTENSION IF NOT EXISTS vector;
+            CREATE TABLE drill_evidence (
+              id      serial PRIMARY KEY,
+              label   text NOT NULL,
+              payload text NOT NULL
+            );
+            INSERT INTO drill_evidence (label, payload)
+            SELECT 'row-' || g, md5(g::text)
+            FROM generate_series(1, 500) g;
+          SQL
+          psql -h localhost -U dharma -d dharma_db -tAc \
+            "SELECT count(*) FROM drill_evidence" | tee .drill-before.txt
+          psql -h localhost -U dharma -d dharma_db -tAc \
+            "SELECT md5(string_agg(label || payload, '' ORDER BY id)) FROM drill_evidence" \
+            | tee .drill-checksum-before.txt
+
+      - name: Back up
+        run: |
+          set -euo pipefail
+          ./scripts/backup-pg.sh
+          ls -la "$BACKUP_DIR"
+          # A backup that exists but is empty is not a backup.
+          test "$(find "$BACKUP_DIR" -name '*.sql.gz' -size +1k | wc -l)" -ge 1
+
+      - name: Destroy the data
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="$POSTGRES_PASSWORD"
+          psql -h localhost -U dharma -d dharma_db -v ON_ERROR_STOP=1 \
+            -c "DROP TABLE drill_evidence;"
+          # Prove it is really gone, so a no-op "restore" cannot pass.
+          if psql -h localhost -U dharma -d dharma_db -tAc \
+               "SELECT 1 FROM drill_evidence LIMIT 1" 2>/dev/null; then
+            echo "::error::Table survived the drop — the drill would prove nothing."
+            exit 1
+          fi
+
+      - name: Restore
+        run: |
+          set -euo pipefail
+          ./scripts/restore-pg.sh
+
+      - name: Assert the data came back byte-identical
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="$POSTGRES_PASSWORD"
+
+          after_count="$(psql -h localhost -U dharma -d dharma_db -tAc \
+            "SELECT count(*) FROM drill_evidence")"
+          after_sum="$(psql -h localhost -U dharma -d dharma_db -tAc \
+            "SELECT md5(string_agg(label || payload, '' ORDER BY id)) FROM drill_evidence")"
+
+          before_count="$(cat .drill-before.txt)"
+          before_sum="$(cat .drill-checksum-before.txt)"
+
+          echo "rows     before=${before_count} after=${after_count}"
+          echo "checksum before=${before_sum} after=${after_sum}"
+
+          # Row count alone would pass on a restore that returned the right
+          # NUMBER of wrong rows. The content checksum is the real assertion —
+          # the same standard the 2026-08-04 manual drill held itself to.
+          test "$after_count" = "$before_count"
+          test "$after_sum" = "$before_sum"
+
+      - name: Report
+        if: failure()
+        run: |
+          echo "::error::Restore drill FAILED. The backups cannot be trusted until this is resolved."
+          echo "See claude/infra-audit-2026-08-04.md §5 for the manual drill procedure."
+
+  minio-restore:
+    name: MinIO backup → destroy → restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: drilluser
+      MINIO_SECRET_KEY: drillpassword
+      MINIO_BUCKET: dharma-evidence
+      BACKUP_DIR: ${{ github.workspace }}/.drill/minio
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # MinIO is not usable as a GitHub `services:` container — its entrypoint
+      # needs the `server` argument, which `services:` cannot supply.
+      - name: Start MinIO
+        run: |
+          set -euo pipefail
+          docker run -d --name drill-minio \
+            -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER="$MINIO_ACCESS_KEY" \
+            -e MINIO_ROOT_PASSWORD="$MINIO_SECRET_KEY" \
+            minio/minio:RELEASE.2024-06-13T22-53-53Z server /data --console-address ":9001"
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live >/dev/null 2>&1; then
+              echo "MinIO ready"; break
+            fi
+            sleep 2
+          done
+
+      - name: Install mc
+        run: |
+          set -euo pipefail
+          curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set drill http://localhost:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+
+      - name: Seed recognisable objects
+        run: |
+          set -euo pipefail
+          mc mb --ignore-existing drill/"$MINIO_BUCKET"
+          mkdir -p .drill-src
+          for i in $(seq 1 20); do
+            head -c 4096 /dev/urandom > ".drill-src/evidence-${i}.bin"
+          done
+          mc cp --recursive .drill-src/ drill/"$MINIO_BUCKET"/
+          # Content checksum, not just a file count.
+          find .drill-src -type f -exec md5sum {} \; | sed 's|.drill-src/||' \
+            | sort -k2 > .drill-minio-before.txt
+          cat .drill-minio-before.txt
+
+      - name: Back up
+        run: |
+          set -euo pipefail
+          ./scripts/backup-minio.sh
+          ls -la "$BACKUP_DIR"
+
+      - name: Destroy the bucket
+        run: |
+          set -euo pipefail
+          mc rb --force drill/"$MINIO_BUCKET"
+          if mc ls drill/"$MINIO_BUCKET" >/dev/null 2>&1; then
+            echo "::error::Bucket survived removal — the drill would prove nothing."
+            exit 1
+          fi
+
+      - name: Restore
+        run: ./scripts/restore-minio.sh
+
+      - name: Assert every object came back byte-identical
+        run: |
+          set -euo pipefail
+          rm -rf .drill-check && mkdir -p .drill-check
+          mc cp --recursive drill/"$MINIO_BUCKET"/ .drill-check/
+
+          find .drill-check -type f -exec md5sum {} \; \
+            | sed "s|.drill-check/${MINIO_BUCKET}/||;s|.drill-check/||" \
+            | sort -k2 > .drill-minio-after.txt
+
+          diff .drill-minio-before.txt .drill-minio-after.txt
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f drill-minio || true

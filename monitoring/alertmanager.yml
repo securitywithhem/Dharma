@@ -1,0 +1,79 @@
+# ============================================================
+# monitoring/alertmanager.yml — WAVE 10.1
+# ============================================================
+# Prometheus rules (monitoring/rules/dharma.yml) fire here, and this posts them
+# to the SAME webhook src/server/lib/ops/alert.ts already uses.
+#
+# ONE alerting path, deliberately. Before this the repo had two half-built
+# ones: an app-level alert() that worked but only saw what the app can see, and
+# a Prometheus config that pointed at a rules directory which did not exist and
+# an Alertmanager block that was commented out. The split matters — a process
+# that has died cannot alert about itself, which is why infrastructure alerting
+# has to come from outside the app — but the DESTINATION should not be split,
+# or an operator has two places to watch and will watch neither.
+#
+# The webhook URL is read at runtime from monitoring/secrets/ops_alert_webhook_url
+# (gitignored), the same pattern prometheus.yml already uses for its Grafana
+# Cloud key. Deliberately `url_file` rather than templating the value in at
+# container start: a templated config cannot be validated by `amtool
+# check-config` as committed, and an alerting config that no tool can check is
+# how DEV-4 happened in the first place.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: ops-webhook
+
+  # Group by alertname and component so a data-layer outage that trips
+  # PostgresDown + MinioDown + several TargetDowns arrives as a few grouped
+  # notifications rather than a dozen separate ones.
+  group_by: ["alertname", "component"]
+
+  # Wait briefly before the first notification so related alerts group.
+  group_wait: 30s
+  # Then batch further alerts in the same group.
+  group_interval: 5m
+  # And do not re-notify about an unchanged, still-firing alert more than
+  # hourly. A channel that repeats itself every 30s gets muted, and a muted
+  # channel is the same as no channel.
+  repeat_interval: 1h
+
+  routes:
+    # Critical alerts skip most of the grouping delay. PostgresDown means every
+    # request is failing; five extra minutes of batching is five minutes of
+    # outage nobody knows about.
+    - matchers:
+        - severity = "critical"
+      receiver: ops-webhook
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 30m
+
+inhibit_rules:
+  # If the whole data layer is down, do not also page about every probe and
+  # target that depends on it — that is one incident, not eight.
+  - source_matchers:
+      - severity = "critical"
+      - component = "database"
+    target_matchers:
+      - severity = "warning"
+    equal: ["component"]
+
+  # A down target cannot produce meaningful rule evaluations, so suppress the
+  # warnings derived from it.
+  - source_matchers:
+      - alertname = "TargetDown"
+    target_matchers:
+      - alertname = "ProbeSlow"
+    equal: ["instance"]
+
+receivers:
+  - name: ops-webhook
+    webhook_configs:
+      # The same Slack/Discord/ntfy incoming webhook src/server/lib/ops/alert.ts
+      # posts to. Alertmanager refuses to start if this file is missing or
+      # empty, rather than starting and silently discarding every alert.
+      - url_file: /etc/alertmanager/secrets/ops_alert_webhook_url
+        send_resolved: true
+        max_alerts: 0

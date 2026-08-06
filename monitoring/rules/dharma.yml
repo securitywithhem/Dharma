@@ -1,0 +1,205 @@
+# ============================================================
+# monitoring/rules/dharma.yml — WAVE 10.1
+# ============================================================
+# fullstack-audit-2026-08-06 DEV-4: prometheus.yml has always pointed
+# `rule_files` at "rules/*.yml", and this directory did not exist. Prometheus
+# tolerates a non-matching glob SILENTLY — it starts clean, reports no error,
+# and loads zero rules. So the config advertised alerting while delivering
+# none, and Postgres down, Redis down, queue backlog and probe_success == 0
+# alerted nobody.
+#
+# Delivery: these fire into Alertmanager (monitoring/alertmanager.yml), which
+# posts to the SAME OPS_ALERT_WEBHOOK_URL that src/server/lib/ops/alert.ts
+# already uses. Deliberately one path rather than two half-built ones — the app
+# alerts on what only the app can see (a dead-lettered job, an invalid payment
+# signature) and Prometheus alerts on what only infrastructure can see (a
+# process that is gone, so cannot alert about itself).
+#
+# `for:` on every rule: a scrape blip is not an incident, and an alerting
+# channel that cries wolf gets muted, which is worse than no channel.
+
+groups:
+  # ----------------------------------------------------------------
+  # Data layer — if these are down, nothing else matters
+  # ----------------------------------------------------------------
+  - name: dharma-data-layer
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL is unreachable"
+          description: >-
+            postgres-exporter reports pg_up == 0 for over a minute. Every tRPC
+            request that touches data is failing. Since WAVE 5.1 this also
+            fails authentication closed, because orgProcedure re-reads the
+            user row and only a database failure denies the request.
+          runbook: "docs/ops/ — check `docker compose ps postgres` and its logs."
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis is unreachable"
+          description: >-
+            redis-exporter reports redis_up == 0 for over a minute. All 14
+            BullMQ queues are stalled: no evidence embedding, no report
+            generation, no webhook delivery, no pentest scans. Audit writes
+            degrade to synchronous (writer.ts fails safe) so the chain stays
+            intact, and the session-identity cache falls through to the
+            database, so requests still authenticate — just slower.
+
+      - alert: MinioDown
+        expr: up{component="storage"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: storage
+        annotations:
+          summary: "MinIO is unreachable"
+          description: >-
+            Evidence upload and download, report PDFs and audit export packages
+            are all failing. Evidence already stored is not lost, but nothing
+            can be added or retrieved.
+
+  # ----------------------------------------------------------------
+  # Probes — blackbox_exporter
+  # ----------------------------------------------------------------
+  - name: dharma-probes
+    rules:
+      - alert: ProbeFailing
+        expr: probe_success == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Probe failing for {{ $labels.instance }}"
+          description: >-
+            blackbox_exporter cannot reach {{ $labels.instance }}. For the
+            Ollama probe this means the AI Advisor, evidence auto-tagging,
+            control embeddings and policy review are all degraded — the app
+            surfaces this in its own health banner, but nobody watches a banner
+            at 3am.
+
+      - alert: ProbeSlow
+        expr: probe_duration_seconds > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Probe slow for {{ $labels.instance }}"
+          description: "Sustained >5s response. Degraded rather than down."
+
+  # ----------------------------------------------------------------
+  # Queues — the app's real workload
+  # ----------------------------------------------------------------
+  - name: dharma-queues
+    rules:
+      # Rate of job failures, not a raw count: a count alerts once and then
+      # stays fired forever, which trains people to ignore it.
+      - alert: QueueFailureRateHigh
+        expr: |
+          sum by (queue) (rate(queue_jobs_processed_total{status="failed"}[10m]))
+            /
+          clamp_min(sum by (queue) (rate(queue_jobs_processed_total[10m])), 0.001)
+            > 0.25
+        for: 10m
+        labels:
+          severity: warning
+          component: queue
+        annotations:
+          summary: "Over 25% of {{ $labels.queue }} jobs are failing"
+          description: >-
+            Sustained failure rate on the {{ $labels.queue }} queue. Each queue
+            sets explicit attempts/backoff, so this is failures AFTER retries.
+            attachDeadLetterAlerting also fires an app-level CRITICAL per
+            exhausted job; this catches the aggregate trend that individual
+            alerts do not show.
+
+      - alert: QueueJobsStalled
+        expr: |
+          sum(rate(queue_jobs_processed_total[15m])) == 0
+          and on() (redis_up == 1)
+        for: 15m
+        labels:
+          severity: critical
+          component: queue
+        annotations:
+          summary: "No queue jobs processed in 15 minutes while Redis is up"
+          description: >-
+            Redis is reachable but nothing is being consumed — the classic
+            "worker died and nobody noticed" shape. This is also what a
+            Helm-deployed pentest scan looked like before WAVE 6.1: queued
+            forever with no consumer and no error.
+
+      - alert: QueueJobDurationHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le, queue) (rate(queue_job_duration_ms_bucket[15m])))
+            > 300000
+        for: 15m
+        labels:
+          severity: warning
+          component: queue
+        annotations:
+          summary: "p95 job duration on {{ $labels.queue }} above 5 minutes"
+
+  # ----------------------------------------------------------------
+  # Application
+  # ----------------------------------------------------------------
+  - name: dharma-application
+    rules:
+      - alert: TrpcErrorRateHigh
+        expr: |
+          sum(rate(trpc_request_duration_ms_count{status="error"}[5m]))
+            /
+          clamp_min(sum(rate(trpc_request_duration_ms_count[5m])), 0.001)
+            > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "Over 10% of tRPC requests are erroring"
+
+      # The security signal a GRC buyer asks about. Deliberately a WARNING, not
+      # critical: a burst of failed logins is usually a broken IdP integration
+      # or an expired SSO certificate, and paging on it teaches people to
+      # ignore the page. It needs eyes, not a 3am wake-up.
+      - alert: AuthFailureSpike
+        expr: |
+          sum(rate(auth_attempts_total{status="failure"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Elevated authentication failures"
+          description: >-
+            Over 5 failed authentication attempts per second, sustained for 5
+            minutes. Credential stuffing, or an SSO/SCIM misconfiguration after
+            a certificate rotation. Cross-check the Authentication panel and
+            the audit log.
+
+  # ----------------------------------------------------------------
+  # Meta — the monitoring must report its own failure
+  # ----------------------------------------------------------------
+  - name: dharma-meta
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} is down"
+          description: >-
+            Scraping has failed for 5 minutes. Every other rule in this file
+            evaluates against data from these targets, so a down target means
+            those rules are silently not protecting anything — which is the
+            exact failure mode DEV-4 described about this whole directory.
