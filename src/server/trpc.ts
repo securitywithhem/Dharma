@@ -12,6 +12,7 @@ import {
   AUDITOR_COOKIE_NAME,
   hashAuditorToken
 } from "@/server/auditor-access";
+import { resolveSessionIdentity } from "@/server/lib/sessionIdentity";
 
 export type PrismaLike = PrismaClient;
 
@@ -129,15 +130,88 @@ const enforceAuthenticatedUser = t.middleware(({ ctx, next }) => {
   });
 });
 
-const enforceOrganizationContext = t.middleware(({ ctx, next }) => {
-  if (!ctx.session?.user.organizationId) {
+// WAVE 5.1 (extends WAVE 2.1) — re-read the caller's User row on every request.
+//
+// This used to check only that the JWT *carried* an organizationId. Because the
+// `jwt` callback in auth.ts populates role/organizationId only at sign-in and
+// never re-reads the database, that made a 30-day token an unrevokable bearer
+// credential: deactivating a member (organization.removeMember) or
+// SCIM-deprovisioning them left their open session with full read/write access
+// until the token expired, and demoting an ADMIN left the stale role in force.
+//
+// Everything downstream of this middleware now sees database-resolved values,
+// not JWT-asserted ones. The JWT is treated as carrying only an unverified
+// `sub`; role and organizationId are overwritten from the row we just read, so
+// managerProcedure/adminProcedure (which read ctx.session.user.role) become
+// revocation-aware for free, on all 31 routers rather than the 6 that use
+// permissionProcedure.
+//
+// The read is cached for 30s — see src/server/lib/sessionIdentity.ts for the
+// staleness/failure-mode reasoning.
+const enforceOrganizationContext = t.middleware(async ({ ctx, next }) => {
+  const sessionUser = ctx.session?.user;
+
+  if (!sessionUser?.organizationId) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "No organization context is attached to the current session."
     });
   }
 
-  return next();
+  // Auditor sessions are minted from an AuditorAccess row, not a User row
+  // (see createInnerTRPCContext), so there is nothing to re-read. That row's
+  // own isActive/expiresAt were already checked when the session was built,
+  // and preventAuditorMutations keeps the grant read-only.
+  if (ctx.isAuditor) {
+    return next();
+  }
+
+  if (!sessionUser.id) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const identity = await resolveSessionIdentity(ctx.prisma, sessionUser.id);
+
+  if (!identity) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This account no longer exists."
+    });
+  }
+
+  if (!identity.isActive) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This account is deactivated."
+    });
+  }
+
+  if (identity.organizationId !== sessionUser.organizationId) {
+    // The token points at an organization the user is no longer a member of —
+    // e.g. they were moved between tenants. Refuse rather than silently
+    // serving them their new org's data under a token minted for the old one.
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Your session is no longer valid for this organization."
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      // Freshly-read identity, so a permission check later in the chain does
+      // not have to repeat the lookup.
+      identity,
+      session: {
+        ...ctx.session,
+        user: {
+          ...sessionUser,
+          role: identity.role,
+          organizationId: identity.organizationId
+        }
+      }
+    }
+  });
 });
 
 const enforceManagementRole = t.middleware(({ ctx, next }) => {
