@@ -20,6 +20,7 @@ import {
   type SamlConfig,
 } from "./types";
 import { upsertSsoUser, SsoProvisioningError } from "./userProvisioning";
+import { safeFetch } from "@/server/lib/net/assertPublicHttpTarget";
 
 export class SamlConfigError extends Error {}
 export class SamlValidationError extends Error {}
@@ -159,7 +160,10 @@ export async function validateMetadata(
   }
   if (xml.startsWith("https://")) {
     metadataUrl = xml;
-    const response = await fetch(metadataUrl, {
+    // WAVE 8 (BE-4). HTTPS was enforced, but nothing blocked private ranges,
+    // so an IdP metadata URL of https://10.0.0.5/ reached internal services.
+    const response = await safeFetch(metadataUrl, {
+      maxRedirects: 0,
       headers: { accept: "application/samlmetadata+xml, application/xml, text/xml" },
       signal: AbortSignal.timeout(10_000),
     });
