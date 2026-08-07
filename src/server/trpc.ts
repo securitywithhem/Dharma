@@ -12,6 +12,8 @@ import {
   AUDITOR_COOKIE_NAME,
   hashAuditorToken
 } from "@/server/auditor-access";
+import { resolveSessionIdentity } from "@/server/lib/sessionIdentity";
+import { isSessionWithinValidity } from "@/server/lib/sessionPolicy";
 
 export type PrismaLike = PrismaClient;
 
@@ -129,15 +131,107 @@ const enforceAuthenticatedUser = t.middleware(({ ctx, next }) => {
   });
 });
 
-const enforceOrganizationContext = t.middleware(({ ctx, next }) => {
-  if (!ctx.session?.user.organizationId) {
+// WAVE 5.1 (extends WAVE 2.1) — re-read the caller's User row on every request.
+//
+// This used to check only that the JWT *carried* an organizationId. Because the
+// `jwt` callback in auth.ts populates role/organizationId only at sign-in and
+// never re-reads the database, that made a 30-day token an unrevokable bearer
+// credential: deactivating a member (organization.removeMember) or
+// SCIM-deprovisioning them left their open session with full read/write access
+// until the token expired, and demoting an ADMIN left the stale role in force.
+//
+// Everything downstream of this middleware now sees database-resolved values,
+// not JWT-asserted ones. The JWT is treated as carrying only an unverified
+// `sub`; role and organizationId are overwritten from the row we just read, so
+// managerProcedure/adminProcedure (which read ctx.session.user.role) become
+// revocation-aware for free, on all 31 routers rather than the 6 that use
+// permissionProcedure.
+//
+// The read is cached for 30s — see src/server/lib/sessionIdentity.ts for the
+// staleness/failure-mode reasoning.
+const enforceOrganizationContext = t.middleware(async ({ ctx, next }) => {
+  const sessionUser = ctx.session?.user;
+
+  if (!sessionUser?.organizationId) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "No organization context is attached to the current session."
     });
   }
 
-  return next();
+  // Auditor sessions are minted from an AuditorAccess row, not a User row
+  // (see createInnerTRPCContext), so there is nothing to re-read. That row's
+  // own isActive/expiresAt were already checked when the session was built,
+  // and preventAuditorMutations keeps the grant read-only.
+  if (ctx.isAuditor) {
+    return next();
+  }
+
+  if (!sessionUser.id) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const identity = await resolveSessionIdentity(ctx.prisma, sessionUser.id);
+
+  if (!identity) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This account no longer exists."
+    });
+  }
+
+  if (!identity.isActive) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This account is deactivated."
+    });
+  }
+
+  // GH #22 — the session kill-switch. An admin who offboards a user, or who
+  // cuts every session for the org after a suspected compromise, gets an
+  // answer that takes effect on the NEXT REQUEST rather than at next sign-in:
+  // this runs on every authenticated call, so a still-valid, unexpired JWT
+  // stops working immediately.
+  //
+  // Placed after the isActive check on purpose. Deactivation and revocation are
+  // different states — "your account is disabled" and "sign in again" need
+  // different words in front of the user, and a deactivated user must not be
+  // told that re-authenticating will help.
+  if (
+    !isSessionWithinValidity(sessionUser.sessionIssuedAt, identity.sessionsValidFromMs)
+  ) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This session was revoked. Please sign in again."
+    });
+  }
+
+  if (identity.organizationId !== sessionUser.organizationId) {
+    // The token points at an organization the user is no longer a member of —
+    // e.g. they were moved between tenants. Refuse rather than silently
+    // serving them their new org's data under a token minted for the old one.
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Your session is no longer valid for this organization."
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      // Freshly-read identity, so a permission check later in the chain does
+      // not have to repeat the lookup.
+      identity,
+      session: {
+        ...ctx.session,
+        user: {
+          ...sessionUser,
+          role: identity.role,
+          organizationId: identity.organizationId
+        }
+      }
+    }
+  });
 });
 
 const enforceManagementRole = t.middleware(({ ctx, next }) => {
@@ -162,6 +256,40 @@ const enforceAdminRole = t.middleware(({ ctx, next }) => {
   return next();
 });
 
+// WAVE 5.2 — marketplace authorship. The Role enum has carried PUBLISHER since
+// the marketplace was added (see 04_TECHNICAL/Authorization.md), but nothing
+// ever checked it: marketplace.publishItem had the comment "Basic check, in
+// reality verify role is PUBLISHER or ADMIN" above a mutation with no check at
+// all, so any signed-in user could publish content every other tenant imports.
+const enforcePublisherRole = t.middleware(({ ctx, next }) => {
+  const role = ctx.session?.user.role as Role | undefined;
+  if (role !== Role.PUBLISHER && !isAdminRole(role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Publishing to the marketplace requires the Publisher role."
+    });
+  }
+  return next();
+});
+
+// WAVE 5.2 — operator of THIS deployment, not an admin of any tenant.
+//
+// approveItem/getPendingItems previously gated on `role === "ADMIN"`, which is
+// the caller's role inside their OWN organization — so any customer's admin
+// could approve any other tenant's submission into the shared catalogue. This
+// reads the dedicated User.isPlatformAdmin flag, which no API sets and which is
+// never carried in the JWT.
+const enforcePlatformAdmin = t.middleware(({ ctx, next }) => {
+  const identity = (ctx as { identity?: { isPlatformAdmin?: boolean } }).identity;
+  if (!identity?.isPlatformAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This action is restricted to platform administrators."
+    });
+  }
+  return next();
+});
+
 const preventAuditorMutations = t.middleware(({ ctx, type, next }) => {
   if (ctx.isAuditor && type !== "query") {
     throw new TRPCError({
@@ -182,3 +310,11 @@ export const protectedProcedure = t.procedure
 export const orgProcedure = protectedProcedure.use(enforceOrganizationContext);
 export const managerProcedure = orgProcedure.use(enforceManagementRole);
 export const adminProcedure = orgProcedure.use(enforceAdminRole);
+/** orgProcedure + PUBLISHER (or ADMIN) — marketplace authorship. */
+export const publisherProcedure = orgProcedure.use(enforcePublisherRole);
+/**
+ * orgProcedure + User.isPlatformAdmin — moderation of the shared catalogue.
+ * Built on orgProcedure rather than protectedProcedure so it inherits the
+ * WAVE 5.1 identity re-read, which is what populates ctx.identity.
+ */
+export const platformAdminProcedure = orgProcedure.use(enforcePlatformAdmin);

@@ -1,6 +1,10 @@
 import { appRouter } from '@/server/routers';
 import { prisma } from '@/server/db';
 import { createInnerTRPCContext } from '@/server/trpc';
+import {
+  invalidateSessionIdentity,
+  closeSessionIdentityRedis,
+} from '@/server/lib/sessionIdentity';
 
 jest.mock('@/server/db', () => ({
   prisma: {
@@ -10,10 +14,34 @@ jest.mock('@/server/db', () => ({
     auditLog: {
       findMany: jest.fn(),
     },
+    // WAVE 5.1: orgProcedure re-reads the caller's User row on every request
+    // (src/server/lib/sessionIdentity.ts). Without this the middleware finds
+    // no row and rejects with "This account no longer exists" before the
+    // dashboard resolver is ever reached.
+    user: {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        role: 'ADMIN',
+        organizationId: 'org-1',
+        isActive: true,
+        customRoleId: null,
+      }),
+    },
   },
 }));
 
 describe('dashboard.getStats', () => {
+  beforeEach(async () => {
+    // 'user-1' is a fixed id shared with other suites, and the identity cache
+    // lives in a real Redis that outlives this process — clear it so a
+    // neighbouring suite's entry can never satisfy this lookup.
+    await invalidateSessionIdentity('user-1');
+  });
+
+  afterAll(async () => {
+    await closeSessionIdentityRedis();
+  });
+
   it('should return dashboard stats', async () => {
     // Mock the session
     const mockSession = {

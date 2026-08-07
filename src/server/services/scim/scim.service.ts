@@ -375,9 +375,16 @@ export async function deactivateScimUser(
   });
   if (!user) throw new ScimRequestError(404, `User ${userId} not found.`);
 
+  // GH #22 — stamp the session cutoff alongside the soft-delete, matching
+  // organization.removeMember. `isActive: false` is already refused by
+  // orgProcedure, so this is not what stops them; it is what leaves a
+  // *timestamp* on the row recording when their sessions were cut. IdP-driven
+  // deprovisioning is the offboarding path enterprise buyers actually audit,
+  // and "show me when access was revoked" needs an answer that is not inferred
+  // from an audit-log row that may fall outside the retention window.
   await prisma.user.update({
     where: { id: user.id },
-    data: { isActive: false },
+    data: { isActive: false, sessionsValidFrom: new Date() },
   });
 
   await scimAudit(prisma, organizationId, "SCIM_USER_DEACTIVATED", "User", user.id, {

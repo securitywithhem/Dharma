@@ -100,7 +100,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
         aria-label={`Overlap coverage between ${data.frameworkA.name} and ${data.frameworkB.name}`}
         className="inline-grid gap-1"
         style={{
-          gridTemplateColumns: `160px repeat(${data.familiesA.length}, minmax(96px, 1fr))`,
+          gridTemplateColumns: `160px repeat(${data.familiesA.length}, minmax(120px, 1fr))`,
         }}
       >
         {/* Corner */}
@@ -112,7 +112,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
           <div
             key={famA.familyId}
             role="columnheader"
-            className="truncate px-1 pb-1 text-center text-[11px] font-medium text-dharma-ink-secondary"
+            className="line-clamp-2 min-h-[2.4rem] break-words px-1 pb-1 text-center text-[11px] font-medium leading-tight text-dharma-ink-secondary"
             title={famA.familyName}
           >
             {famA.familyName}
@@ -132,6 +132,7 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
             {data.familiesA.map((famA) => {
               const cell = cellFor(famA.familyId, famB.familyId);
               const pct = cell?.coveragePct ?? 0;
+              const proposed = cell?.proposedCount ?? 0;
               const key = `${famA.familyId}::${famB.familyId}`;
               return (
                 <button
@@ -140,18 +141,30 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
                   onClick={() => onDrillDown(famA.familyId, famB.familyId)}
                   onMouseEnter={() => setHovered(key)}
                   onMouseLeave={() => setHovered((h) => (h === key ? null : h))}
-                  aria-label={`${famA.familyName} × ${famB.familyName}: ${pct}% coverage, ${cell?.mappingCount ?? 0} mapping(s)`}
+                  aria-label={`${famA.familyName} × ${famB.familyName}: ${pct}% coverage, ${cell?.mappingCount ?? 0} mapping(s)${proposed > 0 ? `, ${proposed} proposed pending review` : ""}`}
                   className={cn(
                     "relative flex h-10 items-center justify-center rounded-sm text-xs font-semibold transition-transform",
                     bucketClass(pct),
                     textClass(pct),
                     hovered === key && "z-20 scale-[1.06] ring-2 ring-dharma-accent",
+                    // Proposals get a dashed outline, never a ramp colour: the
+                    // ramp encodes human-agreed coverage, and tinting it with
+                    // unreviewed machine output would overstate coverage
+                    // visually in exactly the way the status field prevents
+                    // numerically.
+                    proposed > 0 && hovered !== key && "ring-1 ring-dashed ring-dharma-accent/60",
                   )}
                 >
                   {pct > 0 ? `${Math.round(pct)}%` : "–"}
+                  {proposed > 0 && (
+                    <span className="absolute right-0.5 top-0.5 text-[9px] font-medium text-dharma-accent">
+                      +{proposed}
+                    </span>
+                  )}
                   {hovered === key && (
                     <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-dharma-border bg-dharma-surface px-2 py-1 text-[11px] font-normal text-dharma-ink border border-dharma-border">
-                      {cell?.mappingCount ?? 0} mapping{(cell?.mappingCount ?? 0) === 1 ? "" : "s"} · click to view
+                      {cell?.mappingCount ?? 0} mapping{(cell?.mappingCount ?? 0) === 1 ? "" : "s"}
+                      {proposed > 0 && ` · ${proposed} proposed`} · click to view
                     </div>
                   )}
                 </button>
@@ -171,6 +184,10 @@ export function OverlapHeatmap({ frameworkAId, frameworkBId, onDrillDown }: Over
           ))}
         </div>
         <span>0% → 100%</span>
+        <span className="ml-3 flex items-center gap-1">
+          <span className="h-3 w-3 rounded-sm ring-1 ring-dashed ring-dharma-accent/60" />
+          proposed, pending review
+        </span>
       </div>
     </div>
   );

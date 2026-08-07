@@ -37,4 +37,23 @@ describe("breadcrumbsFor", () => {
     expect(crumbs[crumbs.length - 1].label).toBeTruthy();
     expect(crumbs[crumbs.length - 1].label).not.toContain("-");
   });
+
+  // WAVE 5.2 — the same defect as the Enterprise crumb above, found by
+  // checking every grouping segment rather than only the reported one. Each
+  // of these directories holds pages but has no page.tsx of its own, so a
+  // linked crumb prefetches a 404.
+  it.each([
+    ["/dashboard/admin/marketplace", "Admin"],
+    ["/dashboard/publisher/items", "Publisher"],
+    ["/dashboard/controls/cmrx5d8720003hgis8aucqnlh", "Controls"],
+  ])("does not link the grouping segment in %s", (path, label) => {
+    const crumb = breadcrumbsFor(path).find((c) => c.label === label);
+    expect(crumb).toBeDefined();
+    expect(crumb!.href).toBeNull();
+  });
+
+  it("still links the leaf of a gated section", () => {
+    const crumbs = breadcrumbsFor("/dashboard/admin/marketplace");
+    expect(crumbs[crumbs.length - 1].href).toBe("/dashboard/admin/marketplace");
+  });
 });

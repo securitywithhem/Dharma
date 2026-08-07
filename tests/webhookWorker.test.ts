@@ -34,6 +34,28 @@ jest.mock("@/server/queue/webhookQueue", () => ({
   WEBHOOK_DELIVERY_QUEUE_NAME: "webhook-delivery",
 }));
 
+
+// WAVE 8: these are unit tests of signing / auth / payload behaviour, not of
+// network egress. The call site now goes through safeFetch, whose SSRF guard
+// does a real DNS lookup and refuses private space — which would (correctly)
+// block this suite's fixture hosts, including any local stub server.
+//
+// Delegating safeFetch to global.fetch keeps this suite testing what it is
+// for. The egress guarantee is owned by tests/ssrfGuard.test.ts, which also
+// asserts statically that none of the five BE-4 call sites has regressed back
+// to a bare fetch() — so mocking here cannot hide a reintroduced hole.
+jest.mock("@/server/lib/net/assertPublicHttpTarget", () => {
+  const actual = jest.requireActual("@/server/lib/net/assertPublicHttpTarget");
+  return {
+    ...actual,
+    safeFetch: (url: string, init?: RequestInit) => {
+      const { maxRedirects: _maxRedirects, allowedProtocols: _allowedProtocols, ...rest } =
+        (init ?? {}) as Record<string, unknown>;
+      return (global.fetch as unknown as (u: string, i?: unknown) => Promise<Response>)(url, rest);
+    },
+  };
+});
+
 import { processWebhookDeliveryJob } from "@/server/queue/workers/webhookWorker";
 
 const globalAny = global as any;

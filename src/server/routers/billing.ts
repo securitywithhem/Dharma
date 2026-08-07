@@ -1,41 +1,30 @@
-// Phase 3b/3c — billing router.
+// Billing router. Razorpay is the sole payment provider.
 //
-// Phase 3c made this provider-agnostic. No procedure here imports a payment
-// SDK: everything goes through the PaymentProvider interface, and which
-// adapter answers is decided per organization (providerFor) rather than
-// globally. That distinction matters — an org that subscribed through Stripe
-// must keep being managed through Stripe even after this deployment's default
-// switched to Razorpay, or its cancellation would look up a Stripe
-// subscription ID in Razorpay, fail, and leave a customer billed for a plan
-// they cancelled.
+// No procedure here talks to the Razorpay SDK directly — everything goes
+// through `razorpayProvider`, which normalises statuses, timestamps and minor
+// units at the edge so this file only ever handles Dharma's own vocabulary.
 //
-// Procedure names and inputs are unchanged from the Stripe-only version so the
-// frontend churn stays limited to what genuinely differs. The one shape that
-// HAD to change is createCheckoutSession's return: Stripe hands back a redirect
-// URL, Razorpay hands back parameters for an in-page modal. See CheckoutHandoff.
+// createCheckoutSession returns modal parameters, not a redirect URL: Razorpay
+// creates the subscription server-side and the browser opens Checkout.js over
+// the current page. See CheckoutHandoff.
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, orgProcedure } from '@/server/trpc';
+import { permissionProcedure } from '@/server/middleware/requirePermission';
 import { TRPCError } from '@trpc/server';
 import { EntitlementService } from '@/server/services/entitlement';
 import { emitAuditEvent } from '@/server/services/audit/writer';
 import {
-  activeProviderName,
-  getPaymentProvider,
-  providerFor,
   ProviderUnreachableError,
-  RazorpayProvider,
+  razorpayProvider,
 } from '@/server/services/payments';
 import { applySubscriptionState } from '@/server/services/billing/lifecycle';
 import { logger } from '@/lib/logger';
 
-/** The org fields every provider-aware procedure needs. */
+/** The org fields every billing procedure needs. */
 const BILLING_SELECT = {
   id: true,
   name: true,
   planId: true,
-  paymentProvider: true,
-  stripeCustomerId: true,
-  stripeSubscriptionId: true,
   razorpayCustomerId: true,
   razorpaySubscriptionId: true,
   razorpayPreviousSubscriptionId: true,
@@ -46,46 +35,31 @@ const BILLING_SELECT = {
 } as const;
 
 type BillingOrg = {
-  paymentProvider: 'STRIPE' | 'RAZORPAY' | null;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
   razorpayCustomerId: string | null;
   razorpaySubscriptionId: string | null;
 };
 
-/** The subscription/customer IDs that belong to the org's own provider. */
+/** The Razorpay identifiers recorded against this org. */
 function providerIds(org: BillingOrg) {
-  const provider = providerFor(org);
-  return provider.name === 'stripe'
-    ? {
-        provider,
-        customerId: org.stripeCustomerId,
-        subscriptionId: org.stripeSubscriptionId,
-      }
-    : {
-        provider,
-        customerId: org.razorpayCustomerId,
-        subscriptionId: org.razorpaySubscriptionId,
-      };
+  return {
+    customerId: org.razorpayCustomerId,
+    subscriptionId: org.razorpaySubscriptionId,
+  };
 }
 
 export const billingRouter = createTRPCRouter({
   /**
-   * Which provider this deployment sells through, and what it can do.
-   * The UI needs this to decide between a hosted portal button and the in-app
-   * management screen — rendering a "Manage billing" button that opens nothing
-   * is exactly the class of dead control this codebase has removed before.
+   * Whether billing is actually usable on this deployment.
+   *
+   * The UI gates the upgrade controls on `configured` rather than rendering
+   * buttons that fail at the payment step — a dead control is the class of bug
+   * this codebase has removed before. Razorpay has no hosted billing portal,
+   * so the in-app management screen (BillingManage.tsx) is the only path and
+   * the UI does not need to choose between them.
    */
-  getProviderInfo: publicProcedure.query(() => {
-    const provider = getPaymentProvider();
-    return {
-      provider: provider.name,
-      configured: provider.isConfigured(),
-      hasHostedPortal: provider.name === 'stripe',
-      /** Razorpay's modal needs a script loaded in the browser; Stripe redirects. */
-      checkoutStyle: provider.name === 'stripe' ? ('redirect' as const) : ('modal' as const),
-    };
-  }),
+  getProviderInfo: publicProcedure.query(() => ({
+    configured: razorpayProvider.isConfigured(),
+  })),
 
   // Get all available plans
   getPlans: publicProcedure.query(async ({ ctx }) => {
@@ -94,14 +68,12 @@ export const billingRouter = createTRPCRouter({
       orderBy: { price: 'asc' },
     });
 
-    // `isSellable` is computed server-side against the ACTIVE provider so the
-    // UI never has to know which identifier column matters. A plan configured
-    // only in Stripe is correctly not offered while Razorpay is active, rather
-    // than offered and then failing at checkout.
-    const provider = getPaymentProvider();
+    // `isSellable` is computed server-side so the UI never has to know which
+    // identifier column matters. A plan with no razorpayPlanId is correctly not
+    // offered, rather than offered and then failing at the payment step.
     return plans.map((plan) => ({
       ...plan,
-      isSellable: provider.planExternalId(plan) !== null,
+      isSellable: razorpayProvider.planExternalId(plan) !== null,
     }));
   }),
 
@@ -129,20 +101,19 @@ export const billingRouter = createTRPCRouter({
 
     const local = {
       plan: org.plan,
-      provider: providerFor(org).name,
       status: org.subscriptionStatus?.toLowerCase() ?? null,
       currentPeriodEnd: org.subscriptionEndsAt,
       canceledAt: null as Date | null,
       delinquentSince: org.dunningStartedAt,
-      /** True when the provider could not be reached, so the UI can say so. */
+      /** True when Razorpay could not be reached, so the UI can say so. */
       stale: false,
     };
 
-    const { provider, subscriptionId } = providerIds(org);
+    const { subscriptionId } = providerIds(org);
     if (!subscriptionId) return local;
 
     try {
-      const subscription = await provider.getSubscription(subscriptionId);
+      const subscription = await razorpayProvider.getSubscription(subscriptionId);
       if (!subscription) return local; // gone at the provider; reconciler will heal
 
       return {
@@ -153,8 +124,8 @@ export const billingRouter = createTRPCRouter({
       };
     } catch (err) {
       logger.warn(
-        { err, organizationId: org.id, provider: provider.name },
-        'billing.getSubscription: provider unreachable — serving local state',
+        { err, organizationId: org.id },
+        'billing.getSubscription: Razorpay unreachable — serving local state',
       );
       return { ...local, stale: true };
     }
@@ -195,7 +166,7 @@ export const billingRouter = createTRPCRouter({
     return org;
   }),
 
-  updateBillingDetails: orgProcedure
+  updateBillingDetails: permissionProcedure("billing.manage")
     .input(
       z.object({
         // Format per the GST rules: 2-digit state code, 10-char PAN, entity
@@ -234,44 +205,7 @@ export const billingRouter = createTRPCRouter({
     }),
 
   /**
-   * A provider-hosted management page, for providers that have one.
-   *
-   * Razorpay has no Billing Portal equivalent, so this rejects with a clear
-   * message for Razorpay orgs and the UI routes them to Dharma's own self-serve
-   * management screen instead. Scoped to the caller's own org customer ID — the
-   * customer is never accepted from the client.
-   */
-  createBillingPortalSession: orgProcedure
-    .input(z.object({ returnUrl: z.string().url() }))
-    .mutation(async ({ ctx, input }) => {
-      const org = await ctx.prisma.organization.findUniqueOrThrow({
-        where: { id: ctx.session.user.organizationId },
-        select: BILLING_SELECT,
-      });
-
-      const { provider, customerId } = providerIds(org);
-
-      if (!customerId) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message:
-            'No billing account yet. Upgrade to a paid plan to manage billing.',
-        });
-      }
-
-      const session = await provider.createPortalSession(customerId, input.returnUrl);
-      if (!session) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: `${provider.name} has no hosted billing portal. Manage your subscription in Dharma.`,
-        });
-      }
-
-      return { url: session.url };
-    }),
-
-  /**
-   * Invoice history, read live from the provider rather than mirrored locally —
+   * Invoice history, read live from Razorpay rather than mirrored locally —
    * the provider already holds the authoritative record including credit notes
    * and refunds, and a local copy would be one more thing to drift.
    */
@@ -281,29 +215,26 @@ export const billingRouter = createTRPCRouter({
       select: BILLING_SELECT,
     });
 
-    const { provider, customerId, subscriptionId } = providerIds(org);
+    const { customerId, subscriptionId } = providerIds(org);
 
     // An org that has never paid has no provider customer — that is an empty
     // history, not an error.
     if (!customerId && !subscriptionId) return [];
 
-    return provider.listInvoices({ customerId, subscriptionId });
+    return razorpayProvider.listInvoices({ customerId, subscriptionId });
   }),
 
   /**
    * Start a purchase.
    *
-   * Returns a CheckoutHandoff, a discriminated union rather than a URL: Stripe
-   * redirects to a hosted page, Razorpay opens an in-page modal against a
-   * subscription created here. Collapsing the two into `{ url }` would produce
-   * a Razorpay checkout button that navigates nowhere.
+   * Returns a CheckoutHandoff (modal parameters), not a URL: Razorpay creates
+   * the subscription server-side and the browser opens Checkout.js over the
+   * current page. There is no hosted page to navigate to.
    */
-  createCheckoutSession: orgProcedure
+  createCheckoutSession: permissionProcedure("billing.manage")
     .input(
       z.object({
         planId: z.string(),
-        successUrl: z.string().url(),
-        cancelUrl: z.string().url(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -316,31 +247,28 @@ export const billingRouter = createTRPCRouter({
         where: { id: input.planId },
       });
 
-      const provider = getPaymentProvider();
-
-      if (!provider.planExternalId(newPlan)) {
+      
+      if (!razorpayProvider.planExternalId(newPlan)) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message:
             newPlan.price === 0
               ? 'Cannot create checkout for the free plan'
-              : `The ${newPlan.displayName} plan is not configured for ${provider.name}. Contact support.`,
+              : `The ${newPlan.displayName} plan has no Razorpay plan configured. Contact support.`,
         });
       }
 
-      const handoff = await provider.createCheckout({
+      const handoff = await razorpayProvider.createCheckout({
         organizationId: org.id,
         organizationName: org.name,
         plan: newPlan,
         customerEmail: ctx.session.user.email ?? undefined,
         customerName: ctx.session.user.name ?? undefined,
-        successUrl: input.successUrl,
-        cancelUrl: input.cancelUrl,
-        existingCustomerId:
-          provider.name === 'stripe' ? org.stripeCustomerId : org.razorpayCustomerId,
+        existingCustomerId: org.razorpayCustomerId,
       });
 
-      // Record the provider-side subscription immediately for modal providers.
+      // Record the Razorpay-side subscription immediately: the modal opens
+      // against it, so confirmCheckout must be able to prove it is ours.
       // Razorpay's subscription exists from this moment, and recording it now
       // gives the webhook a third way to resolve the org even if `notes` are
       // ever lost — resolution should not hang on one field.
@@ -348,7 +276,6 @@ export const billingRouter = createTRPCRouter({
         await ctx.prisma.organization.update({
           where: { id: org.id },
           data: {
-            paymentProvider: provider.enumValue,
             razorpaySubscriptionId: handoff.subscriptionId,
             // If a subscription was already live, this new one supersedes it.
             // Recorded so confirmCheckout can cancel the old mandate without
@@ -373,7 +300,6 @@ export const billingRouter = createTRPCRouter({
         entity: 'Organization',
         entityId: org.id,
         changes: {
-          provider: provider.name,
           fromPlanId: org.planId,
           targetPlanId: newPlan.id,
           targetPlanName: newPlan.name,
@@ -400,7 +326,7 @@ export const billingRouter = createTRPCRouter({
    * the webhook arrives first, or arrives later, the ledger makes exactly one
    * of them apply.
    */
-  confirmCheckout: orgProcedure
+  confirmCheckout: permissionProcedure("billing.manage")
     .input(
       z.object({
         razorpayPaymentId: z.string().min(1),
@@ -424,7 +350,6 @@ export const billingRouter = createTRPCRouter({
         });
       }
 
-      const razorpayProvider = new RazorpayProvider();
 
       if (!razorpayProvider.isConfigured()) {
         throw new TRPCError({
@@ -450,11 +375,10 @@ export const billingRouter = createTRPCRouter({
         });
       }
 
-      const provider = providerFor({ ...org, paymentProvider: 'RAZORPAY' });
 
       let subscription;
       try {
-        subscription = await provider.getSubscription(input.razorpaySubscriptionId);
+        subscription = await razorpayProvider.getSubscription(input.razorpaySubscriptionId);
       } catch (err) {
         if (err instanceof ProviderUnreachableError) {
           // Not an error the user caused or can fix, and not a failure of the
@@ -468,7 +392,7 @@ export const billingRouter = createTRPCRouter({
 
       const plan = subscription.planExternalId
         ? await ctx.prisma.plan.findFirst({
-            where: provider.planWhereExternalId(subscription.planExternalId),
+            where: razorpayProvider.planWhereExternalId(subscription.planExternalId),
           })
         : null;
 
@@ -486,7 +410,6 @@ export const billingRouter = createTRPCRouter({
         // ledger's job is to stop DUPLICATE deliveries, not to stop the second
         // source from confirming the same end state.
         ref: {
-          provider: 'razorpay',
           eventId: `confirm:${input.razorpayPaymentId}`,
           eventType: 'billing.confirmCheckout',
         },
@@ -511,7 +434,7 @@ export const billingRouter = createTRPCRouter({
         org.razorpayPreviousSubscriptionId !== subscription.id
       ) {
         try {
-          await provider.cancelSubscription(org.razorpayPreviousSubscriptionId);
+          await razorpayProvider.cancelSubscription(org.razorpayPreviousSubscriptionId);
           await ctx.prisma.organization.update({
             where: { id: org.id },
             data: { razorpayPreviousSubscriptionId: null },
@@ -523,7 +446,6 @@ export const billingRouter = createTRPCRouter({
             entity: 'Organization',
             entityId: org.id,
             changes: {
-              provider: 'razorpay',
               supersededSubscriptionId: org.razorpayPreviousSubscriptionId,
               subscriptionId: subscription.id,
               source: 'user',
@@ -562,20 +484,11 @@ export const billingRouter = createTRPCRouter({
    * Deliberately reuses createCheckoutSession's machinery rather than a
    * parallel path, so the supersede bookkeeping cannot diverge between the two.
    */
-  startPaymentMethodUpdate: orgProcedure.mutation(async ({ ctx }) => {
+  startPaymentMethodUpdate: permissionProcedure("billing.manage").mutation(async ({ ctx }) => {
     const org = await ctx.prisma.organization.findUniqueOrThrow({
       where: { id: ctx.session.user.organizationId },
       select: { ...BILLING_SELECT, plan: true },
     });
-
-    const provider = providerFor(org);
-
-    if (provider.name === 'stripe') {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'Update your payment method in the Stripe billing portal.',
-      });
-    }
 
     if (!org.plan || !org.razorpaySubscriptionId) {
       throw new TRPCError({
@@ -584,22 +497,20 @@ export const billingRouter = createTRPCRouter({
       });
     }
 
-    const externalId = provider.planExternalId(org.plan);
+    const externalId = razorpayProvider.planExternalId(org.plan);
     if (!externalId) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message: 'Your current plan is not configured for this payment provider.',
+        message: 'Your current plan has no Razorpay plan configured.',
       });
     }
 
-    const handoff = await provider.createCheckout({
+    const handoff = await razorpayProvider.createCheckout({
       organizationId: org.id,
       organizationName: org.name,
       plan: org.plan,
       customerEmail: ctx.session.user.email ?? undefined,
       customerName: ctx.session.user.name ?? undefined,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/settings/billing`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/settings/billing`,
       existingCustomerId: org.razorpayCustomerId,
     });
 
@@ -625,7 +536,6 @@ export const billingRouter = createTRPCRouter({
       entity: 'Organization',
       entityId: org.id,
       changes: {
-        provider: provider.name,
         supersedingSubscriptionId: handoff.subscriptionId,
         supersededSubscriptionId: org.razorpaySubscriptionId,
       },
@@ -635,7 +545,7 @@ export const billingRouter = createTRPCRouter({
   }),
 
   // Update subscription to a new plan (for orgs with an existing subscription)
-  updateSubscription: orgProcedure
+  updateSubscription: permissionProcedure("billing.manage")
     .input(z.object({ newPlanId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.prisma.organization.findUniqueOrThrow({
@@ -643,7 +553,7 @@ export const billingRouter = createTRPCRouter({
         select: BILLING_SELECT,
       });
 
-      const { provider, subscriptionId } = providerIds(org);
+      const { subscriptionId } = providerIds(org);
 
       if (!subscriptionId) {
         throw new TRPCError({
@@ -656,18 +566,18 @@ export const billingRouter = createTRPCRouter({
         where: { id: input.newPlanId },
       });
 
-      const externalId = provider.planExternalId(newPlan);
+      const externalId = razorpayProvider.planExternalId(newPlan);
       if (!externalId) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message:
             newPlan.price === 0
               ? 'Cannot update to the free plan. Please cancel your subscription instead.'
-              : `The ${newPlan.displayName} plan is not configured for ${provider.name}.`,
+              : `The ${newPlan.displayName} plan has no Razorpay plan configured.`,
         });
       }
 
-      const updated = await provider.updateSubscription(subscriptionId, externalId);
+      const updated = await razorpayProvider.updateSubscription(subscriptionId, externalId);
 
       // Applied locally at once so the UI is not stale for the round-trip; the
       // provider's webhook is still authoritative and will confirm or correct.
@@ -683,7 +593,6 @@ export const billingRouter = createTRPCRouter({
         entity: 'Organization',
         entityId: org.id,
         changes: {
-          provider: provider.name,
           from: { planId: org.planId },
           to: { planId: newPlan.id, planName: newPlan.name },
           source: 'user',
@@ -694,13 +603,13 @@ export const billingRouter = createTRPCRouter({
     }),
 
   // Cancel subscription
-  cancelSubscription: orgProcedure.mutation(async ({ ctx }) => {
+  cancelSubscription: permissionProcedure("billing.manage").mutation(async ({ ctx }) => {
     const org = await ctx.prisma.organization.findUniqueOrThrow({
       where: { id: ctx.session.user.organizationId },
       select: BILLING_SELECT,
     });
 
-    const { provider, subscriptionId } = providerIds(org);
+    const { subscriptionId } = providerIds(org);
 
     if (!subscriptionId) {
       throw new TRPCError({
@@ -709,7 +618,7 @@ export const billingRouter = createTRPCRouter({
       });
     }
 
-    const canceled = await provider.cancelSubscription(subscriptionId);
+    const canceled = await razorpayProvider.cancelSubscription(subscriptionId);
 
     const freePlan = await ctx.prisma.plan.findFirstOrThrow({
       where: { name: 'free' },
@@ -719,11 +628,7 @@ export const billingRouter = createTRPCRouter({
       where: { id: org.id },
       data: {
         planId: freePlan.id,
-        // Clear only the CANCELLING provider's subscription ID. Clearing both
-        // would erase the other provider's link on a dual-history org.
-        ...(provider.name === 'stripe'
-          ? { stripeSubscriptionId: null }
-          : { razorpaySubscriptionId: null }),
+        razorpaySubscriptionId: null,
         subscriptionStatus: 'CANCELED',
         dunningStartedAt: null,
       },
@@ -736,7 +641,6 @@ export const billingRouter = createTRPCRouter({
       entity: 'Organization',
       entityId: org.id,
       changes: {
-        provider: provider.name,
         from: { planId: org.planId },
         to: { planId: freePlan.id, planName: 'free' },
         subscriptionId,
@@ -749,4 +653,3 @@ export const billingRouter = createTRPCRouter({
 });
 
 /** Exported for tests and diagnostics. */
-export { activeProviderName };

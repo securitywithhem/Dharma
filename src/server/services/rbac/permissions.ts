@@ -21,6 +21,12 @@ export const PERMISSION_KEYS = [
   "vulns.manage",
   "members.invite",
   "roles.manage",
+  // GH #22 — pressing the session kill-switch (org-wide or per-user).
+  // Deliberately its own key rather than reusing `members.invite`: revoking
+  // every session in the org is an incident-response action that signs out the
+  // whole company, and an org that has delegated "can invite teammates" to an
+  // office manager has not thereby delegated that.
+  "sessions.revoke",
   "marketplace.publish",
   "reports.generate",
   "sso.configure",
@@ -70,7 +76,12 @@ export const LEGACY_ROLE_PERMISSIONS: Record<Role, PermissionMap> = {
     "connectors.manage",
     "pentest.request",
     "vulns.manage",
-    "reports.generate",
+    // NOTE: reports.generate is deliberately NOT in the manager set — same
+    // reasoning as audit.read above. Report generation has always been
+    // adminProcedure-gated (routers/report.ts). WAVE 9.1 made this key actually
+    // enforce, and granting it to every COMPLIANCE_MANAGER in the same change
+    // would have silently widened access to reports as a side effect of a
+    // security fix. A custom role can still grant it explicitly.
   ]),
   [Role.PUBLISHER]: grant([...READ_ONLY, "marketplace.publish"]),
   [Role.VIEWER]: grant(READ_ONLY),

@@ -5,7 +5,11 @@
  *
  * Procedures:
  *   list                  – paginated list of audit log entries (admin only)
- *   verifyIntegrity       – run the SHA-256 chain verification and return the result
+ *   verifyIntegrity       – synchronous SHA-256 chain verification over a range
+ *   startVerification     – background verification for chains too large to walk inline
+ *   getVerification       – poll a background verification
+ *   listVerifications     – recent verification runs
+ *   getVerificationReportUrl – download the signed verification artefact
  *   getById               – fetch a single log entry with its hash fields
  *   listActions           – distinct action names for filter dropdown
  *   getAnchors            – list WORM anchor records for the org (Phase 2)
@@ -16,7 +20,12 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
-import { verifyAuditChain } from "@/server/audit-log";
+import {
+  countVerifiableEntries,
+  verifyChainRange,
+  SYNC_VERIFICATION_LIMIT,
+} from "@/server/services/audit/chainVerification";
+import { enqueueChainVerification } from "@/server/queue/auditVerificationQueue";
 import { createTRPCRouter, adminProcedure, orgProcedure } from "@/server/trpc";
 import { anchorQueue, type AnchorJobData } from "@/workers/anchor";
 import { verifyAgainstStoredAnchor } from "@/lib/services/chainAnchor";
@@ -103,20 +112,162 @@ export const auditRouter = createTRPCRouter({
    *   checkedAt   – server timestamp of the verification run
    *   totalChecked – number of log entries inspected
    */
-  verifyIntegrity: orgProcedure.query(async ({ ctx }) => {
-    const logs = await ctx.prisma.auditLog.findMany({
-      where: { organizationId: ctx.session.user.organizationId },
-      orderBy: [{ timestamp: "asc" }, { createdAt: "asc" }],
-    });
+  /**
+   * GH #26 — synchronous verification, now range-aware and bounded.
+   *
+   * This used to `findMany` the organization's ENTIRE audit log into the
+   * request thread and hash it there. That is fine on a demo org and a
+   * process-killer on the customer this feature exists for. It now streams in
+   * pages (see chainVerification.ts) and refuses outright above
+   * SYNC_VERIFICATION_LIMIT, telling the caller to use `startVerification`.
+   *
+   * Refusing rather than silently truncating: a verification that quietly
+   * checked the first 25,000 of 400,000 entries and reported "chain intact"
+   * would be worse than no feature at all — it would be a false attestation.
+   */
+  verifyIntegrity: orgProcedure
+    .input(
+      z
+        .object({
+          from: z.date().optional(),
+          to: z.date().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+      const range = { from: input?.from ?? null, to: input?.to ?? null };
 
-    const result = verifyAuditChain(logs);
+      const total = await countVerifiableEntries(ctx.prisma, organizationId, range);
+      if (total > SYNC_VERIFICATION_LIMIT) {
+        throw new TRPCError({
+          code: "PAYLOAD_TOO_LARGE",
+          message:
+            `This range covers ${total.toLocaleString()} entries, which is too many to verify ` +
+            "while you wait. Start a background verification instead.",
+        });
+      }
 
-    return {
-      ...result,
-      checkedAt: new Date(),
-      totalChecked: logs.length,
-    };
-  }),
+      return verifyChainRange(ctx.prisma, organizationId, range);
+    }),
+
+  /**
+   * GH #26 — start a background verification over any range, however large.
+   *
+   * Returns immediately with the row id; the UI polls `getVerification`.
+   */
+  startVerification: permissionProcedure("audit.read")
+    .input(
+      z
+        .object({
+          from: z.date().optional(),
+          to: z.date().optional(),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = ctx.session.user.organizationId;
+
+      // One at a time per org. A second concurrent walk over the same chain
+      // produces the same answer at twice the database cost, and during an
+      // incident people press the button repeatedly.
+      const running = await ctx.prisma.auditChainVerification.findFirst({
+        where: { organizationId, status: "RUNNING" },
+        select: { id: true },
+      });
+      if (running) {
+        return { verificationId: running.id, alreadyRunning: true };
+      }
+
+      const row = await ctx.prisma.auditChainVerification.create({
+        data: {
+          organizationId,
+          trigger: "MANUAL",
+          status: "RUNNING",
+          rangeFrom: input?.from ?? null,
+          rangeTo: input?.to ?? null,
+          partial: Boolean(input?.from),
+          requestedById: ctx.session.user.id,
+        },
+        select: { id: true },
+      });
+
+      await enqueueChainVerification({
+        verificationId: row.id,
+        organizationId,
+        rangeFrom: input?.from?.toISOString() ?? null,
+        rangeTo: input?.to?.toISOString() ?? null,
+      });
+
+      // Verifying the audit log is itself an auditable act — an auditor asking
+      // "who checked this, and when" must find the answer inside the log.
+      await emitAuditEvent(ctx.prisma, {
+        organizationId,
+        userId: ctx.session.user.id,
+        action: "AUDIT_CHAIN_VERIFICATION_STARTED",
+        entity: "AuditChainVerification",
+        entityId: row.id,
+        changes: {
+          rangeFrom: input?.from?.toISOString() ?? null,
+          rangeTo: input?.to?.toISOString() ?? null,
+        },
+      });
+
+      return { verificationId: row.id, alreadyRunning: false };
+    }),
+
+  /** Poll a background verification. */
+  getVerification: orgProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const row = await ctx.prisma.auditChainVerification.findFirst({
+        where: { id: input.id, organizationId: ctx.session.user.organizationId },
+      });
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Verification not found." });
+      }
+      return row;
+    }),
+
+  /** Recent verification runs — the history an auditor asks to see. */
+  listVerifications: orgProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(10) }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.auditChainVerification.findMany({
+        where: { organizationId: ctx.session.user.organizationId },
+        orderBy: { startedAt: "desc" },
+        take: input?.limit ?? 10,
+        include: { requestedBy: { select: { name: true, email: true } } },
+      });
+    }),
+
+  /**
+   * Mint a download URL for the signed verification report.
+   *
+   * The URL is generated on demand rather than stored, so a verification from
+   * six months ago still downloads instead of resolving to an expired link.
+   */
+  getVerificationReportUrl: permissionProcedure("audit.export")
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.prisma.auditChainVerification.findFirst({
+        where: { id: input.id, organizationId: ctx.session.user.organizationId },
+        select: { reportObjectKey: true, status: true },
+      });
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Verification not found." });
+      }
+      if (!row.reportObjectKey) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            row.status === "RUNNING"
+              ? "This verification is still running."
+              : "No signed report was produced for this verification.",
+        });
+      }
+      return { url: await generatePresignedDownloadUrl(row.reportObjectKey) };
+    }),
 
   /**
    * Fetch a single audit log entry by id (admin-only).

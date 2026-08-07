@@ -6,7 +6,7 @@
 // brief's (dashboard)/settings/... — this repo doesn't use a route group.
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { Copy, ShieldCheck, TestTube2, KeyRound } from "lucide-react";
+import { AlertTriangle, Copy, ShieldCheck, TestTube2, KeyRound } from "lucide-react";
 import { api } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -133,18 +133,67 @@ export default function SsoSettingsPage() {
     );
   }
 
+  // GH #21 — an error here must say WHICH failure this is. "Something went
+  // wrong" sends an admin to support for a problem they could have fixed
+  // themselves (wrong role) or that no amount of retrying will fix (not on
+  // their plan). Retry is only offered where retrying can actually help.
   if (configQuery.isError) {
+    const code = configQuery.error?.data?.code;
+    const isPermission = code === "FORBIDDEN" || code === "UNAUTHORIZED";
+    const isEntitlement = code === "PAYMENT_REQUIRED";
+
     return (
       <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-semibold">Single Sign-On</h1>
-          <p className="text-sm text-dharma-ink-secondary">
-            We could not load your identity provider configuration.
-          </p>
         </div>
-        <Button variant="outline" onClick={() => void configQuery.refetch()}>
-          Retry
-        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-dharma-danger-text" />
+              {isPermission
+                ? "You do not have access to SSO configuration"
+                : isEntitlement
+                  ? "SSO is not included in your plan"
+                  : "We could not load your identity provider configuration"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-dharma-ink-secondary">
+              {isPermission ? (
+                <>
+                  Configuring an identity provider requires the{" "}
+                  <span className="font-mono text-xs">sso.configure</span> permission.
+                  Ask an administrator of this organization to grant it, or to make
+                  the change for you.
+                </>
+              ) : isEntitlement ? (
+                <>
+                  Enterprise SSO and SCIM are available on higher plans. Your existing
+                  sign-in methods are unaffected.
+                </>
+              ) : (
+                <>
+                  This is a failure to read the configuration, not a sign that your SSO
+                  is broken — members already signing in through your identity provider
+                  are unaffected. If retrying does not help, the details below will
+                  identify it for support.
+                </>
+              )}
+            </p>
+
+            {!isPermission && !isEntitlement && (
+              <>
+                <p className="font-mono text-xs text-dharma-ink-secondary break-words">
+                  {code ?? "UNKNOWN"} — {configQuery.error?.message}
+                </p>
+                <Button variant="outline" onClick={() => void configQuery.refetch()}>
+                  Retry
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -172,6 +221,27 @@ export default function SsoSettingsPage() {
         </div>
         <SsoStatusBadge status={ssoStatus} />
       </div>
+
+      {/* GH #21 — the explicit empty state. The setup form already rendered for
+          an unconfigured org, but with nothing distinguishing "you have not set
+          this up yet" from "we failed to load what you did set up" — which is
+          exactly the ambiguity that made the reported spinner so hard to read.
+          Say which one this is. */}
+      {ssoStatus === "NOT_CONFIGURED" && (
+        <div
+          role="status"
+          className="rounded-lg border border-dashed p-4 text-sm text-dharma-ink-secondary"
+        >
+          <p className="font-medium text-dharma-ink">
+            No identity provider is configured yet.
+          </p>
+          <p className="mt-1">
+            Pick SAML 2.0 or OIDC below and enter your IdP&apos;s details. Nothing
+            changes for your members until you save — existing sign-in methods keep
+            working, and SSO-only enforcement is a separate, confirmed step.
+          </p>
+        </div>
+      )}
 
       <div className="flex gap-2 border-b">
         {(["SAML", "OIDC"] as const).map((t) => (

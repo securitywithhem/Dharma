@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 
 /**
  * Guard for the /api/test-* helper routes (test-auth, test-seed-pentest,
- * test-seed-regulatory-alert).
+ * test-seed-regulatory-alert, test-seed-verified-asset).
+ *
+ * test-seed-verified-asset in particular writes the row that authorizes a
+ * penetration scan against a domain (WAVE 0.1). Reaching it in a live
+ * deployment would bypass the DNS ownership challenge outright, so it depends
+ * on this guard being deny-by-default exactly as much as test-auth does.
  *
  * These routes mint a session for an arbitrary email and insert fixture rows.
  * `test-auth` in particular is a complete authentication bypass: anyone who

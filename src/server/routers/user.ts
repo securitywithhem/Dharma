@@ -12,7 +12,11 @@
 // What IS real and worth surfacing: which sign-in methods are linked to this
 // account (Account rows), and whether the org enforces SSO-only login.
 import { decode } from "next-auth/jwt";
+import { Role } from "@prisma/client";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { resolveSessionIdentity } from "@/server/lib/sessionIdentity";
+import { resolvePermission } from "@/server/services/rbac/permissions";
+import { hasManagementAccess } from "@/server/rbac";
 
 /**
  * Resolve when the caller's session actually expires.
@@ -88,6 +92,60 @@ export const userRouter = createTRPCRouter({
         mfa: false as const,
         passwordChange: false as const,
       },
+    };
+  }),
+
+  /**
+   * WAVE 5.2 — what this caller may see and do, resolved server-side.
+   *
+   * WAVE 7 renamed this from `navCapabilities`: it was never only about
+   * navigation (publisher/platformAdmin gate actions too), and the policy
+   * detail page needs the same server-resolved answer to decide whether to
+   * render edit controls.
+   *
+   * The MSSP dashboard, Publisher and Admin Marketplace pages (7 routes) had
+   * zero inbound links anywhere in the app: they existed only for someone who
+   * typed the URL. Linking them needs a server-resolved answer to "may this
+   * user see this section", because the alternative — reading role off the
+   * client session — is the `?? fallback` permission-gating anti-pattern WAVE
+   * 2.3 removed, and would render an MSSP link for everyone during loading.
+   *
+   * Returns capabilities, not roles, so the sidebar never re-implements an
+   * authorization rule. Each flag is resolved the same way its routers gate:
+   * `mssp.viewAllClients` through the permission resolver, publishing through
+   * the PUBLISHER/ADMIN role check, moderation through User.isPlatformAdmin.
+   */
+  capabilities: orgProcedure.query(async ({ ctx }) => {
+    const identity = await resolveSessionIdentity(ctx.prisma, ctx.session.user.id);
+
+    if (!identity) {
+      return { mssp: false, publisher: false, platformAdmin: false, policiesWrite: false };
+    }
+
+    const customRole = identity.customRoleId
+      ? await ctx.prisma.customRole.findUnique({
+          where: { id: identity.customRoleId },
+          select: { organizationId: true, permissions: true },
+        })
+      : null;
+
+    const permissionSubject = {
+      role: identity.role,
+      organizationId: identity.organizationId,
+      customRole,
+    };
+
+    return {
+      mssp: resolvePermission(permissionSubject, "mssp.viewAllClients"),
+      publisher:
+        identity.role === Role.PUBLISHER || identity.role === Role.ADMIN,
+      platformAdmin: identity.isPlatformAdmin,
+      // Mirrors the server gate on policy.update/publish/delete
+      // (managerProcedure -> hasManagementAccess) EXACTLY, so the UI can never
+      // render a control the API will refuse. When WAVE 9.1 retrofits
+      // permissionProcedure("policies.write") onto that router, this moves to
+      // resolvePermission in the same change — the two must not drift.
+      policiesWrite: hasManagementAccess(identity.role),
     };
   }),
 });

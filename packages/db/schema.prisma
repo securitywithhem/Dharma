@@ -11,23 +11,19 @@ datasource db {
 }
 
 model Plan {
-  id            String         @id @default(cuid())
-  name          String         @unique // "free", "pro", "enterprise"
-  displayName   String // "Free", "Pro", "Enterprise"
-  stripePriceId String? // null for free tier
-
-  /// Razorpay Plan ID (plan_…). NOT interchangeable with stripePriceId: a
-  /// Razorpay Plan is its own object with its own amount and currency, created
-  /// in the Razorpay dashboard or API. A plan can carry both IDs at once so the
-  /// same row can be sold through either provider.
+  id             String  @id @default(cuid())
+  name           String  @unique // "free", "pro", "enterprise"
+  displayName    String // "Free", "Pro", "Enterprise"
+  /// Razorpay Plan ID (plan_…). A Razorpay Plan is its own object with its own
+  /// amount and currency, created in the Razorpay dashboard or API. Null for
+  /// the free tier, and a plan with no ID here is correctly not sellable.
   razorpayPlanId String? // null for free tier
 
   price         Float          @default(0) // monthly price, in `currency`
-  /// ISO-4217 code for `price`. Added with Razorpay: the provider Plan object
-  /// holds the authoritative amount, and Razorpay India sells in INR while the
-  /// original Stripe prices were USD. Rendering every plan with a hardcoded "$"
-  /// would misstate the price to a paying customer.
-  currency      String         @default("USD")
+  /// ISO-4217 code for `price`. The Razorpay Plan object holds the
+  /// authoritative amount, and Razorpay India sells in INR. Rendering every
+  /// plan with a hardcoded "$" would misstate the price to a paying customer.
+  currency      String         @default("INR")
   limits        Json // { users: 5, frameworks: 3, storageMb: 100 }
   features      Json? // { apiAccess: false, sso: false, ...}
   isPublic      Boolean        @default(true)
@@ -38,28 +34,30 @@ model Plan {
 }
 
 model Organization {
-  id              String               @id @default(cuid())
-  name            String
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  users           User[]
-  frameworks      Framework[]
-  evidences       Evidence[]
-  policies        Policy[]
-  auditLogs       AuditLog[]
-  auditorKeys     AuditorAccess[]
-  invites         OrganizationInvite[]
-  chainAnchors    ChainAnchor[]
-  connectors      Connector[]
-  webhooks        Webhook[]
-  auditExports    AuditExport[]
-  importedItems   ImportedItem[]
-  penTests        PenTest[]
-  vulnerabilities Vulnerability[]
-  assets          Asset[]
-  controlMappings ControlMapping[]
-  readinessScores ReadinessScore[]
-  recommendations Recommendation[]
+  id                      String                   @id @default(cuid())
+  name                    String
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  users                   User[]
+  frameworks              Framework[]
+  evidences               Evidence[]
+  policies                Policy[]
+  auditLogs               AuditLog[]
+  auditorKeys             AuditorAccess[]
+  invites                 OrganizationInvite[]
+  chainAnchors            ChainAnchor[]
+  connectors              Connector[]
+  webhooks                Webhook[]
+  auditExports            AuditExport[]
+  importedItems           ImportedItem[]
+  penTests                PenTest[]
+  vulnerabilities         Vulnerability[]
+  assets                  Asset[]
+  verifiedAssets          VerifiedAsset[]
+  auditChainVerifications AuditChainVerification[]
+  controlMappings         ControlMapping[]
+  readinessScores         ReadinessScore[]
+  recommendations         Recommendation[]
 
   // Phase 7 Part 1 — AI Advisor data layer
   aiAdvisorSessions      AIAdvisorSession[]
@@ -77,26 +75,17 @@ model Organization {
   aiProvider Json?
 
   // Billing and Subscription (Phase 3)
-  planId               String?
-  plan                 Plan?               @relation(fields: [planId], references: [id])
-  stripeCustomerId     String?             @unique
-  stripeSubscriptionId String?             @unique
-  subscriptionStatus   SubscriptionStatus? @default(ACTIVE)
-  subscriptionEndsAt   DateTime?
+  planId             String?
+  plan               Plan?               @relation(fields: [planId], references: [id])
+  subscriptionStatus SubscriptionStatus? @default(ACTIVE)
+  subscriptionEndsAt DateTime?
 
-  // Phase 3c — multi-provider billing. Stripe is invite-only for India-based
-  // accounts, so Razorpay is the live provider for this deployment; Stripe is
-  // kept intact behind the same PaymentProvider interface for international
-  // customers later. Both ID pairs coexist — an org that migrates providers
-  // keeps its historical Stripe IDs for invoice lookback.
-  //
-  // NULLABLE on purpose rather than defaulting to a provider: an org that has
-  // never paid has no provider, and stamping one would make the reconciliation
-  // and dunning workers scan free orgs against an API that knows nothing about
-  // them. It is set when a subscription is first created.
-  paymentProvider        PaymentProvider?
-  razorpayCustomerId     String?          @unique
-  razorpaySubscriptionId String?          @unique
+  // Razorpay is the sole payment provider. There is deliberately no
+  // `paymentProvider` discriminator column: with one provider it would be the
+  // same value on every paid row and null on every free one, which
+  // `razorpaySubscriptionId IS NOT NULL` already tells us.
+  razorpayCustomerId     String? @unique
+  razorpaySubscriptionId String? @unique
 
   /// The subscription being REPLACED during a payment-method update.
   ///
@@ -115,11 +104,11 @@ model Organization {
   /// that capability does not need a migration later. See claude/.
   gstin String?
 
-  // Phase 3b dunning — set on the FIRST invoice.payment_failed and cleared on
-  // any successful payment. The grace period is measured from this timestamp,
-  // not from the most recent failure: Stripe retries a failed invoice several
-  // times, and restarting the clock on each retry would make the grace period
-  // unbounded. Null means "not delinquent".
+  // Dunning — set on the FIRST failed charge and cleared on any successful
+  // payment. The grace period is measured from this timestamp, not from the
+  // most recent failure: Razorpay retries a failed charge several times, and
+  // restarting the clock on each retry would make the grace period unbounded.
+  // Null means "not delinquent".
   dunningStartedAt DateTime?
 
   // 64-bit unique lock ID for safe pg_advisory_xact_lock calls
@@ -162,25 +151,15 @@ model Organization {
 model ProcessedWebhookEvent {
   id String @id @default(cuid())
 
-  /// Phase 3c — which provider issued `eventId`. Event IDs are only unique
-  /// within a provider's own namespace, and Razorpay events have no ID field
-  /// at all (the receiver synthesises one — see the Razorpay route), so a bare
-  /// unique on eventId could in principle let one provider's event suppress
-  /// another's. The composite unique below is the real dedupe lock.
-  provider PaymentProvider @default(STRIPE)
-
-  /// The provider's own event ID (Stripe `evt_…`, Razorpay synthesised).
-  eventId     String
+  /// Razorpay's `x-razorpay-event-id`, or — when that header is absent — a
+  /// SHA-256 of the signed body synthesised by the receiver. Unique on its own:
+  /// with a single provider there is no second namespace to collide with, so
+  /// the composite (provider, eventId) key this replaced bought nothing.
+  eventId     String   @unique
   eventType   String
   processedAt DateTime @default(now())
 
-  @@unique([provider, eventId])
   @@index([processedAt])
-}
-
-enum PaymentProvider {
-  STRIPE
-  RAZORPAY
 }
 
 enum SubscriptionStatus {
@@ -208,6 +187,15 @@ model User {
   marketplaceReviews MarketplaceReview[] @relation("MarketplaceReviews")
   penTestsRequested  PenTest[]
 
+  // WAVE 0.1 — scan-target ownership verification. Two relations because the
+  // admin who requests a challenge and the one who confirms it need not be the
+  // same person, and the audit trail must distinguish them.
+  verifiedAssetsRequested VerifiedAsset[] @relation("VerifiedAssetRequester")
+  verifiedAssetsVerified  VerifiedAsset[] @relation("VerifiedAssetVerifier")
+
+  // GH #26 — chain verifications this user started.
+  auditVerificationsRequested AuditChainVerification[] @relation("AuditVerificationRequester")
+
   // Phase 7 Part 1 — AI Advisor data layer
   aiAdvisorSessions AIAdvisorSession[]
   ingestedDocuments IngestedDocument[] @relation("IngestedDocumentUploader")
@@ -223,6 +211,52 @@ model User {
   // SCIM soft-delete: deactivated users keep their rows (audit integrity)
   // but can no longer sign in.
   isActive       Boolean     @default(true)
+
+  // WAVE 5.2 — operator of THIS Dharma deployment, not an admin of any tenant.
+  //
+  // Deliberately a separate flag rather than a `Role` value, because `role` is
+  // scoped to the user's own organization: marketplace.approveItem previously
+  // gated on `role === "ADMIN"`, which meant ANY customer's org admin could
+  // approve any other tenant's submission into the shared catalogue. Tenant
+  // role and platform authority are different questions and must not share a
+  // field.
+  //
+  // Not following the MsspGrant pattern (see 04_TECHNICAL/Authorization.md)
+  // even though that is this schema's other cross-org mechanism: a grant is
+  // the right shape when one *tenant* is given scoped, revocable, time-boxed
+  // read access to named other tenants. Platform administration is not
+  // tenant-to-tenant and has no scope list — it is a property of whoever runs
+  // the deployment.
+  //
+  // There is deliberately NO API that sets this. It is granted out of band
+  // (SQL/console by the deployment operator), so it cannot be escalated
+  // through the application at all, and every grant leaves a trail outside a
+  // surface an attacker who reached the app could reach.
+  isPlatformAdmin Boolean @default(false)
+
+  /// Session kill-switch. Any JWT stamped with a `sessionIssuedAt` earlier than
+  /// this instant is refused server-side on every authenticated request
+  /// (src/server/trpc.ts `enforceOrganizationContext`).
+  ///
+  /// WHY A PER-USER COLUMN CARRIES *BOTH* THE PER-USER AND THE ORG-WIDE SWITCH:
+  /// org-wide revocation is an `updateMany` that stamps every member of the org
+  /// with the same instant. Keeping the cutoff on Organization instead would
+  /// force a join on the identity read that runs on every request to every org
+  /// router — the one read this codebase deliberately keeps to a single indexed
+  /// primary-key lookup (see src/server/lib/sessionIdentity.ts). One column
+  /// answers both questions with no join and no second cache entry.
+  ///
+  /// Null means "no cutoff has ever been set", which is the correct default:
+  /// a cutoff of `now()` at row creation would invalidate the session the user
+  /// is being created with.
+  ///
+  /// This is NOT a substitute for database-backed sessions — it cannot list or
+  /// revoke an individual device. That deferral is recorded, with a revisit
+  /// date, in Dharma-Knowledge-OS/99_AI_MEMORY/decisions.md.
+  sessionsValidFrom DateTime?
+  // No index on isPlatformAdmin: the only access path is findUnique by id
+  // (sessionIdentity.ts reads the flag off the already-fetched row), so an
+  // index would be write cost for no read benefit.
 
   @@unique([organizationId, scimExternalId])
   @@index([organizationId])
@@ -366,19 +400,55 @@ model ControlMapping {
   rationale       String?         @db.Text
   suggestedByAI   Boolean         @default(false)
   confidenceScore Float?
-  createdById     String
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
 
+  /// Review state. Defaults to ACCEPTED so every pre-existing row — all of
+  /// which were created by a human through the picker — keeps its current
+  /// behaviour with no backfill.
+  ///
+  /// This exists because mappings MOVE THE COMPLIANCE SCORE:
+  /// readinessScoring's mappingBonus grants an unevidenced control up to full
+  /// credit when it maps to an evidenced one (EQUIVALENT 1.0, PARTIAL 0.5),
+  /// worth up to 15 points. Bulk machine-proposed mappings must therefore be
+  /// invisible to scoring until a human accepts them — see the
+  /// `status = 'ACCEPTED'` filter in readinessScoring.ts's mapping_agg CTE.
+  ///
+  /// REJECTED is a TOMBSTONE, not a delete: keeping the row is what stops a
+  /// re-run of proposeForFrameworkPair from resurrecting a pair a human has
+  /// already turned down.
+  status       MappingStatus @default(ACCEPTED)
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  /// NOTE: this constraint is DIRECTIONAL — it does not prevent the reverse
+  /// (target, source) pair. That predates the status column; the router
+  /// compensates by checking both directions in application code. A proper
+  /// expression index on (orgId, LEAST(src,tgt), GREATEST(src,tgt)) belongs in
+  /// its own migration, behind a pre-check for orgs that already hold both
+  /// directions, so a data problem cannot block this column.
+  ///
+  /// Status is a property of the PAIR, not a separate row: accepting is an
+  /// in-place UPDATE, never an insert, so PROPOSED and ACCEPTED rows for the
+  /// same directional pair cannot coexist.
   @@unique([organizationId, sourceControlId, targetControlId])
   @@index([organizationId, sourceControlId])
   @@index([organizationId, targetControlId])
+  @@index([organizationId, status])
 }
 
 enum MappingStrength {
   EQUIVALENT
   PARTIAL
   RELATED
+}
+
+enum MappingStatus {
+  PROPOSED
+  ACCEPTED
+  REJECTED
 }
 
 // ----- Phase 6 Part 3: Readiness Scoring & Recommendations -----
@@ -519,8 +589,31 @@ model Policy {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // WAVE 7 — the policy lifecycle. Before this, `isPublished` was settable only
+  // at create time and there was no detail route, no update/publish/delete
+  // mutation and no way to open a generated policy again: the flagship
+  // "AI-drafted policy" feature produced write-only documents.
+
+  /// When the current version was published. Null while it is a draft, and
+  /// cleared on unpublish. Separate from updatedAt because "when did this
+  /// become the policy we attest to" is the question an auditor asks, and
+  /// updatedAt moves on every edit.
+  publishedAt DateTime?
+
+  /// Soft delete. A policy that was ever published is an attestable artifact:
+  /// an auditor asking "what was your access-control policy in March" must not
+  /// be met with a row that no longer exists. Hard-deleting would also orphan
+  /// the AuditLog entries that reference this id — those are hash-chained and
+  /// deliberately immutable, so the referenced entity has to outlive the user's
+  /// decision to remove it from their working list.
+  deletedAt DateTime?
+
   @@index([organizationId])
   @@index([policyType])
+  // Every list query filters on (organizationId, deletedAt) — an org's live
+  // policies. Composite so the soft-delete filter does not degrade into a scan
+  // of the org's whole policy history.
+  @@index([organizationId, deletedAt])
 }
 
 enum PolicyType {
@@ -549,6 +642,81 @@ model AuditLog {
   @@index([organizationId])
   @@index([timestamp])
   @@index([userId])
+  /// GH #26 — the composite the chain-verification walk pages on. Verification
+  /// must read entries in exactly the order they were written, and the plain
+  /// [organizationId] and [timestamp] indexes above force a sort for that
+  /// ordering over an org's whole history. Includes `id` because it is the
+  /// tiebreaker for entries written in the same millisecond, without which
+  /// keyset pagination is unstable across page boundaries and reports a chain
+  /// break that does not exist.
+  @@index([organizationId, timestamp, createdAt, id])
+}
+
+/// GH #26 — the result of a hash-chain verification run, kept so an auditor can
+/// be handed an artefact rather than a screenshot, and so scheduled runs have
+/// somewhere to record that they happened and passed.
+///
+/// Retained independently of the AuditLog entries it verified: the whole point
+/// is to attest to the state of the log at a moment in time, and a record that
+/// vanished with its subject would attest to nothing.
+model AuditChainVerification {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  status AuditVerificationStatus @default(RUNNING)
+
+  /// How this run was started — an operator pressing the button, or the
+  /// schedule. Distinguished because a FAILED scheduled run is an incident
+  /// (tampering nobody triggered a check for) while a failed manual run is
+  /// usually someone investigating a known problem.
+  trigger AuditVerificationTrigger @default(MANUAL)
+
+  /// Inclusive range covered. Null/null means the entire chain.
+  rangeFrom DateTime?
+  rangeTo   DateTime?
+
+  /// True when rangeFrom was set, so the first entry's back-link could not be
+  /// checked against its predecessor. Surfaced on the report: a partial
+  /// verification does not prove nothing was deleted before the range.
+  partial Boolean @default(false)
+
+  entriesChecked Int @default(0)
+
+  /// Populated only on FAILED — the first entry at which the chain diverges.
+  /// Deliberately a plain String and NOT a relation to AuditLog: a broken
+  /// chain's most likely cause is a deleted row, and a foreign key would make
+  /// it impossible to record the id of the entry that is no longer there.
+  brokenAtId        String?
+  brokenAtTimestamp DateTime?
+  failureReason     String?
+
+  /// Object key of the signed PDF report, once generated.
+  reportObjectKey String?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  requestedById String?
+  requestedBy   User?   @relation("AuditVerificationRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, startedAt])
+  @@index([organizationId, status])
+}
+
+enum AuditVerificationStatus {
+  RUNNING
+  PASSED
+  FAILED
+  /// The run itself could not complete (database error, worker killed). Kept
+  /// separate from FAILED so an infrastructure problem is never mistaken for
+  /// evidence of tampering — the two demand completely different responses.
+  ERRORED
+}
+
+enum AuditVerificationTrigger {
+  MANUAL
+  SCHEDULED
 }
 
 model RegulationSnippet {
@@ -762,8 +930,27 @@ model MarketplaceItem {
   slug             String   @unique
   description      String   @db.Text
   shortDescription String?
-  authorId         String
-  author           User     @relation("MarketplaceItemAuthor", fields: [authorId], references: [id])
+  /// Nullable so deleting an organization does not fail.
+  ///
+  /// MarketplaceItem and MarketplaceReview are the only two models that
+  /// reference User WITHOUT being tenant-scoped themselves. Every other User
+  /// reference (PenTest.requestedBy, VerifiedAsset.requestedBy, …) sits on a
+  /// model that cascades from Organization, so the cascade clears those rows
+  /// before the User delete is attempted. These two are global, published
+  /// artifacts — nothing cascades them — so a Restrict FK here blocked
+  /// offboarding any tenant whose members had ever published or reviewed.
+  ///
+  /// SetNull rather than Cascade, deliberately: other organizations import
+  /// these items, and ImportedItem.sourceItem is already SetNull, so the
+  /// schema already treats a published item as outliving its origin. Deleting
+  /// it would destroy another tenant's content and provenance to complete an
+  /// unrelated tenant's offboarding.
+  ///
+  /// Note this ANONYMIZES rather than erases. If a DPDP/GDPR erasure request
+  /// requires the item's content to go, that is a separate, deliberate flow —
+  /// it should not be a silent side effect of offboarding.
+  authorId         String?
+  author           User?    @relation("MarketplaceItemAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
   price    Float  @default(0)
   currency String @default("USD")
@@ -800,8 +987,19 @@ model MarketplaceReview {
   id                String          @id @default(cuid())
   marketplaceItemId String
   item              MarketplaceItem @relation(fields: [marketplaceItemId], references: [id], onDelete: Cascade)
-  reviewerId        String
-  reviewer          User            @relation("MarketplaceReviews", fields: [reviewerId], references: [id])
+  /// Nullable for the same reason as MarketplaceItem.authorId above — and this
+  /// one blocked more than publishing: an organization that had only ever
+  /// REVIEWED someone else's item could not be deleted.
+  ///
+  /// SetNull rather than Cascade because `ratings` and `reviewCount` on
+  /// MarketplaceItem are denormalized. Deleting review rows out from under
+  /// them would silently overstate an item's rating with no trigger or
+  /// application hook to recompute; anonymizing keeps the aggregates true.
+  ///
+  /// The @@unique below still enforces one review per user per item: Postgres
+  /// treats NULLs as distinct, so anonymized rows accumulate freely.
+  reviewerId        String?
+  reviewer          User?           @relation("MarketplaceReviews", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   rating  Int
   title   String
@@ -942,6 +1140,79 @@ model Asset {
   vulnerabilities Vulnerability[]
 
   @@index([organizationId, createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// Scan-target ownership verification (WAVE 0.1)
+//
+// DEVIATION (deliberate, flagged per Coding_Standards.md): this does NOT extend
+// the `Asset` model above, even though the brief asks to "extend rather than
+// duplicate". `Asset` is an *inventory* record — rows are created implicitly
+// from scan findings (see autoMapVulnerabilities.ts) and carry no ownership
+// semantics or uniqueness constraint. If authorization to scan were read off
+// `Asset`, a scan finding could mint the very row that authorizes scanning it,
+// which is a self-granting privilege escalation. `VerifiedAsset` is therefore a
+// separate, append-mostly authorization record: nothing but an explicit,
+// server-checked DNS/HTTP challenge can create a verified row.
+// -----------------------------------------------------------------------------
+
+enum VerifiedAssetKind {
+  DOMAIN
+  CIDR
+}
+
+enum AssetVerificationMethod {
+  DNS_TXT
+  HTTP_FILE
+}
+
+model VerifiedAsset {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Normalized claim: a lowercased hostname (DOMAIN) or a CIDR block (CIDR).
+  /// Normalization happens in assetVerification.ts so the unique constraint
+  /// below cannot be sidestepped by casing or a trailing dot.
+  value String
+  kind  VerifiedAssetKind @default(DOMAIN)
+
+  method AssetVerificationMethod @default(DNS_TXT)
+
+  /// The challenge nonce, published by the claimant as `dharma-verify=<token>`.
+  ///
+  /// DEVIATION (deliberate): stored in PLAINTEXT, against the repo's hash-only
+  /// convention for tokens (OrganizationSettings.scimTokenHash,
+  /// Endpoint.enrollmentTokenHash). Those are bearer credentials — this is not.
+  /// It is a public proof-of-control nonce that the claimant publishes to the
+  /// world in DNS, and the server must re-read the exact string out of the TXT
+  /// record to compare it. A hash cannot be compared against a DNS answer.
+  /// Knowing the token grants nothing: using it requires controlling the zone.
+  verificationToken String
+
+  /// Null until the challenge is confirmed server-side. Only a non-null
+  /// verifiedAt (with a null revokedAt) authorizes a scan.
+  verifiedAt   DateTime?
+  verifiedById String?
+  verifiedBy   User?     @relation("VerifiedAssetVerifier", fields: [verifiedById], references: [id])
+
+  requestedById String
+  requestedBy   User   @relation("VerifiedAssetRequester", fields: [requestedById], references: [id])
+
+  /// Set when an admin withdraws the claim. Revocation is a tombstone rather
+  /// than a delete so the authorization trail survives — this row is the record
+  /// that protects the operator if a scanned party ever disputes a scan.
+  revokedAt DateTime?
+
+  /// Number of failed confirmation attempts, to bound challenge grinding.
+  failedAttempts Int       @default(0)
+  lastAttemptAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, value])
+  @@index([organizationId, verifiedAt])
 }
 
 enum Severity {

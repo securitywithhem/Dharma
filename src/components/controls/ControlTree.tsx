@@ -23,6 +23,7 @@ import { api } from "@/hooks/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { ControlTreeNode, INDENT } from "./ControlTreeNode";
 import {
@@ -213,21 +214,28 @@ export function ControlTree({ frameworkId }: ControlTreeProps) {
     [flattened],
   );
 
-  const handleDelete = useCallback(
-    async (node: TreeControl) => {
-      const hasKids = node.children.length > 0;
-      const message = hasKids
-        ? `Delete "${node.title}" and all ${countDescendants(node)} descendant control(s)? This cannot be undone.`
-        : `Delete "${node.title}"? This cannot be undone.`;
-      if (!window.confirm(message)) return;
-      try {
-        await deleteMutation.mutateAsync({ controlId: node.id, cascade: hasKids });
-      } finally {
-        await utils.control.getTree.invalidate({ frameworkId });
-      }
-    },
-    [deleteMutation, utils, frameworkId, flattened],
-  );
+  // WAVE 9.4 (§6 MEDIUM-2) — the shared ConfirmDialog, not window.confirm.
+  // Deleting a control with descendants is the most destructive action in this
+  // tree, and the native dialog is unstyled, unbranded, blocks the main thread,
+  // and cannot emphasise the descendant count that is the whole point of the
+  // warning.
+  const [pendingDelete, setPendingDelete] = useState<TreeControl | null>(null);
+
+  const handleDelete = useCallback((node: TreeControl) => {
+    setPendingDelete(node);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    const node = pendingDelete;
+    if (!node) return;
+    const hasKids = node.children.length > 0;
+    try {
+      await deleteMutation.mutateAsync({ controlId: node.id, cascade: hasKids });
+    } finally {
+      setPendingDelete(null);
+      await utils.control.getTree.invalidate({ frameworkId });
+    }
+  }, [pendingDelete, deleteMutation, utils, frameworkId]);
 
   // ---------------------------------------------------------------
   // Render
@@ -331,6 +339,34 @@ export function ControlTree({ frameworkId }: ControlTreeProps) {
           </DndContext>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={
+          pendingDelete && pendingDelete.children.length > 0
+            ? "Delete this control and its descendants?"
+            : "Delete this control?"
+        }
+        description={
+          pendingDelete && pendingDelete.children.length > 0 ? (
+            <>
+              <strong>{pendingDelete.title}</strong> and all{" "}
+              <strong>{countDescendants(pendingDelete)}</strong> descendant control(s)
+              will be deleted, along with any evidence mapped to them. This cannot
+              be undone.
+            </>
+          ) : (
+            <>
+              <strong>{pendingDelete?.title}</strong> will be deleted, along with any
+              evidence mapped to it. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete control"
+        pending={deleteMutation.isPending}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

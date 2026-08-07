@@ -1,14 +1,10 @@
 "use client";
 
-// Phase 3b/3c — plan selection.
+// Plan selection.
 //
-// Phase 3c made the upgrade button provider-aware. The two providers hand off
-// differently and the difference is real, not cosmetic:
-//   Stripe   → server returns a hosted-page URL; navigate to it.
-//   Razorpay → the subscription already exists server-side; open Checkout.js
-//              as an in-page modal against it, then ask the server to confirm.
-// The server returns a discriminated union so this component branches on
-// `kind` rather than guessing from a possibly-absent `url`.
+// The upgrade button opens Razorpay's Checkout.js as an in-page modal: the
+// subscription already exists server-side by the time this runs, and the modal
+// is opened against it, then the server is asked to confirm.
 //
 // Access is NEVER granted from the modal's success callback — that is
 // spoofable. The callback goes to billing.confirmCheckout, which re-verifies
@@ -41,19 +37,7 @@ export function PlansComparison() {
     setPendingPlan(planId);
 
     try {
-      const handoff = await createCheckout.mutateAsync({
-        planId,
-        successUrl: `${window.location.origin}/dashboard/settings/billing?success=true`,
-        cancelUrl: `${window.location.origin}/dashboard/settings/billing?canceled=true`,
-      });
-
-      if (handoff.kind === "redirect") {
-        if (!handoff.url) {
-          throw new Error("The payment provider did not return a checkout page.");
-        }
-        window.location.href = handoff.url;
-        return; // navigating away; leave the button in its pending state
-      }
+      const handoff = await createCheckout.mutateAsync({ planId });
 
       const result = await razorpay.open({
         keyId: handoff.keyId,
@@ -136,8 +120,8 @@ export function PlansComparison() {
                 <CardTitle className="text-xl">{plan.displayName}</CardTitle>
                 <div className="mt-4 flex items-baseline">
                   {/* Currency comes from the Plan row, not a hardcoded "$" —
-                      Razorpay India sells in INR and the original Stripe
-                      prices were USD. Misstating a price to a paying customer
+                      Razorpay India sells in INR, and each Plan row carries
+                      its own currency. Misstating a price to a paying customer
                       is not a cosmetic bug. */}
                   <span className="text-4xl font-bold tracking-tight">
                     {formatPlanPrice(plan.price, plan.currency)}
@@ -192,9 +176,7 @@ export function PlansComparison() {
                     : isFree
                       ? "Included"
                       : isPending
-                        ? providerInfo?.checkoutStyle === "redirect"
-                          ? "Redirecting…"
-                          : "Opening checkout…"
+                        ? "Opening checkout…"
                         : "Select Plan"}
                 </Button>
                 {/* An honest reason beats a disabled button with no

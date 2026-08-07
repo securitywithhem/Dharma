@@ -217,7 +217,10 @@ async function retrieveLiveControls(prisma: PrismaClient, orgId: string, query: 
   // Phase 6 ControlMapping — cross-walk targets for the retrieved controls.
   const controlIds = controls.map((c) => c.id);
   const mappings = await prisma.controlMapping.findMany({
-    where: { organizationId: orgId, sourceControlId: { in: controlIds } },
+    // ACCEPTED only: this feeds the Compliance Advisor's answer context, so an
+    // unreviewed machine proposal here would have the assistant tell a user a
+    // control is cross-walked when no human has ever agreed that it is.
+    where: { organizationId: orgId, sourceControlId: { in: controlIds }, status: "ACCEPTED" },
     select: {
       sourceControlId: true,
       targetControl: { select: { code: true, title: true } },

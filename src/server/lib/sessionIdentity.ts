@@ -1,0 +1,238 @@
+// WAVE 5.1 (extends WAVE 2.1) — request-time re-read of the caller's User row.
+//
+// WHY THIS EXISTS
+// ---------------
+// Auth is `strategy: "jwt"` with `maxAge: 30 days` (src/server/auth.ts). The
+// `jwt` callback populates `role`/`organizationId` only when `user` is present
+// — i.e. only at sign-in — and never re-reads the database afterwards. That
+// made the JWT a 30-day bearer token asserting facts that may have changed
+// minutes after it was minted:
+//
+//   * Deactivating a member (organization.removeMember) or SCIM-deprovisioning
+//     them (scim.service.ts) sets `isActive: false`, but their already-open
+//     session kept full read/write access to every org router until the token
+//     expired. For a compliance product whose buyer is audited on access
+//     revocation, that was the single worst finding in the 2026-08-06 audit.
+//   * Demoting an ADMIN to VIEWER left the old role in the token, so
+//     adminProcedure/managerProcedure kept honouring the stale privilege.
+//
+// requirePermission.ts already did the right thing (re-read the row on every
+// call) but only 6 of 31 routers used it. This module lifts that read into a
+// shared, cached resolver so `orgProcedure` — and therefore ALL org routers —
+// gets the same guarantee, and so requirePermission can reuse it instead of
+// adding a second, independently-cached read of the same row.
+//
+// STALENESS WINDOW
+// ----------------
+// The row is cached in Redis for IDENTITY_CACHE_TTL_SECONDS (30s). Two
+// mechanisms bound how stale an answer can be:
+//
+//   1. The TTL itself. This is the *guarantee*: any change to a User row takes
+//      effect for every replica within 30 seconds, even if it was made out of
+//      band (a DBA running UPDATE, a restored backup, a future code path that
+//      forgets to invalidate).
+//   2. Explicit invalidation via a Prisma middleware on User writes
+//      (src/server/db.ts). This is an *optimization* that collapses the window
+//      to ~0 for every write that goes through the app. It is deliberately NOT
+//      the correctness mechanism: there are 14 `user.update`/`updateMany` call
+//      sites today (7 in SCIM alone), and a design where security depends on
+//      remembering to call an invalidator at each one fails silently the first
+//      time someone adds a 15th.
+//
+// 30s is the deliberate trade. The read is one indexed primary-key lookup, but
+// it runs on every request to every org router across 3-10 app replicas; an
+// uncached read would multiply database load by the entire authenticated
+// request volume. Documented in 04_TECHNICAL/Security_Architecture.md.
+//
+// FAILURE MODE
+// ------------
+// If Redis is unreachable we fall through to a direct database read rather
+// than failing the request. Failing closed here would convert a Redis blip
+// into a total authentication outage; falling through keeps the security
+// property exactly (we still read the authoritative row) and costs only the
+// cache benefit. Only a database failure denies the request — which is correct,
+// because at that point we genuinely cannot know whether the caller is still
+// authorized.
+import { Redis } from "ioredis";
+import type { Role } from "@prisma/client";
+import type { PrismaLike } from "@/server/trpc";
+
+export const IDENTITY_CACHE_TTL_SECONDS = 30;
+
+const CACHE_PREFIX = "session:identity:";
+
+/**
+ * The authoritative, freshly-read facts about a caller. Everything the
+ * authorization layer is allowed to believe about a user comes from here —
+ * never from the JWT, which is treated as carrying only an unverified `sub`.
+ *
+ * DELIBERATELY SCALAR-ONLY. This holds fields of the User row and nothing
+ * joined, in particular NOT the CustomRole's `permissions` map. The cache is
+ * invalidated by a Prisma middleware on *User* writes, so caching a joined
+ * CustomRole would leave permission edits stale for up to the TTL — and Phase
+ * 8 (tests/rbac.requirePermission.test.ts, "permission changes take effect
+ * immediately (no session-cached bypass)") explicitly guarantees they do not.
+ * requirePermission therefore reads the CustomRole fresh off `customRoleId`;
+ * see the note there. Assigning a *different* role is a User write, so that
+ * half is covered by the cache invalidation.
+ */
+export type SessionIdentity = {
+  id: string;
+  role: Role;
+  organizationId: string;
+  isActive: boolean;
+  customRoleId: string | null;
+  /**
+   * Operator of this deployment, not an admin of any tenant. Read from the
+   * database like everything else here — deliberately never carried in the
+   * JWT, so it cannot be asserted by a token and cannot go stale beyond the
+   * TTL. See the schema comment on User.isPlatformAdmin.
+   */
+  isPlatformAdmin: boolean;
+  /**
+   * GH #22 — the session kill-switch cutoff, as epoch milliseconds (not a
+   * Date: this object is JSON round-tripped through Redis, and a Date would
+   * silently come back as a string that still passes a `Date | null` type
+   * annotation while failing every comparison against it). Null means no
+   * cutoff has ever been set for this user.
+   *
+   * Carried on the identity rather than read separately because it lives on
+   * the same User row this function already fetches — the revocation check
+   * therefore costs zero additional queries and inherits the same 30s cache
+   * and eager invalidation as isActive.
+   */
+  sessionsValidFromMs: number | null;
+};
+
+// Lazily-constructed, module-scoped client. Same convention as
+// src/server/pentest/scanAnomaly.ts — this repo has no ioredis mock, so tests
+// talk to a real Redis and call closeSessionIdentityRedis() to release the
+// handle. Not reusing src/lib/redis.ts because that module connects eagerly at
+// import time, which would make importing this module a side effect.
+let client: Redis | null = null;
+
+function getRedis(): Redis {
+  if (!client) {
+    client = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+      // Never let a cache lookup stall a request behind ioredis's default
+      // unbounded retry — we have a working fallback (the database).
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      lazyConnect: false,
+      retryStrategy: (times) => (times > 2 ? null : 50),
+    });
+    // Without a listener, ioredis emits unhandled 'error' events that crash
+    // the process when Redis is down — the exact outage we intend to survive.
+    client.on("error", () => {});
+  }
+  return client;
+}
+
+export async function closeSessionIdentityRedis(): Promise<void> {
+  if (client) {
+    try {
+      await client.quit();
+    } catch {
+      client.disconnect();
+    }
+    client = null;
+  }
+}
+
+function cacheKey(userId: string): string {
+  return `${CACHE_PREFIX}${userId}`;
+}
+
+/**
+ * Drop the cached row for a user, so the next request re-reads it from the
+ * database. Called automatically by the Prisma middleware in src/server/db.ts
+ * on any User write; safe to call directly. Never throws — a failed
+ * invalidation degrades to "stale for up to the TTL", not to an error.
+ */
+export async function invalidateSessionIdentity(userId: string): Promise<void> {
+  try {
+    await getRedis().del(cacheKey(userId));
+  } catch {
+    // Redis unreachable. The TTL still bounds staleness at 30s, which is the
+    // documented guarantee — see this file's header.
+  }
+}
+
+async function readFromDatabase(
+  prisma: PrismaLike,
+  userId: string
+): Promise<SessionIdentity | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      organizationId: true,
+      isActive: true,
+      customRoleId: true,
+      isPlatformAdmin: true,
+      sessionsValidFrom: true,
+    },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    role: user.role,
+    organizationId: user.organizationId,
+    isActive: user.isActive,
+    customRoleId: user.customRoleId,
+    isPlatformAdmin: user.isPlatformAdmin,
+    sessionsValidFromMs: user.sessionsValidFrom
+      ? user.sessionsValidFrom.getTime()
+      : null,
+  };
+}
+
+/**
+ * Resolve the caller's current identity, preferring a <=30s-old cached copy.
+ * Returns null when the user no longer exists at all.
+ *
+ * A deactivated user resolves successfully with `isActive: false` — deciding
+ * what to do about that is the caller's job (the tRPC middleware rejects;
+ * a future background job might want to read the row anyway).
+ */
+export async function resolveSessionIdentity(
+  prisma: PrismaLike,
+  userId: string
+): Promise<SessionIdentity | null> {
+  const key = cacheKey(userId);
+
+  try {
+    const cached = await getRedis().get(key);
+    if (cached === " ") {
+      // Negative cache: we already looked and this user does not exist.
+      // Stored distinctly from a miss so a deleted-user's flood of requests
+      // doesn't hit the database on every single one.
+      return null;
+    }
+    if (cached) {
+      return JSON.parse(cached) as SessionIdentity;
+    }
+  } catch {
+    // Cache read failed — fall through to the database. See header.
+  }
+
+  const identity = await readFromDatabase(prisma, userId);
+
+  try {
+    await getRedis().set(
+      key,
+      identity === null ? " " : JSON.stringify(identity),
+      "EX",
+      IDENTITY_CACHE_TTL_SECONDS
+    );
+  } catch {
+    // Cache write failed — correctness is unaffected, we just re-read next time.
+  }
+
+  return identity;
+}

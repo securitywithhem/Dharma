@@ -8,6 +8,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "@jest/globals";
 import { PrismaClient, Role } from "@prisma/client";
+import { seedRoleUser } from "./fixtures/seedRoleUser";
 import { createCallerFactory } from "@/server/trpc";
 import { appRouter } from "@/server/routers";
 
@@ -179,7 +180,8 @@ describe("framework.create", () => {
   });
 
   it("throws FORBIDDEN for VIEWER role", async () => {
-    const viewer = createCaller(organizationId, userId, Role.VIEWER);
+    const viewerUser = await seedRoleUser(prisma, organizationId, Role.VIEWER, "framework");
+    const viewer = createCaller(organizationId, viewerUser.id, Role.VIEWER);
 
     await expect(
       viewer.framework.create({ name: "Should Fail" }),
@@ -341,7 +343,8 @@ describe("control.updateStatus", () => {
 
   it("throws FORBIDDEN for VIEWER role", async () => {
     const admin = createCaller(organizationId, userId, Role.ADMIN);
-    const viewer = createCaller(organizationId, userId, Role.VIEWER);
+    const viewerUser = await seedRoleUser(prisma, organizationId, Role.VIEWER, "control");
+    const viewer = createCaller(organizationId, viewerUser.id, Role.VIEWER);
 
     const fw = await admin.framework.create({ name: "DPDP Act 2023" });
     frameworkId = fw.id;

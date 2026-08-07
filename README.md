@@ -17,7 +17,7 @@ For modern businesses—particularly startups, MSMEs, and security-conscious ent
 Dharma solves these problems by providing an open-source, self-hosted compliance platform that runs **entirely local AI models**. 
 * **Zero-Cloud AI:** All document understanding, text extraction, and control mapping are performed offline via a local Ollama instance running open-source models.
 * **Tamper-Evident Ledger:** Evidence chains are cryptographically linked using a blockchain-like hashing mechanism. If any record is modified, the signature chain breaks immediately.
-* **SaaS Billing & Entitlements Built-In:** Designed to support multi-tenant workspaces, offering subscription tiers (Free, Pro, Enterprise) integrated with Razorpay or Stripe behind one provider interface, self-service subscription management, and automated resource gating.
+* **SaaS Billing & Entitlements Built-In:** Designed to support multi-tenant workspaces, offering subscription tiers (Free, Pro, Enterprise) integrated with Razorpay, self-service subscription management, and automated resource gating.
 * **Integrated Marketplace:** Allows users to discover, publish, review, and import compliance frameworks and controls instantly.
 
 ---
@@ -77,7 +77,7 @@ Dharma implements a secure, isolated multi-tenant design that supports organic s
 sequenceDiagram
     participant User as Organization Admin
     participant App as Next.js & Entitlement Middleware
-    participant Stripe as Payment provider API / Webhooks
+    participant Razorpay as Razorpay API / Webhooks
     participant DB as Postgres Database
 
     User->>App: Attempts to Create 4th Framework
@@ -86,11 +86,11 @@ sequenceDiagram
     App->>App: Evaluate Limits for current Plan (Free = 3 Max)
     App-->>User: Block Creation (Entitlement Error: Upgrade Required)
     User->>App: Clicks "Upgrade to Pro"
-    App->>Stripe: Create subscription / checkout session
-    Stripe-->>User: Checkout.js modal (Razorpay) or hosted page (Stripe)
-    User->>Stripe: Completes Payment & Subscribes
-    Stripe->>App: Send Webhook (subscription activated/created)
-    App->>DB: Update Org Subscription Data (stripeSubscriptionId, plan=PRO)
+    App->>Razorpay: Create subscription (server-side)
+    Razorpay-->>User: Checkout.js modal, opened against that subscription
+    User->>Razorpay: Authorises mandate & pays
+    Razorpay->>App: Send Webhook (subscription.activated / .charged)
+    App->>DB: Update Org Subscription Data (razorpaySubscriptionId, plan=PRO)
     App-->>User: Redirect to App (Features Unlocked!)
     User->>App: Attempts to Create 4th Framework (Success)
 ```
@@ -210,19 +210,21 @@ Everything except paid upgrades works without a payment provider. With a fresh
 clone every org sits on the Free plan and checkout fails until real test-mode
 keys are supplied. That is expected, not a bug.
 
-Dharma supports **two** providers behind one interface
-(`src/server/services/payments/provider.ts`). `PAYMENT_PROVIDER` decides where
-**new** subscriptions are created; orgs that already subscribed through the
-other provider keep being managed through it.
+**Razorpay is the sole payment provider** (`src/server/services/payments/`).
+Stripe was removed entirely on 2026-08-05: it is invite-only for India-based
+accounts and cannot be activated for real sales, so keeping a second
+implementation behind an adapter interface meant carrying code that could never
+run. There is no `PAYMENT_PROVIDER` switch.
 
-| | Razorpay (default) | Stripe |
-|---|---|---|
-| Available in India | Yes | No — invite-only for India-based accounts |
-| Checkout | In-page Checkout.js modal | Redirect to hosted page |
-| Hosted billing portal | None — Dharma ships its own Manage screen | Yes |
-| Test keys need KYC | **No** | No |
+Two consequences worth knowing before you wire this up:
 
-#### Razorpay (the live provider)
+* **Checkout is an in-page modal, not a redirect.** The server creates the
+  Razorpay Subscription and the browser opens Checkout.js against it.
+* **There is no hosted billing portal.** Dharma ships its own Manage screen
+  (`src/components/billing/BillingManage.tsx`) for cancellation, payment-method
+  replacement and billing details.
+
+#### Setting up Razorpay
 
 ```bash
 # 1. Sign up at https://dashboard.razorpay.com — NO KYC is required to obtain
@@ -230,12 +232,10 @@ other provider keep being managed through it.
 #    envs/.env.development:
 #      RAZORPAY_KEY_ID=rzp_test_…
 #      RAZORPAY_KEY_SECRET=…
-#      PAYMENT_PROVIDER=razorpay
 
 # 2. Create Pro / Enterprise **Plans** (Subscriptions → Plans, or the API).
 #    A Razorpay Plan (plan_…) is its own object with its own amount and
-#    currency — it is NOT a Stripe Price ID and the two are not
-#    interchangeable. Put the IDs into:
+#    currency. Put the IDs into:
 #      RAZORPAY_PLAN_PRO=plan_…
 #      RAZORPAY_PLAN_ENTERPRISE=plan_…
 #      BILLING_CURRENCY=INR
@@ -261,31 +261,12 @@ The demo path and the real sales path are the same code; only the key differs.
 Test cards: `4111 1111 1111 1111` (success). Razorpay Test Mode also supports
 UPI and netbanking simulations from the modal.
 
-#### Stripe (dormant, kept for international customers)
-
-```bash
-# 1. Real test-mode keys from https://dashboard.stripe.com/test/apikeys
-#    into envs/.env.development, and set PAYMENT_PROVIDER=stripe:
-#      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_…
-#      STRIPE_SECRET_KEY=sk_test_…
-
-# 2. Create the Pro / Enterprise prices, then put the resulting price IDs
-#    (price_…, NOT product IDs prod_…) into:
-#      STRIPE_PRODUCT_PRO=price_…
-#      STRIPE_PRODUCT_ENTERPRISE=price_…
-#    These are read by packages/db/seed-plans.ts, so re-run:
-npm run seed:plans
-
-# 3. Forward webhooks to the local route and export the printed signing secret
-#    as STRIPE_WEBHOOK_SECRET (whsec_…) before starting the app:
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
-```
-
-Test card: `4242 4242 4242 4242`.
+Note there is **no `stripe listen` equivalent** — Razorpay has no local
+webhook-forwarding CLI, which is why step 3 uses a tunnel.
 
 Without a correct webhook secret every webhook is rejected with a 400 **by
 design**, and plan changes will never apply — the webhook is the source of
-truth for granting access, for both providers.
+truth for granting access.
 
 The `dharma-worker` container must be running for the billing background jobs
 (daily provider reconciliation and the 14-day dunning sweep) to execute.
@@ -306,13 +287,104 @@ This logs you in as an administrative user with pre-configured templates and moc
 
 Dharma provides built-in tools for maintaining self-hosted data durability.
 
-### Automated Cron Backups
-A dedicated scheduler container performs daily tar archives of PostgreSQL dumps and MinIO storage paths. Backups are saved inside the `/backups` directory in the root of the workspace.
+### Automated Nightly Backups
 
-You can trigger a backup instantly by running:
+The `backup-scheduler` container runs `scripts/backup-all.sh` once a day at
+`BACKUP_AT_UTC` (default 02:00 UTC), producing:
+
+| Path (inside the `dharma_backups` volume) | What it is |
+|---|---|
+| `/backups/pg/dharma_<ts>.sql.gz` | gzipped `pg_dump` of the whole database |
+| `/backups/pg/dharma_<ts>.log` | that dump's `--verbose` progress log |
+| `/backups/minio/dharma-evidence_<ts>/` | file-for-file mirror of the evidence bucket |
+| `/backups/minio/dharma-evidence_latest` | symlink to the newest snapshot |
+| `/backups/last-run.json` | `{"status":"ok"\|"failed", ...}` — check this first |
+
+Trigger one immediately:
+
 ```bash
-docker exec dharma-backup-scheduler /scripts/backup-all.sh
+docker compose --env-file envs/.env.docker run --rm \
+  -e RUN_BACKUP_NOW=true backup-scheduler
 ```
+
+A failed run logs a `CRITICAL` line and POSTs to `BACKUP_ALERT_WEBHOOK_URL` if set.
+
+> **Backups are verified, not assumed.** `backup-pg.sh` refuses to keep a dump
+> that isn't valid gzip, is missing pg_dump's end-of-dump marker, or has
+> progress output leaked into the SQL. Restore was last drilled end-to-end on
+> 2026-08-04 (see `claude/infra-audit-2026-08-04.md`).
+
+---
+
+### Disaster recovery — restoring from backup
+
+Read this top to bottom before typing anything. Steps 1–2 are diagnosis; the
+destructive step is 4.
+
+**1. Find out what you have.** Nothing here modifies anything.
+
+```bash
+docker run --rm -v dharma_backups:/b alpine sh -c \
+  'cat /b/last-run.json; echo; ls -lh /b/pg/ | tail -5; ls -ld /b/minio/*'
+```
+
+If `last-run.json` says `"failed"`, or the newest dump is older than you can
+accept, **stop** — restoring an older backup is a decision, not a formality.
+
+**2. Verify the dump is intact before you destroy anything.**
+
+```bash
+docker run --rm -v dharma_backups:/b alpine sh -c \
+  'F=$(ls -t /b/pg/dharma_*.sql.gz | head -1); echo "using $F";
+   gzip -t "$F" && echo "gzip OK";
+   gunzip -c "$F" | tail -3 | grep -q "dump complete" && echo "not truncated";
+   echo "leaked progress lines (must be 0): $(gunzip -c "$F" | grep -c "^pg_dump:")"'
+```
+
+All three must pass. If any fails, use the next-oldest dump.
+
+**3. Stop everything that writes.** Otherwise the app rewrites rows mid-restore.
+
+```bash
+docker compose --env-file envs/.env.docker stop nextjs worker pentest-worker
+```
+
+**4. Restore Postgres. This DROPS the current database.**
+
+```bash
+docker compose --env-file envs/.env.docker run --rm \
+  -e FORCE_RESTORE=true -e BACKUP_DIR=/backups/pg \
+  backup-scheduler bash /scripts/restore-pg.sh
+```
+
+Omit `FORCE_RESTORE=true` to be prompted for confirmation first — do that if
+you are at all unsure. Pass an explicit file as the last argument to restore a
+specific dump instead of the newest.
+
+**5. Restore the evidence files.** Safe by default: it adds and overwrites, and
+never deletes bucket objects missing from the backup. Add `-e REMOVE_EXTRA=true`
+only if you deliberately want the bucket to exactly match the snapshot.
+
+```bash
+docker compose --env-file envs/.env.docker run --rm \
+  -e BACKUP_DIR=/backups/minio \
+  backup-scheduler bash /scripts/restore-minio.sh
+```
+
+**6. Bring the app back and confirm.**
+
+```bash
+docker compose --env-file envs/.env.docker start nextjs worker pentest-worker
+curl -s localhost:3000/api/status | jq   # postgres/redis/minio must be healthy
+```
+
+Then check real data, not just health checks — log in, open an organisation,
+and download one evidence file. A green `/api/status` only proves the services
+are reachable, not that your data came back.
+
+**If the app starts but data looks wrong**, do not re-run the restore on top of
+itself. Take a dump of the current broken state first (`RUN_BACKUP_NOW=true`),
+so you still have both, then investigate.
 
 ### System Performance Monitoring
 To enable system health dashboards (Prometheus, Grafana, and Cadvisor profiles):

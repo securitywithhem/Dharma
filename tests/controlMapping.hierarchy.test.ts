@@ -222,27 +222,39 @@ describe("controlMapping router", () => {
     });
   });
 
-  describe("AI-suggested mappings", () => {
-    // Requires a reachable Ollama instance with nomic-embed-text pulled — this
-    // repo's docker-compose `ollama` service. Skipped automatically if
-    // unreachable so the suite doesn't fail in environments without it.
-    let ollamaAvailable = false;
+  // Requires a reachable Ollama with the embedding model pulled (this repo's
+  // docker-compose `ollama` service).
+  //
+  // Gated on an env var, decided SYNCHRONOUSLY at collection time, because the
+  // previous version was a silent skip: it probed Ollama in beforeAll and
+  // `return`ed early from the test body when unreachable, so a test that never
+  // executed was reported as PASSING. A green suite that proved nothing is
+  // worse than a red one.
+  //
+  // Unset  → jest reports these as SKIPPED (visibly, not as passes).
+  // Set    → they run, and an unreachable Ollama FAILS rather than skips.
+  //
+  // Note the propose/similarity behaviour itself is covered without Ollama in
+  // tests/controlMapping.propose.test.ts, which writes known vectors directly.
+  const describeOllama = process.env.REQUIRE_OLLAMA ? describe : describe.skip;
 
+  describeOllama("AI-suggested mappings", () => {
     beforeAll(async () => {
-      try {
-        const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(2000) });
-        ollamaAvailable = res.ok;
-      } catch {
-        ollamaAvailable = false;
+      const res = await fetch("http://localhost:11434/api/tags", {
+        signal: AbortSignal.timeout(5000),
+      }).catch((err) => {
+        throw new Error(
+          `REQUIRE_OLLAMA is set but Ollama is unreachable at localhost:11434: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+      if (!res.ok) {
+        throw new Error(`REQUIRE_OLLAMA is set but Ollama returned ${res.status}.`);
       }
     });
 
     it("suggests a near-identical control in the top-3 with confidence > 0.8", async () => {
-      if (!ollamaAvailable) {
-        console.warn("[test] Ollama unreachable at localhost:11434 — skipping AI suggestion test.");
-        return;
-      }
-
       const local = await seedOrgWithTwoFrameworks("AISuggest");
       const caller = createCaller(local.org.id, local.user.id);
 

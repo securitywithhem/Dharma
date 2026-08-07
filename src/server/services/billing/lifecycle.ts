@@ -1,14 +1,12 @@
-// Phase 3c — provider-agnostic billing lifecycle.
+// Billing lifecycle.
 //
-// Every state change a payment webhook can cause lives here, once, for all
-// providers. The Stripe and Razorpay route handlers are thin translators: they
-// verify their own signature, parse their own payload shape, and call these
-// functions. Nothing about plan application, downgrade, dunning, idempotency
-// or auditing is duplicated per provider — that duplication is precisely how
-// the Stripe path's bugs would get reintroduced in a new adapter.
+// Every state change a payment webhook can cause lives here, once. The Razorpay
+// route handler is a thin translator: it verifies the signature, parses the
+// payload shape, and calls these functions. Plan application, downgrade,
+// dunning, idempotency and auditing are not duplicated anywhere else — that
+// duplication is precisely how a fixed billing bug gets reintroduced.
 //
-// Three invariants, carried over from the Stripe implementation and now
-// enforced for both providers:
+// Three invariants:
 //
 // 1. IDEMPOTENCY. The dedupe claim is taken INSIDE the same transaction as the
 //    state change, so a mid-handler failure rolls the claim back and the
@@ -25,33 +23,21 @@
 //    plan changing underneath a customer is the kind of event this product
 //    exists to make explainable.
 
-import { Prisma, type PaymentProvider as PaymentProviderEnum } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/server/db';
 import { emitAuditEvent } from '@/server/services/audit/writer';
 import { enqueueDunningNotification } from '@/server/queue/dunningQueue';
 import { logger } from '@/lib/logger';
-import type { DharmaSubscriptionStatus, ProviderName } from '@/server/services/payments/provider';
+import type { DharmaSubscriptionStatus } from '@/server/services/payments/types';
 
-/**
- * Which Organization columns hold a given provider's identifiers. Both pairs
- * coexist on the row so an org that migrates providers keeps its history.
- */
-const COLUMNS: Record<
-  ProviderName,
-  { customerId: 'stripeCustomerId' | 'razorpayCustomerId'; subscriptionId: 'stripeSubscriptionId' | 'razorpaySubscriptionId' }
-> = {
-  stripe: { customerId: 'stripeCustomerId', subscriptionId: 'stripeSubscriptionId' },
-  razorpay: { customerId: 'razorpayCustomerId', subscriptionId: 'razorpaySubscriptionId' },
-};
-
-const ENUM_OF: Record<ProviderName, PaymentProviderEnum> = {
-  stripe: 'STRIPE',
-  razorpay: 'RAZORPAY',
-};
+/** The Organization columns holding Razorpay's identifiers. */
+const columns = {
+  customerId: 'razorpayCustomerId',
+  subscriptionId: 'razorpaySubscriptionId',
+} as const;
 
 export interface EventRef {
-  provider: ProviderName;
-  /** The provider's own event identifier — the dedupe key. */
+  /** Razorpay's own event identifier — the dedupe key. */
   eventId: string;
   eventType: string;
 }
@@ -73,7 +59,6 @@ async function recordEventOnce(
   try {
     await tx.processedWebhookEvent.create({
       data: {
-        provider: ENUM_OF[ref.provider],
         eventId: ref.eventId,
         eventType: ref.eventType,
       },
@@ -88,16 +73,15 @@ async function recordEventOnce(
 }
 
 /**
- * Resolve the Dharma org for a provider object.
+ * Resolve the Dharma org for a Razorpay object.
  *
- * Prefers the ID stamped in provider metadata (Stripe `metadata`, Razorpay
- * `notes`) but EXISTENCE-CHECKS it, then falls back to the provider's customer
- * ID. The fallback is not defensive padding: subscription changes made from a
- * provider dashboard carry no Dharma metadata at all, and dropping those would
- * leave the local plan stale.
+ * Prefers the ID stamped in Razorpay `notes` but EXISTENCE-CHECKS it, then
+ * falls back to the Razorpay customer ID, then to a known subscription ID. The
+ * fallback is not defensive padding: subscription changes made from the
+ * Razorpay dashboard carry no Dharma metadata at all, and dropping those would
+ * leave the local plan stale. Never write an unverified ID straight through.
  */
 export async function resolveOrganizationId(
-  provider: ProviderName,
   metadataOrgId: string | undefined | null,
   providerCustomerId: string | null,
   providerSubscriptionId?: string | null,
@@ -110,12 +94,10 @@ export async function resolveOrganizationId(
     if (byMetadata) return byMetadata.id;
 
     logger.warn(
-      { provider, metadataOrgId },
+      { metadataOrgId },
       '[billing] metadata organizationId does not exist — falling back to customer lookup',
     );
   }
-
-  const columns = COLUMNS[provider];
 
   if (providerCustomerId) {
     const byCustomer = await prisma.organization.findFirst({
@@ -141,7 +123,7 @@ export async function resolveOrganizationId(
 }
 
 /**
- * Purchase confirmed. Attaches the provider's customer and subscription to the
+ * Purchase confirmed. Attaches the Razorpay customer and subscription to the
  * org; the plan itself is applied by applySubscriptionState, which reads the
  * authoritative current plan from the subscription object.
  */
@@ -152,7 +134,6 @@ export async function applyCheckoutCompleted(args: {
   subscriptionId: string | null;
 }): Promise<LifecycleOutcome> {
   const { ref, organizationId } = args;
-  const columns = COLUMNS[ref.provider];
 
   const applied = await prisma.$transaction(async (tx) => {
     if (!(await recordEventOnce(tx, ref))) return false;
@@ -160,7 +141,6 @@ export async function applyCheckoutCompleted(args: {
     await tx.organization.update({
       where: { id: organizationId },
       data: {
-        paymentProvider: ENUM_OF[ref.provider],
         ...(args.customerId ? { [columns.customerId]: args.customerId } : {}),
         ...(args.subscriptionId ? { [columns.subscriptionId]: args.subscriptionId } : {}),
       },
@@ -177,7 +157,6 @@ export async function applyCheckoutCompleted(args: {
     entity: 'Organization',
     entityId: organizationId,
     changes: {
-      provider: ref.provider,
       subscriptionId: args.subscriptionId,
       eventId: ref.eventId,
     },
@@ -206,7 +185,6 @@ export async function applySubscriptionState(args: {
   endsAt: Date | null;
 }): Promise<LifecycleOutcome> {
   const { ref, organizationId } = args;
-  const columns = COLUMNS[ref.provider];
 
   const before = await prisma.organization.findUnique({
     where: { id: organizationId },
@@ -219,7 +197,6 @@ export async function applySubscriptionState(args: {
     await tx.organization.update({
       where: { id: organizationId },
       data: {
-        paymentProvider: ENUM_OF[ref.provider],
         ...(args.customerId ? { [columns.customerId]: args.customerId } : {}),
         [columns.subscriptionId]: args.subscriptionId,
         planId: args.planId,
@@ -239,7 +216,6 @@ export async function applySubscriptionState(args: {
     entity: 'Organization',
     entityId: organizationId,
     changes: {
-      provider: ref.provider,
       from: { planId: before?.planId ?? null },
       to: { planId: args.planId, planName: args.planName },
       providerStatus: args.rawStatus,
@@ -262,7 +238,6 @@ export async function applySubscriptionCanceled(args: {
   organizationId: string;
 }): Promise<LifecycleOutcome> {
   const { ref, organizationId } = args;
-  const columns = COLUMNS[ref.provider];
 
   const freePlan = await prisma.plan.findFirst({ where: { name: 'free' } });
   if (!freePlan) {
@@ -298,7 +273,6 @@ export async function applySubscriptionCanceled(args: {
     entity: 'Organization',
     entityId: organizationId,
     changes: {
-      provider: ref.provider,
       from: { planId: before?.planId ?? null },
       to: { planId: freePlan.id, planName: 'free' },
       eventId: ref.eventId,
@@ -348,7 +322,6 @@ export async function applyPaymentFailed(args: {
     entity: 'Organization',
     entityId: organizationId,
     changes: {
-      provider: ref.provider,
       invoiceId: args.invoiceId,
       amountDue: args.amountDue,
       dunningStartedAt: dunningStartedAt.toISOString(),
@@ -395,7 +368,6 @@ export async function applyPaymentRecovered(args: {
       entity: 'Organization',
       entityId: organizationId,
       changes: {
-        provider: ref.provider,
         invoiceId: args.invoiceId,
         eventId: ref.eventId,
       },

@@ -23,6 +23,7 @@ import {
   jest,
 } from "@jest/globals";
 import { PrismaClient, Role, EvidenceType } from "@prisma/client";
+import { seedRoleUser } from "./fixtures/seedRoleUser";
 import { createCallerFactory } from "@/server/trpc";
 import { appRouter } from "@/server/routers";
 
@@ -187,7 +188,8 @@ describe("evidence.requestAIMapping", () => {
   });
 
   it("throws FORBIDDEN for VIEWER role", async () => {
-    const viewer = createCaller(organizationId, userId, Role.VIEWER);
+    const viewerUser = await seedRoleUser(prisma, organizationId, Role.VIEWER, "evidence");
+    const viewer = createCaller(organizationId, viewerUser.id, Role.VIEWER);
 
     await expect(
       viewer.evidence.requestAIMapping({ evidenceId }),

@@ -38,3 +38,25 @@ export const controlEmbeddingQueue = new Queue<ControlEmbeddingJobData>(CONTROL_
 export async function enqueueControlEmbedding(controlId: string): Promise<void> {
   await controlEmbeddingQueue.add("embed-control", { controlId });
 }
+
+/**
+ * Bulk variant for the seed paths (framework.create, onboarding), which mint
+ * ~20-100 controls at once.
+ *
+ * `addBulk` so a framework seed is one Redis round-trip rather than one per
+ * control. The lower priority matters: BullMQ serves lower numbers first, and
+ * the default for `enqueueControlEmbedding` above is 0. Without this, seeding a
+ * 100-control framework would put 100 jobs ahead of the single-control embed a
+ * user triggers by editing a control in the UI, and that interactive edit would
+ * wait behind minutes of batch work.
+ */
+export async function enqueueControlEmbeddings(controlIds: string[]): Promise<void> {
+  if (controlIds.length === 0) return;
+  await controlEmbeddingQueue.addBulk(
+    controlIds.map((controlId) => ({
+      name: "embed-control",
+      data: { controlId },
+      opts: { priority: 10 },
+    })),
+  );
+}

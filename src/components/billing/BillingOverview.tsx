@@ -69,7 +69,7 @@ export function BillingOverview() {
           <div className="pt-4 border-t">
             <p className="text-sm text-dharma-ink-secondary mb-1">Price per month</p>
             {/* Currency from the Plan row, not a hardcoded "$": Razorpay
-                India sells in INR while the Stripe prices were USD. */}
+                India sells in INR. */}
             <p className="text-xl font-bold">
               {formatPlanPrice(plan.price, plan.currency)}
               <span className="text-sm font-normal text-dharma-ink-secondary">/mo</span>
@@ -83,11 +83,9 @@ export function BillingOverview() {
                 Upgrade Plan
               </Button>
             </Link>
-            {/* Phase 3c: this used to open Stripe's hosted portal directly.
-                Razorpay has no equivalent, so it now points at Dharma's own
-                management screen, which works for both providers — and for
-                Stripe orgs that screen still offers the hosted portal. Only
-                offered on a paid plan: on Free there is nothing to manage. */}
+            {/* Points at Dharma's own management screen: Razorpay has no
+                hosted billing portal to open. Only offered on a paid plan —
+                on Free there is nothing to manage. */}
             {subscription?.plan && plan.name !== "free" && (
               <Link
                 href={"/dashboard/settings/billing?tab=manage" as any}

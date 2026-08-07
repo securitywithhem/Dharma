@@ -12,8 +12,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="${BACKUP_DIR:-/backups}/backup-all_$(date +%Y%m%d_%H%M%S).log"
+BACKUP_ROOT="${BACKUP_DIR:-/backups}"
+LOG_FILE="${BACKUP_ROOT}/backup-all_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p "$(dirname "${LOG_FILE}")"
+
+# Give each tool its own subdirectory and stop passing the shared BACKUP_DIR
+# straight through. Both child scripts read BACKUP_DIR, so a caller that set
+# BACKUP_DIR=/backups (as the scheduler service does) made backup-pg.sh write
+# dumps to /backups instead of its documented /backups/pg — restore-pg.sh
+# auto-detects the latest backup by globbing /backups/pg and would have found
+# nothing, silently "restoring" from an older dump or failing outright.
+export PG_BACKUP_DIR="${BACKUP_ROOT}/pg"
+export MINIO_BACKUP_DIR="${BACKUP_ROOT}/minio"
 
 # ── Logging helper ─────────────────────────────────────────────────────────
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "${LOG_FILE}"; }
@@ -28,7 +38,7 @@ MINIO_STATUS=0
 
 # ── PostgreSQL backup ──────────────────────────────────────────────────────
 log "▶ Starting PostgreSQL backup..."
-if bash "${SCRIPT_DIR}/backup-pg.sh" 2>&1 | tee -a "${LOG_FILE}"; then
+if BACKUP_DIR="${PG_BACKUP_DIR}" bash "${SCRIPT_DIR}/backup-pg.sh" 2>&1 | tee -a "${LOG_FILE}"; then
   log "✅ PostgreSQL backup succeeded."
 else
   PG_STATUS=$?
@@ -39,7 +49,7 @@ echo "" | tee -a "${LOG_FILE}"
 
 # ── MinIO backup ───────────────────────────────────────────────────────────
 log "▶ Starting MinIO backup..."
-if bash "${SCRIPT_DIR}/backup-minio.sh" 2>&1 | tee -a "${LOG_FILE}"; then
+if BACKUP_DIR="${MINIO_BACKUP_DIR}" bash "${SCRIPT_DIR}/backup-minio.sh" 2>&1 | tee -a "${LOG_FILE}"; then
   log "✅ MinIO backup succeeded."
 else
   MINIO_STATUS=$?

@@ -3,8 +3,7 @@
 // Phase 3c — Razorpay Checkout.js loader and modal driver.
 //
 // The script is fetched on FIRST USE, not at module scope and not from the app
-// shell. This mirrors the discipline already established for Stripe.js (see
-// StripeProvider.tsx): a module-level or globally-mounted loader makes every
+// shell. A module-level or globally-mounted loader makes every
 // route in the product pull a third-party payment script it will never use,
 // which is both a performance cost and an unnecessary widening of the origins
 // every page talks to. Only the Billing route calls this hook, so only the

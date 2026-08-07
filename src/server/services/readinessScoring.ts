@@ -103,6 +103,18 @@ async function loadLeafFacts(
          JOIN "ControlMapping" cm
            ON (cm."sourceControlId" = l.id OR cm."targetControlId" = l.id)
           AND cm."organizationId" = $2
+          -- Only human-accepted mappings count. Machine proposals from
+          -- controlMapping.proposeForFrameworkPair sit at PROPOSED until
+          -- someone reviews them, and must not move the compliance score.
+          --
+          -- The filter belongs on the JOIN, not inside "mappingCredit":
+          -- "hasAnyMapping" below suppresses the MISSING_EVIDENCE
+          -- recommendation, so a proposal counted here would silently HIDE a
+          -- "you have no evidence for this control" warning. That is the same
+          -- failure as inflating the score, pointed the other way. Gating the
+          -- join zeroes mappingCredit, hasAnyMapping and bestStrengthRank
+          -- together.
+          AND cm."status" = 'ACCEPTED'
          JOIN "Control" other
            ON other.id = CASE WHEN cm."sourceControlId" = l.id THEN cm."targetControlId" ELSE cm."sourceControlId" END
           AND other."frameworkId" != $1

@@ -1,10 +1,9 @@
-// Phase 3c — Razorpay webhook receiver tests.
+// Razorpay webhook receiver tests.
 //
-// Deliberately mirrors tests/billing.webhook.test.ts so the two providers are
-// held to the SAME standard: authenticity, idempotency, and correct retry
-// signalling. The migration brief called out three bug classes already found
-// once in the Stripe path; each has a named test here proving it is absent in
-// the new adapter rather than assumed absent:
+// Holds the receiver to three standards: authenticity, idempotency, and correct
+// retry signalling. Three bug classes had already been found and fixed once in
+// this codebase's billing path; each has a named test here proving it is absent
+// rather than assumed absent:
 //   - metadata that never reaches the object the webhook reads
 //   - missing idempotency
 //   - an unverified organizationId causing a 500 and an infinite retry loop
@@ -161,7 +160,6 @@ async function resetOrg() {
     where: { id: org.id },
     data: {
       planId: freePlan.id,
-      paymentProvider: null,
       razorpayCustomerId: null,
       razorpaySubscriptionId: null,
       subscriptionStatus: "ACTIVE",
@@ -239,12 +237,12 @@ describe("signature verification", () => {
   });
 });
 
-describe("metadata propagation (regression: Stripe bug #1)", () => {
-  // The Stripe bug was metadata set on the Checkout Session, which Stripe does
-  // not propagate to the Subscription — so every subscription webhook arrived
-  // with no org and paying customers were never upgraded. Razorpay's `notes`
-  // are set on the Subscription itself at creation, so they arrive on the
-  // object the webhook reads. This asserts that end-to-end rather than
+describe("metadata propagation (regression: metadata never reaching the webhook)", () => {
+  // The original bug was metadata set on a checkout object that the provider
+  // does not propagate onto the Subscription — so every subscription webhook
+  // arrived with no org and paying customers were never upgraded. Razorpay's
+  // `notes` are set on the Subscription itself at creation, so they arrive on
+  // the object the webhook reads. This asserts that end-to-end rather than
   // assuming it.
   it("resolves the organization from subscription notes and applies the plan", async () => {
     await resetOrg();
@@ -267,20 +265,27 @@ describe("metadata propagation (regression: Stripe bug #1)", () => {
       where: { id: org.id },
     });
     expect(after.planId).toBe(proPlan.id);
-    expect(after.paymentProvider).toBe("RAZORPAY");
     expect(after.razorpaySubscriptionId).toBe(`sub_meta_${suffix}`);
     expect(after.subscriptionStatus).toBe("ACTIVE");
   });
 
-  it("writes exactly one AuditLog entry recording the provider", async () => {
+  it("writes exactly one AuditLog entry for the applied plan", async () => {
     const logs = await auditLogsForEvent(`evt_meta_${suffix}`);
     expect(logs).toHaveLength(1);
     expect(logs[0].action).toBe("BILLING_PLAN_UPDATED");
-    expect(JSON.stringify(logs[0].changes)).toContain("razorpay");
+    // The audit entry must name the event that caused the change and the raw
+    // provider status it was derived from — that is what makes a plan change
+    // explainable after the fact. It no longer carries a `provider`
+    // discriminator: with a single provider the field was constant.
+    expect(logs[0].changes).toMatchObject({
+      to: { planName: `pro-rzp-spec-${suffix}` },
+      providerStatus: "active",
+      eventId: `evt_meta_${suffix}`,
+    });
   });
 });
 
-describe("organization resolution (regression: Stripe bug #3)", () => {
+describe("organization resolution (regression: unverified org ID → 500 → retry loop)", () => {
   // The original bug: an organizationId taken from provider metadata was passed
   // straight to organization.update, which throws for an unknown ID. The route
   // read that as a transient fault and answered 500, putting the provider into
@@ -305,7 +310,7 @@ describe("organization resolution (regression: Stripe bug #3)", () => {
     const customerId = `cust_fallback_${suffix}`;
     await prisma.organization.update({
       where: { id: org.id },
-      data: { razorpayCustomerId: customerId, paymentProvider: "RAZORPAY" },
+      data: { razorpayCustomerId: customerId },
     });
 
     const res = await POST(
@@ -333,7 +338,7 @@ describe("organization resolution (regression: Stripe bug #3)", () => {
     const subscriptionId = `sub_bysubid_${suffix}`;
     await prisma.organization.update({
       where: { id: org.id },
-      data: { razorpaySubscriptionId: subscriptionId, paymentProvider: "RAZORPAY" },
+      data: { razorpaySubscriptionId: subscriptionId },
     });
 
     const res = await POST(
@@ -373,7 +378,7 @@ describe("organization resolution (regression: Stripe bug #3)", () => {
   });
 });
 
-describe("idempotency (regression: Stripe bug #2)", () => {
+describe("idempotency (regression: a redelivery applying twice)", () => {
   it("applies an event once and ignores the redelivery", async () => {
     await resetOrg();
 
@@ -399,7 +404,6 @@ describe("idempotency (regression: Stripe bug #2)", () => {
       where: { eventId },
     });
     expect(ledger).toHaveLength(1);
-    expect(ledger[0].provider).toBe("RAZORPAY");
 
     // Scoped to THIS event: other tests in this file legitimately write their
     // own BILLING_PLAN_UPDATED rows, so a bare count would prove nothing about
@@ -407,31 +411,26 @@ describe("idempotency (regression: Stripe bug #2)", () => {
     expect(await auditLogsForEvent(eventId)).toHaveLength(1);
   });
 
-  it("namespaces the dedupe key by provider so the two cannot collide", async () => {
-    // A shared event ID across providers must NOT suppress the second one.
-    // Before the composite unique this was theoretically possible.
-    const sharedId = `evt_collision_${suffix}`;
+  it("records exactly one ledger row per event ID", async () => {
+    // Recovered from the removed dual-provider suite: the dedupe lock is a UNIQUE on
+    // eventId, and a second insert of the same ID must be rejected outright.
+    // With a single provider there is no second namespace to collide with, so
+    // this replaced the (provider, eventId) composite.
+    const sharedId = `evt_ledger_${suffix}`;
 
     await prisma.processedWebhookEvent.create({
-      data: { provider: "STRIPE", eventId: sharedId, eventType: "spec.stripe" },
+      data: { eventId: sharedId, eventType: "spec.razorpay" },
     });
 
     await expect(
       prisma.processedWebhookEvent.create({
-        data: {
-          provider: "RAZORPAY",
-          eventId: sharedId,
-          eventType: "spec.razorpay",
-        },
-      }),
-    ).resolves.toBeTruthy();
-
-    // ...while a true duplicate within one provider is still rejected.
-    await expect(
-      prisma.processedWebhookEvent.create({
-        data: { provider: "STRIPE", eventId: sharedId, eventType: "spec.stripe" },
+        data: { eventId: sharedId, eventType: "spec.razorpay" },
       }),
     ).rejects.toThrow();
+
+    expect(
+      await prisma.processedWebhookEvent.count({ where: { eventId: sharedId } }),
+    ).toBe(1);
   });
 
   it("dedupes on a body hash when the event-id header is absent", async () => {
@@ -460,7 +459,6 @@ describe("lifecycle events", () => {
       where: { id: org.id },
       data: {
         planId: proPlan.id,
-        paymentProvider: "RAZORPAY",
         razorpaySubscriptionId: `sub_cancel_${suffix}`,
       },
     });
@@ -494,7 +492,6 @@ describe("lifecycle events", () => {
       where: { id: org.id },
       data: {
         planId: proPlan.id,
-        paymentProvider: "RAZORPAY",
         razorpaySubscriptionId: subscriptionId,
       },
     });
@@ -611,7 +608,7 @@ describe("lifecycle events", () => {
     await resetOrg();
     await prisma.organization.update({
       where: { id: org.id },
-      data: { planId: proPlan.id, paymentProvider: "RAZORPAY" },
+      data: { planId: proPlan.id },
     });
 
     const res = await POST(
@@ -662,7 +659,7 @@ describe("lifecycle events", () => {
   });
 });
 
-// TESTING-INFRASTRUCTURE NOTE (carried from the Stripe suite): this repo
+// TESTING-INFRASTRUCTURE NOTE: this repo
 // transforms tests with SWC via next/jest, which only hoists jest.mock() above
 // imports when `jest` is the GLOBAL. Tests here import jest from
 // @jest/globals, so jest.mock() runs in source order — after a static import

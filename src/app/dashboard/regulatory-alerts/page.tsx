@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryError } from "@/components/ui/query-error";
 
 type DiffSummary = {
   added?: { key: string; title: string }[];
@@ -68,6 +69,19 @@ export default function RegulatoryAlertsPage() {
   });
 
   if (listQuery.isLoading) return <Skeleton className="h-96 w-full rounded-lg" />;
+
+  // WAVE 9.2 (§6 HIGH-1) — without this, a failed request rendered as "no
+  // alerts", i.e. "nothing needs your attention", which is the opposite of
+  // what an unknown state means for regulatory change monitoring.
+  if (listQuery.isError) {
+    return (
+      <QueryError
+        title="Failed to load regulatory alerts"
+        message={listQuery.error?.message}
+        onRetry={() => listQuery.refetch()}
+      />
+    );
+  }
   const alerts = listQuery.data?.items ?? [];
 
   return (

@@ -4,7 +4,7 @@
 # Phase 2 Part 2: Backup Scheduler + Monitoring Stack
 # ============================================================
 # Core:    caddy, nextjs, postgres, redis, minio, ollama, worker
-# Backups: backup-scheduler (ofelia cron)
+# Backups: backup-scheduler (nightly pg_dump + MinIO mirror; docker/backup/)
 # Monitor: prometheus, grafana, postgres-exporter, redis-exporter
 #
 # Usage:
@@ -96,8 +96,24 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
+    # The minio/minio image ships NO curl, wget, mc, grep or head — only bash
+    # and the minio binary. So the documented `/minio/health/live` probe can't
+    # be called any conventional way. Bash gets us there unaided: /dev/tcp
+    # opens the socket, printf speaks HTTP/1.1 by hand, and the `read` builtin
+    # plus `[[ ]]` matching check the status line. Every piece is a bash
+    # builtin — no external binary is involved, which is the only reason this
+    # works in this image.
+    #
+    # The previous check merely opened the socket and returned. That reports
+    # healthy while MinIO is still initialising its backend, so dependents
+    # gated on service_healthy could start against a server that then refuses
+    # their first request.
     healthcheck:
-      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000"]
+      test:
+        - CMD
+        - /bin/bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /minio/health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && read -r status <&3 && [[ "$$status" == *" 200 "* ]]'
       interval: 15s
       timeout: 10s
       retries: 5
@@ -230,6 +246,10 @@ services:
       SEED_DATABASE: ${SEED_DATABASE:-false}
       # Empty = OTel disabled. With the monitoring profile up, set to
       # http://otel-collector:4318 to export traces/metrics.
+      # Ops alerting (dead-letter jobs, Razorpay webhook failures). Unset =
+      # structured CRITICAL lines on stdout only; set to a Slack/Discord/ntfy
+      # incoming webhook to also page a human. See src/server/lib/ops/alert.ts.
+      OPS_ALERT_WEBHOOK_URL: ${OPS_ALERT_WEBHOOK_URL:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${NEXTJS_PORT:-3000}:3000"
@@ -283,11 +303,20 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
       OLLAMA_BASE_URL: http://ollama:11434
+      # Ops alerting (dead-letter jobs, Razorpay webhook failures). Unset =
+      # structured CRITICAL lines on stdout only; set to a Slack/Discord/ntfy
+      # incoming webhook to also page a human. See src/server/lib/ops/alert.ts.
+      OPS_ALERT_WEBHOOK_URL: ${OPS_ALERT_WEBHOOK_URL:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      # This worker writes connector/AI evidence to MinIO (see MINIO_* above),
+      # so it belongs in the wait set — without it the worker could pick up a
+      # job and fail its first object write while MinIO is still starting.
+      minio:
         condition: service_healthy
       ollama:
         condition: service_healthy
@@ -339,6 +368,10 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      # Scan results are uploaded to MinIO (see MINIO_* above) — same reasoning
+      # as the `worker` service.
+      minio:
         condition: service_healthy
     volumes:
       - .:/app
@@ -392,42 +425,51 @@ services:
       - dharma-network
 
   # ------------------------------------------------------------
-  # Backup Scheduler – Ofelia cron runner
-  # Schedules nightly pg + MinIO backups via container labels.
+  # Backup Scheduler – nightly Postgres + MinIO backups
+  #
+  # Replaces the previous ofelia setup, which was configured two different
+  # ways at once (this service's labels AND monitoring/ofelia.ini) and worked
+  # neither way: the labels shelled out to `docker exec`, a binary the ofelia
+  # image doesn't ship; the ini file exec'd into dharma-postgres (no /scripts,
+  # no /backups mounted) and dharma-minio-init (a run-once container that has
+  # already Exited). The backups volume was empty and every scheduled run
+  # logged an error. This service instead carries pg_dump and mc itself and
+  # runs scripts/backup-all.sh directly.
+  #
+  # Restore procedure: see README.md → "Disaster recovery".
   # ------------------------------------------------------------
   backup-scheduler:
-    image: mcuadros/ofelia:latest
+    build:
+      context: .
+      dockerfile: docker/backup/Dockerfile
     container_name: dharma-backup-scheduler
     restart: on-failure:3
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_AT_UTC: ${BACKUP_AT_UTC:-02:00}
+      # Optional. When set, a FAILED backup POSTs here. Unset = log only.
+      BACKUP_ALERT_WEBHOOK_URL: ${BACKUP_ALERT_WEBHOOK_URL:-}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./monitoring/ofelia.ini:/etc/ofelia/config.ini:ro
+      - ./scripts:/scripts:ro
       - backups:/backups
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
-    command: daemon --config=/etc/ofelia/config.ini
-    labels:
-      # ── Nightly PostgreSQL backup (02:00 UTC) ──────────────
-      ofelia.job-run.backup-postgres.schedule: "0 2 * * *"
-      ofelia.job-run.backup-postgres.container: "dharma-backup-scheduler"
-      ofelia.job-run.backup-postgres.command: >
-        /bin/sh -c
-        "docker exec dharma-postgres pg_dump
-        -h localhost -U ${POSTGRES_USER:?POSTGRES_USER is required}
-        ${POSTGRES_DB:?POSTGRES_DB is required} | gzip > /backups/pg/dharma_$(date +%Y%m%d_%H%M%S).sql.gz"
-      ofelia.job-run.backup-postgres.no-overlap: "true"
-      # ── Nightly MinIO backup (02:30 UTC) ──────────────────
-      ofelia.job-run.backup-minio.schedule: "30 2 * * *"
-      ofelia.job-run.backup-minio.container: "dharma-backup-scheduler"
-      ofelia.job-run.backup-minio.command: /scripts/backup-minio.sh
-      ofelia.job-run.backup-minio.no-overlap: "true"
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     networks:
       - dharma-network
     logging:
@@ -571,6 +613,10 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # WAVE 10.1 — rule_files has always pointed at "rules/*.yml"; without
+      # this mount the glob matched nothing and Prometheus loaded zero rules
+      # silently, which is exactly how DEV-4 stayed invisible.
+      - ./monitoring/rules:/etc/prometheus/rules:ro
       - ./monitoring/secrets/grafana_cloud_api_key:/etc/prometheus/secrets/grafana_cloud_api_key:ro
       - prometheus_data:/prometheus
     command:
@@ -591,11 +637,65 @@ services:
       - postgres-exporter
       - redis-exporter
       - blackbox-exporter
+      - alertmanager
     deploy:
       resources:
         limits:
           memory: 512M
         reservations:
+          memory: 128M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ------------------------------------------------------------
+  # Alertmanager – routes Prometheus alerts to OPS_ALERT_WEBHOOK_URL
+  # Profile: monitoring (opt-in)
+  # WAVE 10.1 (fullstack-audit-2026-08-06 DEV-4)
+  #
+  # Posts to the SAME webhook src/server/lib/ops/alert.ts uses, so there is one
+  # destination rather than two half-built ones. The app alerts on what only it
+  # can see (a dead-lettered job); Prometheus alerts on what only outside
+  # observation can see (a process that died and cannot report it).
+  #
+  # The webhook URL comes from monitoring/secrets/ops_alert_webhook_url
+  # (gitignored), the same pattern Prometheus already uses for its Grafana
+  # Cloud key. Alertmanager refuses to start if that file is absent or empty,
+  # rather than starting and discarding every alert — a silent failure of the
+  # alerting system is the precise defect being fixed here.
+  #
+  # Create it with:
+  #   echo -n "https://hooks.slack.com/services/..." \
+  #     > monitoring/secrets/ops_alert_webhook_url
+  # ------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: dharma-alertmanager
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/secrets:/etc/alertmanager/secrets:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
           memory: 128M
     networks:
       - dharma-network
@@ -684,6 +784,7 @@ volumes:
       o: bind
       device: ${BACKUP_HOST_PATH:-/tmp/dharma-backups}
   # Monitoring
+  alertmanager_data:
   prometheus_data:
     driver: local
     name: dharma_prometheus_data

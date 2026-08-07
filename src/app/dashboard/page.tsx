@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CardRow, Section } from '@/components/ui/section';
@@ -73,7 +74,7 @@ function DashboardSkeleton() {
   );
 }
 
-function LoadFailure({ message }: { message?: string }) {
+function LoadFailure({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   return (
     <div className="mx-auto max-w-[88rem]">
       <Card className="border-dharma-danger">
@@ -84,8 +85,15 @@ function LoadFailure({ message }: { message?: string }) {
               Could not load your compliance status
             </p>
             <p className="mt-1 text-data text-dharma-ink-secondary">
-              {message ?? 'The dashboard data request did not complete. Refresh to try again.'}
+              {message ?? 'The dashboard data request did not complete.'}
             </p>
+            {/* WAVE 9.2 — the copy used to say "Refresh to try again", i.e. it
+                asked the user to do by hand what a button can do. */}
+            {onRetry && (
+              <Button variant="outline" className="mt-3" onClick={onRetry}>
+                Try again
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -94,11 +102,11 @@ function LoadFailure({ message }: { message?: string }) {
 }
 
 export default function DashboardPage() {
-  const { data: stats, isLoading, error } = api.dashboard.getStats.useQuery();
+  const { data: stats, isLoading, error, refetch } = api.dashboard.getStats.useQuery();
 
   if (isLoading) return <DashboardSkeleton />;
-  if (error) return <LoadFailure message={error.message} />;
-  if (!stats) return <LoadFailure />;
+  if (error) return <LoadFailure message={error.message} onRetry={() => refetch()} />;
+  if (!stats) return <LoadFailure onRetry={() => refetch()} />;
 
   // Five, not three. The row is now a scan line rather than a padded block, so
   // two more fit in less vertical space than the old three occupied.

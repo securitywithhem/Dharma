@@ -20,7 +20,8 @@ import { EvidenceType } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import {
   buildStorageKey,
   deleteObject,
@@ -59,7 +60,7 @@ export const evidenceRouter = createTRPCRouter({
    *
    * Returns: { uploadUrl, filePath, expiresAt }
    */
-  getUploadUrl: managerProcedure
+  getUploadUrl: permissionProcedure("evidence.upload")
     .input(
       z.object({
         fileName: z.string().min(1).max(255),
@@ -113,7 +114,7 @@ export const evidenceRouter = createTRPCRouter({
    * Register an evidence record in the database.
    * Call this after the browser has successfully PUT the file to MinIO.
    */
-  create: managerProcedure
+  create: permissionProcedure("evidence.upload")
     .input(
       z.object({
         controlId: z.string().min(1),
@@ -194,7 +195,7 @@ export const evidenceRouter = createTRPCRouter({
    * control (evidence can satisfy multiple controls); never silently mutates
    * the original. Requires the controlId to be among the stored suggestions.
    */
-  acceptAutoTag: managerProcedure
+  acceptAutoTag: permissionProcedure("evidence.upload")
     .input(z.object({ evidenceId: z.string().min(1), controlId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -261,7 +262,7 @@ export const evidenceRouter = createTRPCRouter({
    * Phase 7 Part 3 — dismiss AI-suggested control associations. Clears the
    * suggestions; persists NO association.
    */
-  rejectAutoTag: managerProcedure
+  rejectAutoTag: permissionProcedure("evidence.upload")
     .input(z.object({ evidenceId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -354,7 +355,7 @@ export const evidenceRouter = createTRPCRouter({
    * Delete evidence: removes the file from MinIO then the database row.
    * Falls back gracefully if the MinIO object is already gone.
    */
-  delete: managerProcedure
+  delete: permissionProcedure("evidence.upload")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const evidence = await ctx.prisma.evidence.findFirst({
@@ -410,7 +411,7 @@ export const evidenceRouter = createTRPCRouter({
    * Scoped to source === "auto" so it can't be used as a generic delete
    * bypass for manually-uploaded evidence (use evidence.delete for that).
    */
-  deleteAuto: managerProcedure
+  deleteAuto: permissionProcedure("evidence.upload")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const evidence = await ctx.prisma.evidence.findFirst({
@@ -445,7 +446,7 @@ export const evidenceRouter = createTRPCRouter({
   /**
    * Update the optional AI-generated summary for an evidence record.
    */
-  updateSummary: managerProcedure
+  updateSummary: permissionProcedure("evidence.upload")
     .input(
       z.object({
         id: z.string().min(1),
@@ -487,7 +488,7 @@ export const evidenceRouter = createTRPCRouter({
    *
    * Returns immediately with { jobId, status: 'QUEUED' }.
    */
-  requestAIMapping: managerProcedure
+  requestAIMapping: permissionProcedure("evidence.upload")
     .input(z.object({ evidenceId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       // Verify the evidence belongs to the caller's organisation
@@ -663,7 +664,7 @@ export const evidenceRouter = createTRPCRouter({
    *
    * Returns: { evidence, control } for the caller to update its cache.
    */
-  acceptMapping: managerProcedure
+  acceptMapping: permissionProcedure("evidence.upload")
     .input(
       z.object({
         evidenceId: z.string().min(1),

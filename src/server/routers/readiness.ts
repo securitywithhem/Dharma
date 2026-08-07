@@ -2,7 +2,8 @@ import { PrismaClient, RecommendationStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { enqueueReadinessRecompute } from "@/server/queue/readinessScoreQueue";
 import type { ScoreBreakdown } from "@/server/services/readinessScoring";
 
@@ -54,7 +55,7 @@ export const readinessRouter = createTRPCRouter({
    * a fresh number now; the shared jobId still prevents a flood of duplicate
    * jobs from rapid repeated clicks (client also enforces a 60s cooldown).
    */
-  recompute: managerProcedure
+  recompute: permissionProcedure("controls.write")
     .input(z.object({ frameworkId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -95,7 +96,7 @@ export const readinessRouter = createTRPCRouter({
     }),
 
   /** Dismiss a recommendation. Emits `RECOMMENDATION_DISMISSED`. */
-  dismissRecommendation: managerProcedure
+  dismissRecommendation: permissionProcedure("controls.write")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;

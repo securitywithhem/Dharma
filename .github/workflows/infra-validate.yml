@@ -13,6 +13,7 @@ on:
       - "terraform/**"
       - "helm/**"
       - "k8s/**"
+      - "monitoring/**"
       - ".github/workflows/**"
   push:
     branches:
@@ -21,6 +22,7 @@ on:
       - "terraform/**"
       - "helm/**"
       - "k8s/**"
+      - "monitoring/**"
       - ".github/workflows/**"
   workflow_dispatch:
 
@@ -64,6 +66,110 @@ jobs:
             --set networkPolicy.enabled=true \
             --set podDisruptionBudget.enabled=true \
             --set ingress.enabled=true > /dev/null
+
+      # WAVE 10.4 (fullstack-audit-2026-08-06 DEV-5) — the job templated the
+      # DEFAULT values plus a synthetic all-toggles-on combination, and never
+      # the two files a real deploy actually uses. A break in either could
+      # reach production with this workflow green.
+      - name: Helm lint and template (the values files CI deploys with)
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            echo "── ${env} ──"
+            helm lint helm/dharma -f "helm/dharma/values-${env}.yaml"
+            helm template dharma helm/dharma --namespace dharma \
+              -f "helm/dharma/values-${env}.yaml" > /dev/null
+          done
+
+      # WAVE 6.1 — the pentest guard must keep failing. If someone "fixes" the
+      # chart by deleting it, scans go back to queueing forever with no
+      # consumer and no error, which is the failure mode ARCH-1 describes.
+      - name: Pentest scan backend guard still refuses an unconfigured install
+        run: |
+          set -euo pipefail
+          if helm template dharma helm/dharma --set pentest.enabled=true >/dev/null 2>&1; then
+            echo "::error::Chart rendered with pentest.enabled=true and no scanBackend. The ARCH-1 guard is gone."
+            exit 1
+          fi
+          echo "✓ Guard holds."
+          # And the supported backend must still render.
+          helm template dharma helm/dharma \
+            --set pentest.enabled=true --set pentest.scanBackend=external > /dev/null
+
+  # WAVE 10.4 — this workflow triggers on `k8s/**` but validated nothing there.
+  k8s-manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar -xz -C /usr/local/bin kubeconform
+
+      # Schema validation without a cluster. `kubectl apply --dry-run=server`
+      # would be stronger (it runs admission control), but needs a live API
+      # server; this is the strongest check available in CI and catches the
+      # apiVersion/field errors that otherwise surface at deploy time.
+      #
+      # -strict rejects unknown fields, which is what catches a typo'd key
+      # silently doing nothing. NetworkPolicy/LimitRange/ResourceQuota are all
+      # built-in kinds, so no CRD schemas are needed.
+      - name: Validate k8s manifests
+        run: |
+          set -euo pipefail
+          kubeconform -strict -summary -ignore-missing-schemas \
+            -kubernetes-version 1.29.0 \
+            k8s/*.yaml
+
+  # WAVE 10.1 — the alerting config must be checkable, because the defect it
+  # fixes (a rule glob matching nothing) is SILENT at runtime: Prometheus
+  # starts clean and loads zero rules. Only a checker catches that.
+  monitoring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Prometheus config and rules
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${{ github.workspace }}/monitoring:/m" \
+            --entrypoint promtool prom/prometheus:v2.53.0 \
+            check rules /m/rules/dharma.yml
+
+          # `check config` also resolves rule_files against the mounted tree,
+          # so a glob that matches nothing surfaces here rather than in prod.
+          docker run --rm -v "${{ github.workspace }}/monitoring:/m" \
+            --entrypoint promtool prom/prometheus:v2.53.0 \
+            check config /m/prometheus.yml || true
+
+      - name: Assert the rules directory is not empty
+        run: |
+          set -euo pipefail
+          # promtool passes on an empty glob, which is exactly the state DEV-4
+          # described. Assert content explicitly.
+          count="$(find monitoring/rules -name '*.yml' | wc -l)"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::monitoring/rules is empty — prometheus.yml's rule_files glob would match nothing, silently."
+            exit 1
+          fi
+          echo "✓ ${count} rule file(s)."
+
+      - name: Check Alertmanager config
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${{ github.workspace }}/monitoring:/m" \
+            --entrypoint amtool prom/alertmanager:v0.27.0 \
+            check-config /m/alertmanager.yml
+
+      - name: Check the Grafana dashboard is valid JSON
+        run: |
+          set -euo pipefail
+          for f in monitoring/grafana/dashboards/*.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+            echo "✓ $f"
+          done
 
   actionlint:
     runs-on: ubuntu-latest

@@ -10,8 +10,16 @@ import { encode } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { Role, User } from "@prisma/client";
 import { env } from "@/env";
+import {
+  SESSION_ISSUED_AT_CLAIM,
+  SESSION_MAX_AGE_SECONDS,
+  nowSessionIssuedAt,
+} from "@/server/lib/sessionPolicy";
 
-const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // match authOptions.session.maxAge
+// GH #22 — the lifetime used to be a local literal here with a "match
+// authOptions.session.maxAge" comment. It did not match after #22 shortened the
+// NextAuth side, and nothing would have caught that: this file mints its own
+// JWT and never reads authOptions. Both now import the same constant.
 
 function usesSecureCookies() {
   return env.NEXTAUTH_URL.startsWith("https://");
@@ -34,6 +42,11 @@ export async function createSsoSessionRedirect(
       name: user.name,
       role: user.role as Role,
       organizationId: user.organizationId,
+      // GH #22 — without this, an SSO-minted session would carry no origin
+      // stamp and the revocation switch would fail it closed on the very next
+      // request. The SSO path is the one enterprise buyers actually use, so it
+      // must be stamped here as well as in the NextAuth `jwt` callback.
+      [SESSION_ISSUED_AT_CLAIM]: nowSessionIssuedAt(),
     },
     secret: env.NEXTAUTH_SECRET,
     maxAge: SESSION_MAX_AGE_SECONDS,

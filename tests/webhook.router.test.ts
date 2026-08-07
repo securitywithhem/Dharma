@@ -4,6 +4,7 @@ process.env.WEBHOOK_ENCRYPTION_KEY =
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import { PrismaClient, Role } from "@prisma/client";
+import { seedRoleUser } from "./fixtures/seedRoleUser";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc";
 import { TRPCError } from "@trpc/server";
 
@@ -107,7 +108,8 @@ describe("webhook router", () => {
   });
 
   it("enforces RBAC — a VIEWER cannot create a webhook", async () => {
-    const caller = createCaller(orgA.org.id, orgA.user.id, Role.VIEWER);
+    const viewer = await seedRoleUser(prisma, orgA.org.id, Role.VIEWER, "webhook");
+    const caller = createCaller(orgA.org.id, viewer.id, Role.VIEWER);
     await expect(
       caller.webhook.create({ url: "https://example.com/hook", events: ["evidence.updated"] }),
     ).rejects.toThrow();

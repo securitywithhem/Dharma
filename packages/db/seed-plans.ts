@@ -5,16 +5,15 @@ const prisma = new PrismaClient();
 // Phase 3c — plans carry BOTH providers' identifiers.
 //
 // A Razorpay Plan ID (plan_…) is its own object with its own amount and
-// currency, created in the Razorpay dashboard or API. It is NOT interchangeable
-// with a Stripe Price ID (price_…), so it gets its own column and its own env
+// currency, created in the Razorpay dashboard or API. It gets its own env
 // var. A row can hold both, which is what lets one plan be sold through either
 // provider without a re-seed when the deployment switches.
 //
-// `currency` matters: Razorpay India sells in INR while these prices were
-// originally authored in USD. Set BILLING_CURRENCY=INR (and real INR amounts
-// below) when seeding for the Razorpay path, or the UI will render a rupee
+// `currency` matters: Razorpay India sells in INR. The default amounts below
+// are placeholders authored in USD — override BILLING_PRICE_* with real INR
+// amounts when seeding for real sales, or the UI will render a rupee
 // plan with a dollar sign.
-const currency = process.env.BILLING_CURRENCY || 'USD';
+const currency = process.env.BILLING_CURRENCY || 'INR';
 
 async function main() {
   // Create Free plan
@@ -22,7 +21,6 @@ async function main() {
     where: { name: 'free' },
     update: {
       displayName: 'Free',
-      stripePriceId: null,
       razorpayPlanId: null,
       price: 0,
       currency,
@@ -41,7 +39,6 @@ async function main() {
     create: {
       name: 'free',
       displayName: 'Free',
-      stripePriceId: null,
       razorpayPlanId: null,
       price: 0,
       currency,
@@ -64,7 +61,6 @@ async function main() {
     where: { name: 'pro' },
     update: {
       displayName: 'Pro',
-      stripePriceId: process.env.STRIPE_PRODUCT_PRO || 'price_test_pro',
       razorpayPlanId: process.env.RAZORPAY_PLAN_PRO || null,
       price: Number(process.env.BILLING_PRICE_PRO ?? 99),
       currency,
@@ -83,7 +79,6 @@ async function main() {
     create: {
       name: 'pro',
       displayName: 'Pro',
-      stripePriceId: process.env.STRIPE_PRODUCT_PRO || 'price_test_pro',
       razorpayPlanId: process.env.RAZORPAY_PLAN_PRO || null,
       price: Number(process.env.BILLING_PRICE_PRO ?? 99),
       currency,
@@ -106,7 +101,6 @@ async function main() {
     where: { name: 'enterprise' },
     update: {
       displayName: 'Enterprise',
-      stripePriceId: process.env.STRIPE_PRODUCT_ENTERPRISE || 'price_test_enterprise',
       razorpayPlanId: process.env.RAZORPAY_PLAN_ENTERPRISE || null,
       price: Number(process.env.BILLING_PRICE_ENTERPRISE ?? 999),
       currency,
@@ -127,7 +121,6 @@ async function main() {
     create: {
       name: 'enterprise',
       displayName: 'Enterprise',
-      stripePriceId: process.env.STRIPE_PRODUCT_ENTERPRISE || 'price_test_enterprise',
       razorpayPlanId: process.env.RAZORPAY_PLAN_ENTERPRISE || null,
       price: Number(process.env.BILLING_PRICE_ENTERPRISE ?? 999),
       currency,

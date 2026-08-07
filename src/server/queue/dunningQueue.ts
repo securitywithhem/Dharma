@@ -1,7 +1,7 @@
 // Phase 3b — dunning queue.
 //
 // Two job kinds share this queue:
-//   - "notify"  : enqueued by the Stripe webhook on invoice.payment_failed.
+//   - "notify"  : enqueued by the Razorpay webhook on a failed charge.
 //   - "sweep"   : repeatable daily job that acts on orgs whose grace period
 //                 has elapsed. A sweep rather than a delayed per-org job so a
 //                 recovered payment simply drops out of the query, instead of
@@ -14,8 +14,8 @@ export const DUNNING_QUEUE_NAME = "dunning-notification";
 /**
  * Grace period between the first failed payment and an automatic downgrade.
  *
- * 14 days is chosen to sit just past Stripe's default Smart Retries schedule
- * (~4 attempts across ~2 weeks), so we never downgrade an org while Stripe is
+ * 14 days is chosen to sit just past Razorpay's own retry schedule
+ * (~2 weeks before it halts a subscription), so we never downgrade an org while Razorpay is
  * still trying to collect. Product-owner decision, 2026-08-03.
  */
 export const DUNNING_GRACE_PERIOD_DAYS = 14;

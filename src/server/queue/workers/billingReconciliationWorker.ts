@@ -1,14 +1,10 @@
 // Phase 3b/3c — billing reconciliation worker.
 //
-// Daily drift correction between local billing state and the payment provider.
-// The provider is the source of truth for what a customer is actually paying
+// Daily drift correction between local billing state and Razorpay.
+// Razorpay is the source of truth for what a customer is actually paying
 // for; this worker only ever moves local state toward it, never the reverse.
 //
-// Phase 3c made it provider-aware. It reconciles EVERY org that has a
-// subscription with either provider, resolving the adapter per org rather than
-// per deployment — an org still on Stripe must keep being reconciled against
-// Stripe after the default switched to Razorpay, or its drift goes uncorrected
-// forever. The correction logic itself is provider-independent and unchanged.
+// It reconciles every org that has a Razorpay subscription.
 //
 // Every correction is logged AND audited: a plan silently changing underneath
 // a customer is exactly the kind of event this product exists to make
@@ -19,14 +15,14 @@ import { PrismaClient } from "@prisma/client";
 import { env } from "@/env";
 import { prisma as sharedPrisma } from "@/server/db";
 import { emitAuditEvent } from "@/server/services/audit/writer";
-import { providerFor } from "@/server/services/payments";
+import { razorpayProvider } from "@/server/services/payments";
 import {
   BILLING_RECONCILIATION_QUEUE_NAME,
   type BillingReconciliationJobData,
 } from "@/server/queue/billingReconciliationQueue";
 import { logger } from "@/lib/logger";
 
-/** Processed-event rows older than this are pruned; Stripe never retries that long. */
+/** Processed-event rows older than this are pruned; Razorpay retries for 24h. */
 export const WEBHOOK_LEDGER_RETENTION_DAYS = 30;
 
 function redisConnection() {
@@ -40,24 +36,16 @@ function redisConnection() {
   };
 }
 
-// Status mapping lives in each provider's adapter and is shared with the
-// webhook receiver — the two must never disagree about what a status means.
+// Status mapping lives in mapRazorpayStatus and is shared with the webhook
+// receiver — the two must never disagree about what a status means.
 
 export function createBillingReconciliationProcessor(prisma: PrismaClient) {
   return async (_job: Job<BillingReconciliationJobData>) => {
     const orgs = await prisma.organization.findMany({
-      where: {
-        OR: [
-          { stripeSubscriptionId: { not: null } },
-          { razorpaySubscriptionId: { not: null } },
-        ],
-      },
+      where: { razorpaySubscriptionId: { not: null } },
       select: {
         id: true,
         planId: true,
-        paymentProvider: true,
-        stripeCustomerId: true,
-        stripeSubscriptionId: true,
         razorpayCustomerId: true,
         razorpaySubscriptionId: true,
         subscriptionStatus: true,
@@ -68,11 +56,7 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
     let corrected = 0;
 
     for (const org of orgs) {
-      const provider = providerFor(org);
-      const subscriptionId =
-        provider.name === "stripe"
-          ? org.stripeSubscriptionId
-          : org.razorpaySubscriptionId;
+      const subscriptionId = org.razorpaySubscriptionId;
 
       if (!subscriptionId) continue;
 
@@ -81,10 +65,10 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
         // The adapter contract: null means the provider CONFIRMED the
         // subscription is gone; a throw means we could not find out. Only the
         // first is safe to act on.
-        subscription = await provider.getSubscription(subscriptionId);
+        subscription = await razorpayProvider.getSubscription(subscriptionId);
       } catch (err) {
         logger.error(
-          { err, organizationId: org.id, provider: provider.name },
+          { err, organizationId: org.id },
           "reconciliation: could not retrieve subscription — leaving local state untouched",
         );
         continue;
@@ -105,11 +89,7 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
           where: { id: org.id },
           data: {
             planId: freePlan.id,
-            // Clear only the provider's own column — the other provider's
-            // historical link is not drift and must survive.
-            ...(provider.name === "stripe"
-              ? { stripeSubscriptionId: null }
-              : { razorpaySubscriptionId: null }),
+            razorpaySubscriptionId: null,
             subscriptionStatus: "CANCELED",
             dunningStartedAt: null,
           },
@@ -121,8 +101,7 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
           entity: "Organization",
           entityId: org.id,
           changes: {
-            provider: provider.name,
-            reason: "subscription missing at provider",
+            reason: "subscription missing at Razorpay",
             from: { planId: org.planId },
             to: { planId: freePlan.id, planName: "free" },
           },
@@ -133,7 +112,7 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
 
       const plan = subscription.planExternalId
         ? await prisma.plan.findFirst({
-            where: provider.planWhereExternalId(subscription.planExternalId),
+            where: razorpayProvider.planWhereExternalId(subscription.planExternalId),
           })
         : null;
       const status = subscription.status;
@@ -157,7 +136,6 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
         entity: "Organization",
         entityId: org.id,
         changes: {
-          provider: provider.name,
           reason: "local state drifted from the payment provider",
           from: { planId: org.planId, subscriptionStatus: org.subscriptionStatus },
           to: {
@@ -168,7 +146,7 @@ export function createBillingReconciliationProcessor(prisma: PrismaClient) {
       });
 
       logger.warn(
-        { organizationId: org.id, provider: provider.name, planDrifted, statusDrifted },
+        { organizationId: org.id, planDrifted, statusDrifted },
         "reconciliation: corrected billing drift — check webhook delivery health",
       );
       corrected += 1;

@@ -5,8 +5,8 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TRPCReactProvider } from "@/hooks/trpc";
-// StripeProvider is deliberately NOT mounted here. Mounting it app-wide made
-// every route load js.stripe.com on first paint, for a context no component
+// Payment SDKs are deliberately NOT mounted here. Mounting one app-wide makes
+// every route load a third-party script on first paint, for a context no component
 // outside billing consumes. Billing screens wrap themselves in it instead.
 
 export function Providers({

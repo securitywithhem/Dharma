@@ -92,6 +92,96 @@ const envSchema = z.object({
   PENTEST_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
 });
 
-export const env = envSchema.parse(process.env);
+// ── Production placeholder guard ────────────────────────────────────────────
+// Every secret above keeps a development default so `npm run dev` and the test
+// suite work with no env file. That convenience is a production footgun: a
+// deploy that forgets to set NEXTAUTH_SECRET or MINIO_SECRET_KEY would boot
+// happily on a publicly-known value rather than failing. docker-compose.yml
+// already refuses to start on unset secrets (`${VAR:?...}`); this is the same
+// discipline enforced in-process, for deploys that don't go through compose
+// (k8s/helm, `next start` on a host, CI images).
+//
+// Deliberately a deny-list of the exact shipped defaults rather than "reject
+// anything short": operators may legitimately choose a value we'd otherwise
+// consider weak, but nobody legitimately chooses the string we published.
+const INSECURE_DEFAULTS: Record<string, readonly string[]> = {
+  DATABASE_URL: [
+    "postgresql://dharma:dharma_secure_password_change_me@localhost:5432/dharma_db?schema=public",
+  ],
+  NEXTAUTH_SECRET: ["replace-with-a-random-32-character-secret"],
+  MINIO_ACCESS_KEY: ["minioadmin"],
+  MINIO_SECRET_KEY: ["minioadmin", "minioadmin_change_me"],
+  ANCHOR_STORAGE_ACCESS_KEY: ["minioadmin"],
+  ANCHOR_STORAGE_SECRET_KEY: ["minioadmin", "minioadmin_change_me"],
+  CONNECTOR_ENCRYPTION_KEY: ["change-me-32-char-key-for-connectors"],
+  WEBHOOK_ENCRYPTION_KEY: ["change-me-32-char-key-for-webhooks"],
+};
+
+// WAVE 10.5 (fullstack-audit-2026-08-06 DEV-6) — the Helm chart's placeholder
+// vocabulary.
+//
+// The deny-list above covers the exact strings shipped in envs/.env.example.
+// helm/dharma/values.yaml ships a DIFFERENT set: `nextauthSecret: "CHANGE_ME"`,
+// `databaseUrl: "postgresql://dharma:CHANGE_ME@postgres:5432/…"`. None of them
+// matched, so `helm install` at default values with `secrets.create: true`
+// booted happily in production with NEXTAUTH_SECRET=CHANGE_ME. CI's own path
+// was already safe (staging/production set `secrets.create: false` and CI
+// preflights the Secret) — this closes the manual-install path.
+//
+// A SUBSTRING check, unlike everything above, and deliberately so: CHANGE_ME
+// appears embedded in a connection URL, so an exact match would miss an
+// operator who set a real host and left the placeholder password. The
+// exact-match discipline exists so we never reject a value an operator
+// legitimately chose — and "CHANGE_ME" is a token we publish precisely to be
+// replaced, so nobody legitimately chooses it inside a secret.
+const PLACEHOLDER_TOKENS = ["CHANGE_ME"] as const;
+
+const PLACEHOLDER_SCANNED_KEYS = [
+  "DATABASE_URL",
+  "REDIS_URL",
+  "NEXTAUTH_SECRET",
+  "MINIO_ACCESS_KEY",
+  "MINIO_SECRET_KEY",
+  "ANCHOR_STORAGE_ACCESS_KEY",
+  "ANCHOR_STORAGE_SECRET_KEY",
+  "CONNECTOR_ENCRYPTION_KEY",
+  "WEBHOOK_ENCRYPTION_KEY",
+] as const;
+
+function assertNoInsecureDefaults(parsed: Record<string, unknown>): void {
+  if (parsed.NODE_ENV !== "production") return;
+
+  // `next build` evaluates route modules to collect page data, with NODE_ENV
+  // already set to "production". That is a COMPILE, not a boot: the build host
+  // legitimately has no production secrets, and failing here makes the image
+  // unbuildable rather than making the deployment safer. The check that
+  // actually matters still runs when the built server starts, where the
+  // secrets are real and a placeholder is a genuine incident.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+
+  const exactOffenders = Object.entries(INSECURE_DEFAULTS)
+    .filter(([key, bad]) => bad.includes(String(parsed[key] ?? "")))
+    .map(([key]) => key);
+
+  const placeholderOffenders = PLACEHOLDER_SCANNED_KEYS.filter((key) => {
+    const value = String(parsed[key] ?? "");
+    return value !== "" && PLACEHOLDER_TOKENS.some((token) => value.includes(token));
+  });
+
+  const offenders = Array.from(new Set([...exactOffenders, ...placeholderOffenders]));
+
+  if (offenders.length > 0) {
+    throw new Error(
+      `Refusing to start in production with shipped placeholder secrets: ` +
+        `${offenders.join(", ")}. Set each to a unique generated value ` +
+        `(see envs/.env.example) before deploying.`,
+    );
+  }
+}
+
+const parsedEnv = envSchema.parse(process.env);
+assertNoInsecureDefaults(parsedEnv as unknown as Record<string, unknown>);
+
+export const env = parsedEnv;
 
 export type AppEnv = typeof env;

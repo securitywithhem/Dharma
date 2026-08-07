@@ -3,7 +3,9 @@ import path from "path";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { enqueueControlEmbeddingsSafely } from "@/server/services/controlEmbeddingEnqueue";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 
 // ------------------------------------------------------------------
 // Types
@@ -195,7 +197,7 @@ export const frameworkRouter = createTRPCRouter({
    * Create a new framework for the organization.
    * If the name matches a predefined framework, seed its controls automatically.
    */
-  create: managerProcedure
+  create: permissionProcedure("controls.write")
     .input(
       z.object({
         name: z.string().min(2).max(120),
@@ -265,6 +267,15 @@ export const frameworkRouter = createTRPCRouter({
           where: { frameworkId: framework.id },
           orderBy: [{ domain: "asc" }, { title: "asc" }],
         });
+
+        // Embed the seeded controls so cross-walk AI suggestions work on them.
+        // Previously only control.createChild enqueued embeddings, so every
+        // control created this way had `embedding IS NULL` and suggestMappings
+        // — which filters on IS NOT NULL — always returned nothing.
+        //
+        // Deliberately not awaited: embedding is slow, best-effort, and must
+        // never delay or fail framework creation.
+        void enqueueControlEmbeddingsSafely(controls.map((c) => c.id));
       }
 
       await createAuditLog(ctx.prisma, {
@@ -286,7 +297,7 @@ export const frameworkRouter = createTRPCRouter({
   /**
    * Update framework metadata (name, description, version).
    */
-  update: managerProcedure
+  update: permissionProcedure("controls.write")
     .input(
       z.object({
         id: z.string().min(1),

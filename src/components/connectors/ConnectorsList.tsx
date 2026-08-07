@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useConnectors } from '@/lib/hooks/useConnectors';
 import { EvidenceMappingBoard } from './EvidenceMappingBoard';
@@ -45,7 +46,7 @@ function StatusDot({ status }: { status: string }) {
 export function ConnectorsList() {
   const [expandedConnectorId, setExpandedConnectorId] = useState<string | null>(null);
   const { listQuery, deleteMutation, testConnectionMutation } = useConnectors();
-  const { data: connectors, isLoading } = listQuery;
+  const { data: connectors, isLoading, isError, error, refetch } = listQuery;
 
   const handleDelete = async (id: string) => {
     try {
@@ -63,6 +64,19 @@ export function ConnectorsList() {
           <Skeleton key={i} className="h-36 w-full rounded-lg" />
         ))}
       </div>
+    );
+  }
+
+  // WAVE 9.2 (§6 HIGH-1): without this, a failed request fell through to
+  // `connectors ?? []` and rendered as "no connectors configured" — telling the
+  // user their integrations are absent when in fact we could not ask.
+  if (isError) {
+    return (
+      <QueryError
+        title="Failed to load connectors"
+        message={error?.message}
+        onRetry={() => refetch()}
+      />
     );
   }
 

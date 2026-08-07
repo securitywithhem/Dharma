@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { api as trpc } from "@/lib/trpc";
+import { QueryError } from "@/components/ui/query-error";
 import { MarketplaceGrid } from "@/components/marketplace/MarketplaceGrid";
 import { MarketplaceSidebar } from "@/components/marketplace/MarketplaceSidebar";
 import { Loader2 } from "lucide-react";
@@ -18,6 +19,9 @@ export default function MarketplacePage() {
   const {
     data: itemsData,
     isLoading,
+    isError,
+    error,
+    refetch,
   } = trpc.marketplace.getPublicItems.useQuery(
     {
       take: 20,
@@ -83,7 +87,15 @@ export default function MarketplacePage() {
                 )}
               </div>
 
-              {isLoading ? (
+              {/* WAVE 9.2 (§6 HIGH-1) — a failed request rendered as an empty
+                  catalogue, i.e. "there is nothing to import". */}
+              {isError ? (
+                <QueryError
+                  title="Failed to load the marketplace"
+                  message={error?.message}
+                  onRetry={() => refetch()}
+                />
+              ) : isLoading ? (
                 <div className="flex justify-center items-center py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-dharma-accent-on-tint" />
                 </div>

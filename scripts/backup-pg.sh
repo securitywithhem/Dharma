@@ -49,6 +49,14 @@ echo "---------------------------------------------"
 # ── Run pg_dump ────────────────────────────────────────────────────────────
 export PGPASSWORD="${PG_PASSWORD}"
 
+# `--verbose` writes progress to STDERR while the dump itself goes to STDOUT.
+# This used to be `2>&1 | tee ... | gzip`, which merged the progress log INTO
+# the dump — a verified 460 lines of "pg_dump: reading schemas" ended up inside
+# the compressed SQL. restore-pg.sh runs psql with ON_ERROR_STOP=1, so every
+# such backup aborted on restore. Keep the streams separate: dump to gzip,
+# progress to a sidecar log.
+LOG_FILE="${BACKUP_FILE%.sql.gz}.log"
+
 pg_dump \
   --host="${PG_HOST}" \
   --port="${PG_PORT}" \
@@ -57,14 +65,35 @@ pg_dump \
   --format=plain \
   --no-password \
   --verbose \
-  2>&1 | tee >(grep -v "^$" >&2) \
+  2>"${LOG_FILE}" \
   | gzip -9 > "${BACKUP_FILE}"
 
+# pipefail is set, so ${PIPESTATUS[0]} being non-zero already aborts above.
 unset PGPASSWORD
 
 # ── Verify ─────────────────────────────────────────────────────────────────
 if [ ! -f "${BACKUP_FILE}" ] || [ ! -s "${BACKUP_FILE}" ]; then
   echo "❌ ERROR: Backup file is missing or empty: ${BACKUP_FILE}"
+  exit 1
+fi
+
+# Integrity gate: a dump that isn't valid gzip, or that doesn't carry
+# pg_dump's own end-of-dump marker, is truncated — fail now rather than
+# discovering it during an incident.
+if ! gzip -t "${BACKUP_FILE}" 2>/dev/null; then
+  echo "❌ ERROR: Backup is not a valid gzip stream: ${BACKUP_FILE}"
+  exit 1
+fi
+
+if ! gunzip -c "${BACKUP_FILE}" | tail -20 | grep -q "PostgreSQL database dump complete"; then
+  echo "❌ ERROR: Backup is truncated (no end-of-dump marker): ${BACKUP_FILE}"
+  exit 1
+fi
+
+# Guard against the exact regression fixed above.
+STRAY=$(gunzip -c "${BACKUP_FILE}" | grep -c "^pg_dump:" || true)
+if [ "${STRAY}" -gt 0 ]; then
+  echo "❌ ERROR: ${STRAY} pg_dump progress lines leaked into the SQL dump."
   exit 1
 fi
 

@@ -103,6 +103,29 @@ jobs:
 
       - run: npm ci
       - run: npx prisma migrate deploy --schema packages/db/schema.prisma
+
+      # Tenant isolation is the one invariant that must never regress: a
+      # failure here means one customer's org can read another's. It runs
+      # again as part of the full suite below, but as its OWN required check
+      # so it can't be lost in a 900-line log, and so the branch protection
+      # rule can name it explicitly.
+      #
+      # --listTests asserts the file is still collected at all: renaming it,
+      # or wrapping it in describe.skip, would otherwise turn this gate into a
+      # silent no-op that still reports green.
+      - name: Tenant isolation tests (must pass)
+        run: |
+          set -euo pipefail
+          # grep -c, not wc -l: jest --listTests emits a trailing blank line
+          # even when it matches nothing, so `wc -l` reports 1 for a suite
+          # that no longer exists and the guard passes vacuously.
+          COLLECTED=$(npx dotenv -e envs/.env.test -- jest --listTests tests/phase8-tenant-isolation.test.ts 2>/dev/null | grep -c 'phase8-tenant-isolation\.test\.ts' || true)
+          if [ "$COLLECTED" -eq 0 ]; then
+            echo "::error::tenant-isolation suite is no longer collected by jest"
+            exit 1
+          fi
+          npx dotenv -e envs/.env.test -- jest tests/phase8-tenant-isolation.test.ts --forceExit
+
       # --forceExit: suites that import routers pull in BullMQ queues whose
       # Redis connections keep the event loop alive, hanging jest forever.
       - run: npm test -- --forceExit
@@ -148,10 +171,20 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
           # The two {{branch}}-based tags are push-only: {{branch}} is empty on
           # pull_request (merge ref) and would render an invalid ":-<sha>" tag.
+          #
+          # The immutable tag is built from the SAME GitHub expressions the scan
+          # and deploy jobs use — `${{ github.ref_name }}-${{ github.sha }}` —
+          # rather than metadata-action's `{{branch}}-{{sha}}`. Those are NOT
+          # equivalent: `{{sha}}` renders the SHORT (7-char) sha, so this pushed
+          # `main-049026b` while every consumer asked for
+          # `main-049026b0c3a2...` and got MANIFEST_UNKNOWN. Deriving both sides
+          # from one expression is what makes the tag actually immutable and
+          # actually resolvable. `type=sha` below still publishes the short form
+          # as a convenience alias.
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=raw,value={{branch}}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ github.ref_name }}-${{ github.sha }},enable=${{ github.event_name != 'pull_request' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}
@@ -178,6 +211,10 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # Trivy pulls the just-built image from ghcr.io, which is private.
+      # Without this the scan job's GITHUB_TOKEN has no pull scope and the
+      # registry returns "UNAUTHORIZED: authentication required".
+      packages: read
     strategy:
       matrix:
         include:
@@ -188,14 +225,88 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run Trivy vulnerability scanner
+      # The scan job runs on a DIFFERENT runner than build, so the image is not
+      # in this machine's local docker daemon — Trivy has to fetch it from the
+      # registry, and therefore has to be logged in. Mirrors the build job's
+      # login step. This was masked until the image name was lowercased: the
+      # reference failed to parse before Trivy ever attempted a pull.
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # IMAGE_NAME is ${{ github.repository }} — "securitywithhem/Dharma", with a
+      # capital D. OCI reference names must be lowercase, so interpolating it raw
+      # produced an unparseable image-ref and this scan had NEVER run:
+      #   could not parse reference: ghcr.io/securitywithhem/Dharma-worker:...
+      # The build job did not hit this because docker/metadata-action lowercases
+      # the name for you; every place that builds a reference by hand must do it
+      # explicitly. Consequence beyond the scan itself: deploy-production is
+      # `needs: [build, scan]`, so a permanently-failing scan had also blocked
+      # every production deploy.
+      # A step output rather than $GITHUB_ENV: both work at runtime, but an
+      # output is statically resolvable, so editors and actionlint can verify
+      # the reference instead of warning on it.
+      - name: Resolve lowercase image name
+        id: image
+        run: echo "name=$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      # Two Trivy steps on purpose. `format: sarif` reports every severity and
+      # must never fail the job, otherwise a single CRITICAL would abort the run
+      # before the report is written and there would be nothing to read. The
+      # gate below is a second, cached pass whose only job is the exit code.
+      - name: Run Trivy vulnerability scanner (report)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
           format: "sarif"
           output: "trivy-results.sarif"
+          exit-code: "0"
 
-      - uses: github/codeql-action/upload-sarif@v2
+      # The actual gate. CRITICAL only, and ignore-unfixed, deliberately:
+      # node/alpine base images routinely carry unfixed HIGH (and some
+      # unfixable CRITICAL) CVEs, and a gate that fails on things nobody can
+      # act on gets routed around within a week — which is worse than no gate,
+      # because it also teaches people to ignore the ones that matter.
+      #
+      # Runs after the report step so a failure here still leaves the SARIF
+      # artifact uploaded below (`if: always()`).
+      - name: Fail on unpatched CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}${{ matrix.suffix }}:${{ github.ref_name }}-${{ github.sha }}
+          format: "table"
+          severity: "CRITICAL"
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # Always retrievable, with or without Advanced Security. Without this the
+      # scan runs and its results go nowhere on this repo (see below).
+      - name: Upload SARIF as a build artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-${{ matrix.service }}-sarif
+          path: trivy-results.sarif
+          retention-days: 30
+
+      # Publishing to the Security tab requires GitHub Advanced Security on a
+      # PRIVATE repository. This repo is private and does not have code scanning
+      # enabled, so this step returned "Resource not accessible by integration"
+      # and failed the job — which in turn blocked deploy-production, since that
+      # is `needs: [build, scan]`.
+      #
+      # Gated on an explicit repo variable rather than continue-on-error: a
+      # swallowed failure here would mean nobody notices the day uploads break
+      # for a real reason. To turn it on, enable Advanced Security / code
+      # scanning and set the repo variable ENABLE_CODE_SCANNING=true.
+      #
+      # Bumped v2 -> v3 at the same time: v2 is deprecated and already emits an
+      # error-annotation on every run.
+      - name: Upload SARIF to code scanning
+        if: vars.ENABLE_CODE_SCANNING == 'true'
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
           category: trivy-${{ matrix.service }}
@@ -206,7 +317,18 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: [build, scan]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    # vars.ENABLE_K8S_DEPLOY gates the Kubernetes deploy jobs.
+    #
+    # Until 848d430 these jobs had never actually run — the scan job they
+    # depend on failed on every commit — so nothing had ever exercised them.
+    # The moment the scan was fixed they ran for the first time and failed:
+    # there is no kubeconfig secret on this repo, in any environment.
+    #
+    # Skipping is the honest default. A job that cannot deploy should not
+    # report red forever, and it must certainly not report GREEN having
+    # deployed nothing. To enable: add the kubeconfig secret to the
+    # environment and set the repo variable ENABLE_K8S_DEPLOY=true.
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push' && vars.ENABLE_K8S_DEPLOY == 'true'
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -215,26 +337,73 @@ jobs:
         with:
           version: "latest"
 
+      # Fail HERE, with a usable message, rather than three steps later.
+      # Previously an unset secret produced an empty ~/.kube/config, this step
+      # exited 0, and the first kubectl call died with
+      #   "The connection to the server localhost:8080 was refused"
+      # — kubectl's default when it has no cluster configured, which reads like
+      # a networking fault rather than a missing credential.
       - name: Configure kubectl
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_STAGING }}
         run: |
+          set -euo pipefail
+          if [ -z "${KUBE_CONFIG}" ]; then
+            echo "::error::KUBE_CONFIG_STAGING is not set. Add the base64-encoded kubeconfig as a secret on the 'staging' environment (or unset vars.ENABLE_K8S_DEPLOY to skip deploys)."
+            exit 1
+          fi
           mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > "$HOME/.kube/config"
+          printf '%s' "${KUBE_CONFIG}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
+          # Proves the credential actually works before we start mutating
+          # deployments, instead of discovering it mid-rollout.
+          kubectl config current-context
+          kubectl version --request-timeout=15s
 
-      - name: Update images in staging
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.15.3"
+
+      # Fails fast, before Helm touches anything, if the Sealed-Secrets-managed
+      # Secret this release reads from was never applied to this cluster.
+      # `helm upgrade` does not create it (secrets.existingSecret in
+      # values-staging.yaml) -- without this check, a missing Secret shows up
+      # as pods crashlooping on a missing DATABASE_URL instead of a clear
+      # error here. See docs/ops/secrets-management.md.
+      - name: Verify application secret exists
+        run: |
+          set -euo pipefail
+          if ! kubectl get secret dharma-app-secrets -n dharma >/dev/null 2>&1; then
+            echo "::error::Secret 'dharma-app-secrets' not found in namespace 'dharma'. Apply the SealedSecret first -- see docs/ops/secrets-management.md."
+            exit 1
+          fi
+
+      # Same lowercase requirement as the scan job — see the comment there.
+      # kubectl would reject "ghcr.io/securitywithhem/Dharma:tag" as an invalid
+      # reference, so this was latently broken here too.
+      #
+      # Replaces the old `kubectl set image deployment/nextjs|worker`. That
+      # only worked against the raw k8s/nextjs.yaml manifest (Deployments
+      # literally named "nextjs"/"worker") and would silently 404 against a
+      # Helm-installed release, whose Deployments are named
+      # "dharma-app"/"dharma-worker" — see k8s/nextjs.yaml's deprecation
+      # banner. `helm upgrade --install --atomic` is also idempotent against a
+      # cluster that has never seen this release before, and rolls back
+      # automatically if the new pods never become healthy within --timeout,
+      # which `kubectl set image` + a separate rollout-status check did not.
+      - name: Deploy via Helm
         run: |
           IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
-          kubectl set image deployment/nextjs \
-            "nextjs=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}" \
-            -n dharma
-          kubectl set image deployment/worker \
-            "worker=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker:${IMAGE_TAG}" \
-            -n dharma
-
-      - name: Wait for rollout
-        run: |
-          kubectl rollout status deployment/nextjs -n dharma --timeout=5m
-          kubectl rollout status deployment/worker -n dharma --timeout=5m
+          IMAGE_NAME_LC="$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          helm upgrade --install dharma ./helm/dharma \
+            --namespace dharma --create-namespace \
+            -f ./helm/dharma/values-staging.yaml \
+            --set app.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}" \
+            --set app.image.tag="${IMAGE_TAG}" \
+            --set worker.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker" \
+            --set worker.image.tag="${IMAGE_TAG}" \
+            --wait --timeout 5m --atomic
 
   # ============================================================
   # STAGE 6: Deploy to Kubernetes (Production)
@@ -242,7 +411,8 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: [build, scan]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Gated on vars.ENABLE_K8S_DEPLOY — see the staging job's note.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.ENABLE_K8S_DEPLOY == 'true'
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -251,44 +421,116 @@ jobs:
         with:
           version: "latest"
 
+      # See the staging job's note — same fail-fast rationale.
       - name: Configure kubectl
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
         run: |
+          set -euo pipefail
+          if [ -z "${KUBE_CONFIG}" ]; then
+            echo "::error::KUBE_CONFIG_PRODUCTION is not set. Add the base64-encoded kubeconfig as a secret on the 'production' environment (or unset vars.ENABLE_K8S_DEPLOY to skip deploys)."
+            exit 1
+          fi
           mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > "$HOME/.kube/config"
+          printf '%s' "${KUBE_CONFIG}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
+          kubectl config current-context
+          kubectl version --request-timeout=15s
 
-      - name: Update images in production
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.15.3"
+
+      - name: Verify application secret exists
+        run: |
+          set -euo pipefail
+          if ! kubectl get secret dharma-app-secrets -n dharma >/dev/null 2>&1; then
+            echo "::error::Secret 'dharma-app-secrets' not found in namespace 'dharma'. Apply the SealedSecret first -- see docs/ops/secrets-management.md."
+            exit 1
+          fi
+
+      # Same lowercase requirement as the scan job — see the comment there.
+      # Replaces the old `kubectl set image` — see the staging job's note for
+      # the full rationale (name mismatch against a Helm release, no rollback).
+      - name: Deploy via Helm
         run: |
           IMAGE_TAG="${{ github.ref_name }}-${{ github.sha }}"
-          kubectl set image deployment/nextjs \
-            "nextjs=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}" \
-            -n dharma
-          kubectl set image deployment/worker \
-            "worker=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker:${IMAGE_TAG}" \
-            -n dharma
+          IMAGE_NAME_LC="$(printf '%s' "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          helm upgrade --install dharma ./helm/dharma \
+            --namespace dharma --create-namespace \
+            -f ./helm/dharma/values-production.yaml \
+            --set app.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}" \
+            --set app.image.tag="${IMAGE_TAG}" \
+            --set worker.image.repository="${{ env.REGISTRY }}/${IMAGE_NAME_LC}-worker" \
+            --set worker.image.tag="${IMAGE_TAG}" \
+            --wait --timeout 5m --atomic
 
-      - name: Wait for rollout
-        run: |
-          kubectl rollout status deployment/nextjs -n dharma --timeout=5m
-          kubectl rollout status deployment/worker -n dharma --timeout=5m
-
+      # WAVE 6.3 — these two lines still addressed the deleted raw-manifest
+      # resource names. The Helm chart names its Deployments dharma-app /
+      # dharma-worker and labels pods `app.kubernetes.io/name: dharma`, so:
+      #   * `describe deployment nextjs` exited non-zero with NotFound and
+      #     failed the job AFTER a successful production rollout, and
+      #   * `get pods -l app=nextjs` exited 0 printing nothing — a check that
+      #     looked like it passed while verifying nothing at all, which is the
+      #     worse of the two.
+      # Names are derived from the release rather than hardcoded, so a
+      # nameOverride/fullnameOverride change cannot desynchronise this again.
       - name: Verify deployment
         run: |
-          kubectl get pods -n dharma -l app=nextjs
-          kubectl describe deployment nextjs -n dharma
+          set -euo pipefail
+          APP_DEPLOYMENT="dharma-app"
+          WORKER_DEPLOYMENT="dharma-worker"
 
+          kubectl get pods -n dharma -l app.kubernetes.io/name=dharma
+          kubectl rollout status "deployment/${APP_DEPLOYMENT}" -n dharma --timeout=2m
+          kubectl rollout status "deployment/${WORKER_DEPLOYMENT}" -n dharma --timeout=2m
+
+          # Assert the label selector actually matched something. Without this
+          # the `get pods` above is decorative: it exits 0 on an empty result.
+          READY="$(kubectl get pods -n dharma -l app.kubernetes.io/name=dharma \
+            --field-selector=status.phase=Running -o name | wc -l | tr -d ' ')"
+          if [ "$READY" -eq 0 ]; then
+            echo "::error::No running pods matched app.kubernetes.io/name=dharma in namespace dharma."
+            exit 1
+          fi
+          echo "✓ ${READY} running pod(s) matched."
+
+      # WAVE 6.3 — the host was hardcoded to the placeholder
+      # `https://dharma.example.com`, matching the unreplaced placeholder in
+      # values-production.yaml. It either failed permanently or, once DNS was
+      # pointed somewhere, curled a host nobody chose. Now read from a repo
+      # variable, and SKIPPED with a clear log line when unset — a check
+      # against a placeholder domain is worse than an absent one.
       - name: Run smoke tests
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
         run: |
-          NEXTJS_URL="https://dharma.example.com"
-          curl -f -s -o /dev/null -w "%{http_code}" "$NEXTJS_URL/api/health" | grep 200 || exit 1
+          set -euo pipefail
+          if [ -z "${PRODUCTION_URL}" ]; then
+            echo "::warning::Skipping smoke test — repository variable PRODUCTION_URL is not set."
+            echo "Set it to the real production origin (e.g. https://app.example.com) to enable this check."
+            exit 0
+          fi
+          echo "Smoke-testing ${PRODUCTION_URL}/api/health"
+          curl -fsS -o /dev/null -w "%{http_code}" "${PRODUCTION_URL}/api/health" | grep -q 200
 
   # ============================================================
   # STAGE 7: Notify on failure
   # ============================================================
+  # WAVE 10.3 (fullstack-audit-2026-08-06 DEV-7) — this only depended on the two
+  # deploy jobs. When lint/test/build/scan failed, the deploy jobs were SKIPPED
+  # rather than failed, so `if: failure()` never matched and `notify` was
+  # skipped too: a red test on main sent no Slack message at all.
+  #
+  # Depending on every upstream job fixes the graph. `failure()` alone still
+  # would not fire when the deploy jobs are skipped, so the condition also
+  # matches a cancelled/skipped-after-failure run — hence the explicit
+  # `contains(needs.*.result, 'failure')`.
   notify:
     runs-on: ubuntu-latest
-    needs: [deploy-production, deploy-staging]
-    if: failure()
+    needs: [lint, test, build, scan, deploy-production, deploy-staging]
+    if: always() && contains(needs.*.result, 'failure')
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:

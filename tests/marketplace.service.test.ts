@@ -25,7 +25,13 @@ jest.mock("@/lib/redis", () => ({
     get: jest.fn(),
     setex: jest.fn(),
     del: jest.fn(),
-    keys: jest.fn().mockResolvedValue([]),
+    // WAVE 5.2 (BE-8): `keys` is deliberately absent now. Publishing used to
+    // call redis.keys("marketplace:public:*") to clear the list cache; KEYS is
+    // O(keyspace) and blocks the Redis single thread shared by all 14 BullMQ
+    // queues. Invalidation is now an O(1) INCR of a generation counter that
+    // forms part of every list cache key. Leaving `keys` unmocked here means a
+    // regression back to KEYS fails this suite loudly rather than silently.
+    incr: jest.fn().mockResolvedValue(1),
   },
 }));
 
@@ -40,7 +46,7 @@ describe("MarketplaceService", () => {
     (db.marketplaceItem.count as jest.Mock).mockResolvedValue(1);
     (redis.get as jest.Mock).mockResolvedValue(null);
 
-    const result = await MarketplaceService.getPublicItems();
+    const result = await MarketplaceService.getPublicItems(db);
 
     expect(result.items).toEqual(mockItems);
     expect(result.count).toBe(1);
@@ -51,7 +57,7 @@ describe("MarketplaceService", () => {
     const cachedData = { items: [{ id: "2" }], count: 1 };
     (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(cachedData));
 
-    const result = await MarketplaceService.getPublicItems();
+    const result = await MarketplaceService.getPublicItems(db);
 
     expect(result.items).toEqual(cachedData.items);
     expect(db.marketplaceItem.findMany).not.toHaveBeenCalled();
@@ -61,7 +67,7 @@ describe("MarketplaceService", () => {
     const mockItem = { id: "123", name: "New Framework", slug: "new-fw" };
     (db.marketplaceItem.create as jest.Mock).mockResolvedValue(mockItem);
 
-    await MarketplaceService.publishItem("user-1", {
+    await MarketplaceService.publishItem(db, "user-1", {
       type: ItemType.FRAMEWORK,
       name: "New Framework",
       slug: "new-fw",
@@ -72,6 +78,8 @@ describe("MarketplaceService", () => {
     });
 
     expect(db.marketplaceItem.create).toHaveBeenCalled();
-    expect(redis.keys).toHaveBeenCalled();
+    // List cache invalidated by bumping the generation counter, not by KEYS.
+    expect(redis.incr).toHaveBeenCalledWith("marketplace:public:version");
+    expect((redis as unknown as Record<string, unknown>).keys).toBeUndefined();
   });
 });

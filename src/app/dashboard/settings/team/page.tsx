@@ -5,12 +5,13 @@
 // Layout/component vocabulary mirrors the Roles page for consistency.
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { MailPlus, Trash2, Users } from "lucide-react";
+import { LogOut, MailPlus, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
   SelectContent,
@@ -46,8 +47,14 @@ function formatDate(value: Date | string) {
   });
 }
 
+type MemberRef = { id: string; email: string };
+
 export default function TeamSettingsPage() {
   const [page, setPage] = useState(1);
+  // One dialog instance per action serves the whole table — the pending member
+  // is state, not a dialog rendered per row (see ConfirmDialog's header).
+  const [pendingRemove, setPendingRemove] = useState<MemberRef | null>(null);
+  const [pendingRevoke, setPendingRevoke] = useState<MemberRef | null>(null);
   const utils = api.useUtils();
 
   const membersQuery = api.organization.listMembers.useQuery({ page, limit: 25 });
@@ -65,13 +72,24 @@ export default function TeamSettingsPage() {
   const removeMember = api.organization.removeMember.useMutation({
     onSuccess: () => {
       toast.success("Member removed");
+      setPendingRemove(null);
+      invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const revokeUserSessions = api.organization.revokeUserSessions.useMutation({
+    onSuccess: () => {
+      toast.success("Signed out of every device");
+      setPendingRevoke(null);
       invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
 
   const data = membersQuery.data;
-  const isBusy = updateRole.isPending || removeMember.isPending;
+  const isBusy =
+    updateRole.isPending || removeMember.isPending || revokeUserSessions.isPending;
 
   return (
     <div className="space-y-6">
@@ -173,15 +191,38 @@ export default function TeamSettingsPage() {
                         {formatDate(member.joinedAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={isBusy || member.status !== "ACTIVE"}
-                          aria-label={`Remove ${member.email}`}
-                          onClick={() => removeMember.mutate({ userId: member.id })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {/* GH #22 — the per-user offboarding kill-switch.
+                              Separate from removal on purpose: "sign this
+                              person out of everything" is the stolen-laptop
+                              response and must not also deactivate an
+                              employee who still works here. */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isBusy || member.status !== "ACTIVE"}
+                            aria-label={`Sign ${member.email} out of all sessions`}
+                            title="Sign out everywhere"
+                            onClick={() =>
+                              setPendingRevoke({ id: member.id, email: member.email })
+                            }
+                          >
+                            <LogOut className="h-4 w-4" />
+                          </Button>
+                          {/* GH #24 — this used to delete straight from the
+                              click. */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isBusy || member.status !== "ACTIVE"}
+                            aria-label={`Remove ${member.email}`}
+                            onClick={() =>
+                              setPendingRemove({ id: member.id, email: member.email })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -257,6 +298,46 @@ export default function TeamSettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        onOpenChange={(open) => !open && setPendingRemove(null)}
+        title="Remove this member?"
+        description={
+          <>
+            <span className="font-medium">{pendingRemove?.email}</span> loses access
+            immediately and every one of their signed-in devices is cut off on its
+            next request. Their account row is retained, not deleted, so audit-log
+            entries and evidence they uploaded stay attributed to them. This is
+            written to the audit log.
+          </>
+        }
+        confirmLabel={removeMember.isPending ? "Removing…" : "Remove member"}
+        pending={removeMember.isPending}
+        onConfirm={() =>
+          pendingRemove && removeMember.mutate({ userId: pendingRemove.id })
+        }
+      />
+
+      <ConfirmDialog
+        open={pendingRevoke !== null}
+        onOpenChange={(open) => !open && setPendingRevoke(null)}
+        title="Sign this member out everywhere?"
+        description={
+          <>
+            Every signed-in browser and device belonging to{" "}
+            <span className="font-medium">{pendingRevoke?.email}</span> loses access
+            on its next request. Their account stays active — they can sign back in.
+            Use this for a lost device or a suspected credential compromise. This is
+            written to the audit log.
+          </>
+        }
+        confirmLabel={revokeUserSessions.isPending ? "Signing out…" : "Sign out everywhere"}
+        pending={revokeUserSessions.isPending}
+        onConfirm={() =>
+          pendingRevoke && revokeUserSessions.mutate({ userId: pendingRevoke.id })
+        }
+      />
     </div>
   );
 }

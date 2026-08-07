@@ -82,6 +82,27 @@ export function Sidebar({ id, open = true, overlay = false, onNavigate }: Sideba
   // usePathname() is typed nullable during the initial render pass.
   const pathname = usePathname() ?? "/dashboard";
 
+  // WAVE 5.2 — gated sections (MSSP, Publisher, Catalogue Review).
+  //
+  // Branching on `isSuccess && data?.x` rather than `data?.x ?? fallback`: the
+  // fallback form is the permission-gating anti-pattern WAVE 2.3 removed, and
+  // here it would briefly render an MSSP link to every user on each load.
+  // Hidden until the server has actually said yes.
+  const capabilitiesQuery = api.user.capabilities.useQuery(undefined, {
+    staleTime: 5 * 60_000,
+  });
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!item.gate) return true;
+        return capabilitiesQuery.isSuccess && capabilitiesQuery.data[item.gate];
+      }),
+    }))
+    // A group whose every item is gated away must not leave a stray heading.
+    .filter((group) => group.items.length > 0);
+
   // Unmounted rather than hidden. A `display:none` sidebar still leaves its
   // links in the accessibility tree in some readers, and this used to be the
   // ONLY state below md — navigation was unreachable with no opener anywhere.
@@ -126,7 +147,7 @@ export function Sidebar({ id, open = true, overlay = false, onNavigate }: Sideba
       <hr className="rule" />
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
-        {navGroups.map((group, groupIndex) => (
+        {visibleGroups.map((group, groupIndex) => (
           <div key={group.label ?? `group-${groupIndex}`} className="space-y-0.5">
             {group.label && (
               <p className="label-eyebrow px-3 pb-1.5">{group.label}</p>

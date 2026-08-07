@@ -12,6 +12,7 @@ import { createSocket } from "node:dgram";
 import { z } from "zod";
 import type { AuditLog } from "@prisma/client";
 import { decryptSiemSecret } from "@/server/lib/crypto/siemVault";
+import { safeFetch } from "@/server/lib/net/assertPublicHttpTarget";
 
 export const splunkHecConfigSchema = z.object({
   type: z.literal("splunk-hec"),
@@ -65,7 +66,14 @@ export async function exportToSplunkHec(
   config: z.infer<typeof splunkHecConfigSchema>,
 ): Promise<void> {
   const token = decryptSiemSecret<string>(config.tokenEnc);
-  const response = await fetch(`${config.url.replace(/\/$/, "")}/services/collector/event`, {
+  // WAVE 8 (BE-4). Highest-priority call site in the codebase: `config.url` was
+  // validated by z.string().url() only, and this is where the AUDIT LOG is
+  // shipped — so an unguarded target here is simultaneously an SSRF and an
+  // exfiltration channel for the tamper-evident record itself.
+  // maxRedirects: 0 — a Splunk HEC endpoint has no legitimate reason to
+  // redirect, and one unchecked hop defeats the whole guard.
+  const response = await safeFetch(`${config.url.replace(/\/$/, "")}/services/collector/event`, {
+    maxRedirects: 0,
     method: "POST",
     headers: {
       authorization: `Splunk ${token}`,

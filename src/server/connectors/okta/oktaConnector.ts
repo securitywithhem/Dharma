@@ -1,4 +1,5 @@
 import { ConnectorAdapter, EvidenceItem } from "../types";
+import { safeFetch } from "@/server/lib/net/assertPublicHttpTarget";
 
 interface OktaConnectorConfig {
   oktaDomain: string;
@@ -37,7 +38,12 @@ function sanitizeOktaError(error: unknown): string {
 }
 
 async function oktaFetch(path: string, config: OktaConnectorConfig): Promise<any> {
-  const response = await fetch(`${baseUrl(config)}${path}`, { headers: authHeaders(config) });
+  // WAVE 8 (BE-4). The connector forces https://, but the domain is
+  // user-supplied config and could resolve into private space.
+  const response = await safeFetch(`${baseUrl(config)}${path}`, {
+    maxRedirects: 0,
+    headers: authHeaders(config),
+  });
   if (!response.ok) {
     throw new Error(`Okta API ${response.status} for ${path}`);
   }
