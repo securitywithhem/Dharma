@@ -2,7 +2,8 @@ import { ControlStatus, Prisma, PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { enqueueControlEmbedding } from "@/server/queue/controlEmbeddingQueue";
 
 /**
@@ -167,7 +168,7 @@ export const controlRouter = createTRPCRouter({
    * Update a control's compliance status.
    * Creates an audit log entry on every change.
    */
-  updateStatus: managerProcedure
+  updateStatus: permissionProcedure("controls.write")
     .input(
       z.object({
         id: z.string().min(1),
@@ -243,7 +244,7 @@ export const controlRouter = createTRPCRouter({
    * must then be supplied). Path/depth/sortOrder are computed server-side and the
    * whole thing is transaction-wrapped. Emits `CONTROL_CREATED`.
    */
-  createChild: managerProcedure
+  createChild: permissionProcedure("controls.write")
     .input(
       z.object({
         frameworkId: z.string().min(1),
@@ -378,7 +379,7 @@ export const controlRouter = createTRPCRouter({
    * descendant via a single recursive SQL statement. Rejects cycles (a control cannot
    * be moved beneath itself or one of its own descendants). Emits `CONTROL_MOVED`.
    */
-  move: managerProcedure
+  move: permissionProcedure("controls.write")
     .input(
       z.object({
         controlId: z.string().min(1),
@@ -481,7 +482,7 @@ export const controlRouter = createTRPCRouter({
    * `orderedControlIds` must be an existing sibling of that parent in the caller's
    * org. Emits `CONTROL_REORDERED`.
    */
-  reorder: managerProcedure
+  reorder: permissionProcedure("controls.write")
     .input(
       z.object({
         frameworkId: z.string().min(1),
@@ -627,7 +628,7 @@ export const controlRouter = createTRPCRouter({
    * which deletes the entire subtree (transaction-wrapped; DB cascade on the
    * self-relation removes descendants). Emits `CONTROL_DELETED` with `deletedCount`.
    */
-  delete: managerProcedure
+  delete: permissionProcedure("controls.write")
     .input(
       z.object({
         controlId: z.string().min(1),

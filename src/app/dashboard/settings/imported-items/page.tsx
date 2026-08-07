@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
+import { toast } from "sonner";
 import { api as trpc } from "@/lib/trpc";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trash2 } from "lucide-react";
@@ -10,20 +12,27 @@ import Link from "next/link";
 export default function ImportedItemsPage() {
   const { data: items, isLoading, refetch } = trpc.import.getImportedItems.useQuery();
 
+  // WAVE 9.4 (§6 MEDIUM-2) — the shared ConfirmDialog, not window.confirm.
+  // The native dialog is unstyled, unbranded, blocks the main thread, and
+  // cannot say what is about to be destroyed in more than one line of plain
+  // text. confirm-dialog.tsx was built in b0199f1 for exactly this and was
+  // being used in only three places.
+  const [pendingRemoval, setPendingRemoval] = React.useState<
+    { id: string; name: string } | null
+  >(null);
+
   const unimportMutation = trpc.import.unimportFramework.useMutation({
     onSuccess: () => {
+      toast.success("Framework removed.");
+      setPendingRemoval(null);
       refetch();
     },
-    onError: (error: any) => {
-      alert(`Failed to remove: ${error.message}`);
+    onError: (error: { message: string }) => {
+      // toast rather than alert(), same reasoning as the dialog.
+      toast.error(`Failed to remove: ${error.message}`);
+      setPendingRemoval(null);
     }
   });
-
-  const handleRemove = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to remove "${name}" from your organization? This will delete the copied framework and all its data.`)) {
-      unimportMutation.mutate({ importedItemId: id });
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -78,7 +87,7 @@ export default function ImportedItemsPage() {
                   <Button
                     variant="destructive"
                     size="icon"
-                    onClick={() => handleRemove(item.id, item.itemName)}
+                    onClick={() => setPendingRemoval({ id: item.id, name: item.itemName })}
                     disabled={unimportMutation.isPending}
                     title="Remove Import"
                   >
@@ -105,6 +114,24 @@ export default function ImportedItemsPage() {
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={pendingRemoval !== null}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        title="Remove this imported framework?"
+        description={
+          <>
+            <strong>{pendingRemoval?.name}</strong> will be removed from your
+            organization. This deletes the copied framework and all of its
+            controls, along with any evidence mapped to them.
+          </>
+        }
+        confirmLabel="Remove framework"
+        pending={unimportMutation.isPending}
+        onConfirm={() =>
+          pendingRemoval && unimportMutation.mutate({ importedItemId: pendingRemoval.id })
+        }
+      />
+
     </div>
   );
 }

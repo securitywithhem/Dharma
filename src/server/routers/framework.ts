@@ -4,7 +4,8 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createAuditLog } from "@/server/audit-log";
 import { enqueueControlEmbeddingsSafely } from "@/server/services/controlEmbeddingEnqueue";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 
 // ------------------------------------------------------------------
 // Types
@@ -196,7 +197,7 @@ export const frameworkRouter = createTRPCRouter({
    * Create a new framework for the organization.
    * If the name matches a predefined framework, seed its controls automatically.
    */
-  create: managerProcedure
+  create: permissionProcedure("controls.write")
     .input(
       z.object({
         name: z.string().min(2).max(120),
@@ -296,7 +297,7 @@ export const frameworkRouter = createTRPCRouter({
   /**
    * Update framework metadata (name, description, version).
    */
-  update: managerProcedure
+  update: permissionProcedure("controls.write")
     .input(
       z.object({
         id: z.string().min(1),

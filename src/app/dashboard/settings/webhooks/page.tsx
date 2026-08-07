@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import type { RouterInputs } from '@/lib/trpc';
 import { Check, Copy, Send, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 import {
@@ -15,6 +16,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+/** The exact event union webhook.create accepts — single source of truth. */
+type WebhookEvents = RouterInputs['webhook']['create']['events'];
+type WebhookEvent = WebhookEvents[number];
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,10 +28,13 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useWebhooks } from '@/lib/hooks/useWebhooks';
 import { WebhookDeliveryLog } from '@/components/connectors/WebhookDeliveryLog';
 
+// `satisfies` rather than a bare `as const`: the picker must only ever offer
+// events the router accepts. Removing one from ALLOWED_EVENTS server-side now
+// breaks this line instead of shipping an option that fails Zod at runtime.
 const AVAILABLE_EVENTS = [
   { value: 'evidence.updated', label: 'Evidence updated' },
   { value: 'control.failed', label: 'Control failed' },
-] as const;
+] as const satisfies ReadonlyArray<{ value: WebhookEvent; label: string }>;
 
 function AddWebhookDialog({
   onClose,
@@ -36,10 +44,18 @@ function AddWebhookDialog({
   onCreated: (secret: string) => void;
 }) {
   const [url, setUrl] = useState('');
-  const [events, setEvents] = useState<string[]>([]);
+  // WAVE 11.3 (§8 MEDIUM-2) — typed from the router's own input contract
+  // rather than `string[]` plus a cast at the call site. The `events as any`
+  // this replaces defeated the Zod contract at exactly the boundary tRPC
+  // exists to protect: adding an event to ALLOWED_EVENTS server-side, or
+  // removing one, produced no type error here at all.
+  const [events, setEvents] = useState<WebhookEvents>([]);
   const { createMutation } = useWebhooks();
 
-  const toggleEvent = (value: string) => {
+  // Narrowed from `string` to the router's union — the compiler now rejects an
+  // event name the server would not accept, at the point it is chosen rather
+  // than at the network boundary (or, before this, not at all).
+  const toggleEvent = (value: WebhookEvent) => {
     setEvents((prev) => (prev.includes(value) ? prev.filter((e) => e !== value) : [...prev, value]));
   };
 
@@ -53,7 +69,7 @@ function AddWebhookDialog({
       return;
     }
     try {
-      const created = await createMutation.mutateAsync({ url, events: events as any });
+      const created = await createMutation.mutateAsync({ url, events });
       onCreated(created.secret);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create webhook');

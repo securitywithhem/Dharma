@@ -216,6 +216,63 @@ than asserted.
 
 ---
 
+### WAVE 7 — Policies lifecycle (the audit's other CRITICAL)
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 7.1 `policy.getById/update/publish/unpublish/delete` + schema | **DONE** — `51a9568` | The router exposed only list/create/listTemplates/generateFromTemplate/reviewDraft/getReviewStatus, and `isPublished` was settable **only at create time** — so the flagship AI-drafted-policy feature produced write-only documents. Adds `Policy.publishedAt` (distinct from `updatedAt`, which moves on every edit — "when did this become the document we attest to" is the auditor's question) and `Policy.deletedAt` (soft delete: a once-published policy is an attestable artifact, and the hash-chained AuditLog rows referencing its id are immutable, so the row must outlive the user's decision to remove it). **Editing a published policy bumps `version` and returns it to draft** — silently changing text under a "Published" badge would make the badge a lie; retitling does not, since that is not the text anyone attested to. `unpublish` added so publication is not a one-way door. Cross-tenant reads return NOT_FOUND, not FORBIDDEN, so the endpoint cannot probe which ids exist elsewhere. | `tests/policy.lifecycle.test.ts` (22) — the **whole suite fails to compile** against the pre-fix router, since none of the procedures existed |
+| 7.2 `policies/[id]/page.tsx` | **DONE** — `51a9568` | TipTap review page reusing the builder's exact StarterKit + Markdown pairing — a second editor setup would let the markdown round-trip drift between the two pages. Publish/withdraw/delete, AI review, shared `ConfirmDialog`. Editor seed guarded on a dirty flag so a background refetch cannot discard in-progress edits. | covered by 7.4 E2E + `policies.page.test.tsx` |
+| 7.3 List page: links, three-way state, empty-state CTA | **DONE** — `51a9568` | `data?.map(...)` followed by an `=== 0` check meant **loading AND error both rendered a bare heading**. Cards were not links (no route into a policy at all). Empty state had no CTA and the header had no action — the only route into the builder in the whole app was the dashboard's QuickActionsCard. | `tests/policies.page.test.tsx` (9) — **6 fail pre-fix**; the 3 that pass are controls |
+| 7.4 E2E through the real journey | **DONE** — `51a9568` | Extends `tests/e2e/policy.spec.ts` through save → find in list → open → edit → publish → survives reload. Drives the **UI**, because the finding was that the journey had no path through the interface — only a UI-level test pins that. | `tests/e2e/policy.spec.ts` (2 new) |
+
+Also renamed `user.navCapabilities` → `user.capabilities` and added
+`policiesWrite`, which mirrors the server gate (`managerProcedure` →
+`hasManagementAccess`) **exactly**, so the UI can never render a control the
+API refuses. The endpoint was never only about navigation.
+
+**WAVE 7 GATE: PASSED** — typecheck, lint, **97 suites / 870 tests**, build with
+`/dashboard/policies/[id]` rendered.
+
+### WAVE 9 — RBAC retrofit + UI generalization
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 9.1 RBAC retrofit (BE-3) | **DONE** — `5a11909` | `permissionProcedure` was on 6 of 31 routers; **19 now**. Chose the retrofit over stripping keys from the Roles UI because the machinery was already correct — only its application was missing (pattern P1). The swap is behaviour-preserving for legacy roles **only because** `LEGACY_ROLE_PERMISSIONS[COMPLIANCE_MANAGER]` mirrors `hasManagementAccess`; that equivalence is now **asserted directly** rather than assumed. Two cases needed judgement, not a mechanical swap: **`report.ts`** was admin-gated while the legacy manager set contained `reports.generate`, so swapping it alone would have handed every manager report access as a side effect of a security fix — removed that key from the manager set in the same change (same reasoning the file already applies to `audit.read`). **`billing.ts`** mutations were on bare `orgProcedure` with **no gating at all** — any org member could change billing details, start a checkout, or cancel the subscription; this retrofit **narrows** access to what the Roles UI already promised. Left alone deliberately: `apiKey`, `endpoint`, `regulatory`, `settings`, `webhook` gate on admin/manager with no matching key, and inventing one would be a guess at product intent. | `tests/rbac.retrofit.test.ts` (43) — both halves: a custom role revoking each of the 12 keys is refused, **and** legacy roles are unaffected |
+| 9.3 Dialog focus trap + a11y (§6 MEDIUM-1) | **DONE** — `e5f1e69` | `dialog.tsx` said "Trap focus inside modal" above an effect handling **only** Escape — no containment, no initial focus, no restore, no `aria-labelledby` despite `role="dialog"`/`aria-modal`. Pattern P4's dangerous kind: a reviewer reads the comment and stops. Fixed in the primitive, so all six modals are fixed at once. **Trap worth recording:** the usual `offsetParent !== null` visibility shorthand is wrong here — it is null for `position:fixed` elements (which this dialog is) and always null under jsdom, so it would have emptied the focusable list and silently degraded the trap to "focus the container" while looking correct. Uses `checkVisibility()` with a visible-by-default fallback. | `tests/dialog.focusTrap.test.tsx` (11) — keyboard-driven, incl. the audit's exact repro; **10 of 11 fail pre-fix** |
+| 9.4 `window.confirm` migration (§6 MEDIUM-2) | **DONE** — `e5f1e69` | Grepped the whole app rather than trusting the two named sites; those two were in fact all of them. `imported-items` also had an `alert()` for errors, now a toast. Both dialogs name what is about to be destroyed — the descendant count on a control delete is the entire point of the warning and a one-line native dialog cannot emphasise it. | `tests/errorStateCoverage.test.ts` asserts **zero** native confirm sites app-wide |
+| 9.2 / 9.5 Error-state sweep + shared component (§6 HIGH-1) | **DONE** — `b98a4af` | Adds `src/components/ui/query-error.tsx` and adopts it across 8 pages rather than hand-rolling a ninth copy. `cross-walk` had **no loading, error or empty state at all**. `settings/connectors` delegates entirely to `ConnectorsList`, so the boundary went there. | `tests/errorStateCoverage.test.ts` (25) — a **static** check, because the defect is an ABSENCE spread across files and the failure mode is someone adding an eleventh page without one |
+
+> **CORRECTION TO THE AUDIT (§6 HIGH-1).** The state-coverage table counted
+> occurrences of `isError` only, and reported `/dashboard` as having "12 loading
+> indicators and zero error branches". **That is wrong.** `dashboard/page.tsx`
+> destructures `error` (not `isError`) and has always rendered a distinct
+> `<LoadFailure/>`; the audit's own repro would have shown an error card, not a
+> zero state. Re-surveyed counting both spellings, the genuine gap was **eight
+> other pages**. /dashboard's real shortcoming was no retry affordance — its
+> copy asked the user to refresh the browser by hand — now a button.
+
+**WAVE 9 GATE: PASSED** — typecheck, lint, **100 suites / 949 tests**, build.
+
+### WAVE 10 — observability (remaining items)
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 10.1 Prometheus rules + one alerting path (DEV-4) | **DONE** — `8d7a8f7` | `rule_files: ["rules/*.yml"]` pointed at a directory that **did not exist**, and Prometheus tolerates a non-matching glob **silently** — starts clean, logs nothing, loads zero rules. Alertmanager was commented out. Adds 11 rules and routes them to the **same** `OPS_ALERT_WEBHOOK_URL` the app's `alert.ts` uses: one destination, since the app alerts on what only it can see and Prometheus on what only outside observation can (a dead process cannot report itself). Uses Alertmanager's `url_file` against `monitoring/secrets/` — the repo's existing convention — chosen **after** `amtool check-config` rejected a templated config: an alerting config no tool can validate is how DEV-4 happened. Also avoided compose's `${VAR:?}`, which interpolates the whole file and would have broken `docker compose up postgres`. | `tests/monitoringRules.test.ts` (18); verified with real tooling — `promtool check rules` → 11 rules, `amtool check-config` → SUCCESS |
+| 10.2 `auth_attempts_total` panel (DEV-8) | **DONE** — `8d7a8f7` | Adds an Authentication row: attempts by status, failure ratio, attempts by method. Split by status deliberately — a rising total is meaningless without knowing whether the extra attempts succeed. | same suite; asserts existing panels and grid positions are undisturbed |
+| 10.6 Restore drill in CI (DEV-10) | **DONE** — `8d7a8f7` | The 2026-08-04 drill was real but ran once, by a session that has ended. `.github/workflows/backup-restore-drill.yml` seeds recognisable data, backs up, **destroys**, restores, and asserts a **content checksum** — not a row count, which would pass on a restore returning the right number of wrong rows. Scheduled, not per-PR: it changes when the backup scripts change, and the slowest check in a repo gets skipped. | CI workflow (scheduled); YAML validated |
+
+### WAVE 11 — scoring semantics + frontend housekeeping
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 11.1 `Control.status` vs the score (ARCH-4) | **DONE** — `74c3e10` | **Product decision, made by me: option (b).** Score stays evidence-driven; the UI now says so. Rejected option (a) because evidence is an artifact an auditor can inspect and a self-assessed status is not — a headline number a user can move by ticking boxes is worth less to the auditor it exists to convince — and because (a) would silently restate every existing org's score overnight. Said in **three** places including the control detail modal, where the status is actually set; telling users only on the score page still leaves them setting a field whose irrelevance they learn elsewhere. | `tests/scoringSemantics.test.ts` (13) — asserts the scorer **still** ignores status, so a later option-(a) implementation fails here and prompts updating the UI copy in the same change |
+| 11.2 Code-split the Advisor (§8 MEDIUM-1) | **DONE** — `74c3e10` | Mounted in the dashboard layout, so a static import put the whole Advisor tree on every dashboard route for every user; `grep -rn "next/dynamic" src` returned **zero** hits app-wide. Now `next/dynamic` + `ssr:false`, and not mounted until first open so the chunk is not even requested otherwise. **MEASURED, because the audit assumed a win Next's route table does not show:** `/dashboard` reports 196 kB First Load JS before *and* after (that column is dominated by shared framework chunks). The real effect is the dashboard **layout chunk**, loaded on every dashboard route: **29,666 → 18,200 bytes (−38.6%)**. | same suite |
+| 11.3 `RouterInputs` at the tRPC boundary (§8 MEDIUM-2) | **PARTIAL — deliberately** — `74c3e10` | `events as any` defeated the Zod contract exactly where tRPC exists to protect it. Now derived from `RouterInputs['webhook']['create']['events']`, which **immediately caught a second looseness the cast had hidden** (the checkbox handler took a bare `string`). `AVAILABLE_EVENTS` pinned with `satisfies`, so a stale option is a compile error rather than a runtime Zod failure. **Not done: the broader pass. 55 hand-written prop interfaces remain** — recorded here rather than quietly counted as complete. | same suite |
+
+**WAVE 11 GATE: PASSED** — typecheck, lint, **102 suites / 980 tests**, build.
+
+---
+
 ## Remaining real work
 
 1. ~~**WAVE 0.1–0.5**~~ — done (`27f3981`, `f65e661`).

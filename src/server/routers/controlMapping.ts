@@ -2,7 +2,8 @@ import { MappingStrength, Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { suggestMappings } from "@/server/services/controlEmbeddings";
 import { strengthForConfidence } from "@/lib/mappingStrength";
 import { enqueueReadinessRecompute } from "@/server/queue/readinessScoreQueue";
@@ -60,7 +61,7 @@ export const controlMappingRouter = createTRPCRouter({
    * direction; the reverse is checked explicitly for a clean error instead of
    * a raw DB constraint violation). Emits `CONTROL_MAPPING_CREATED`.
    */
-  create: managerProcedure
+  create: permissionProcedure("controls.write")
     .input(
       z.object({
         sourceControlId: z.string().min(1),
@@ -193,7 +194,7 @@ export const controlMappingRouter = createTRPCRouter({
     }),
 
   /** Update a mapping's strength/rationale. Emits `CONTROL_MAPPING_UPDATED`. */
-  update: managerProcedure
+  update: permissionProcedure("controls.write")
     .input(
       z.object({
         id: z.string().min(1),
@@ -240,7 +241,7 @@ export const controlMappingRouter = createTRPCRouter({
     }),
 
   /** Delete a mapping. Emits `CONTROL_MAPPING_DELETED`. */
-  delete: managerProcedure
+  delete: permissionProcedure("controls.write")
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -409,7 +410,7 @@ export const controlMappingRouter = createTRPCRouter({
    * effect all differ, and `update` has no callers to preserve compatibility
    * with anyway.
    */
-  review: managerProcedure
+  review: permissionProcedure("controls.write")
     .input(
       z.object({
         id: z.string().min(1),
@@ -478,7 +479,7 @@ export const controlMappingRouter = createTRPCRouter({
    * Accept or reject many proposals at once. Without this, clearing a queue of
    * 100 proposals one dialog at a time is a rubber stamp rather than a review.
    */
-  bulkReview: managerProcedure
+  bulkReview: permissionProcedure("controls.write")
     .input(
       z.object({
         ids: z.array(z.string().min(1)).min(1).max(500),
@@ -552,7 +553,7 @@ export const controlMappingRouter = createTRPCRouter({
    * bounded by maxControlsScanned. IF THIS EVER EMBEDS INLINE IT MUST BECOME A
    * JOB.
    */
-  proposeForFrameworkPair: managerProcedure
+  proposeForFrameworkPair: permissionProcedure("controls.write")
     .input(
       z.object({
         sourceFrameworkId: z.string().min(1),

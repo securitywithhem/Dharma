@@ -55,7 +55,7 @@ export function ScoreGauge({
         size={size}
         strokeWidth={strokeWidth}
         animated={animated}
-        label={`Readiness score: ${rounded} out of 100 — ${band.label}`}
+        label={`Evidence coverage: ${rounded} out of 100 — ${band.label}`}
       >
         <span
           data-numeric=""
@@ -70,9 +70,16 @@ export function ScoreGauge({
         {!compact && <span className="text-micro text-dharma-ink-secondary">/ 100</span>}
       </DharmaRing>
       {!compact && (
-        <span className={cn("mt-1.5 text-meta font-medium", TEXT_CLASS[band.severity])}>
-          {band.label}
-        </span>
+        <>
+          <span className={cn("mt-1.5 text-meta font-medium", TEXT_CLASS[band.severity])}>
+            {band.label}
+          </span>
+          {/* WAVE 11.1 (ARCH-4) — names what the number actually measures.
+              Labelled simply "Readiness", it read as a summary of the whole
+              programme including the control statuses the user had been
+              setting, which it does not include. */}
+          <span className="text-micro text-dharma-ink-secondary">Evidence coverage</span>
+        </>
       )}
     </div>
   );

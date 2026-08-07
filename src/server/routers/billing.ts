@@ -9,6 +9,7 @@
 // the current page. See CheckoutHandoff.
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, orgProcedure } from '@/server/trpc';
+import { permissionProcedure } from '@/server/middleware/requirePermission';
 import { TRPCError } from '@trpc/server';
 import { EntitlementService } from '@/server/services/entitlement';
 import { emitAuditEvent } from '@/server/services/audit/writer';
@@ -165,7 +166,7 @@ export const billingRouter = createTRPCRouter({
     return org;
   }),
 
-  updateBillingDetails: orgProcedure
+  updateBillingDetails: permissionProcedure("billing.manage")
     .input(
       z.object({
         // Format per the GST rules: 2-digit state code, 10-char PAN, entity
@@ -230,7 +231,7 @@ export const billingRouter = createTRPCRouter({
    * the subscription server-side and the browser opens Checkout.js over the
    * current page. There is no hosted page to navigate to.
    */
-  createCheckoutSession: orgProcedure
+  createCheckoutSession: permissionProcedure("billing.manage")
     .input(
       z.object({
         planId: z.string(),
@@ -325,7 +326,7 @@ export const billingRouter = createTRPCRouter({
    * the webhook arrives first, or arrives later, the ledger makes exactly one
    * of them apply.
    */
-  confirmCheckout: orgProcedure
+  confirmCheckout: permissionProcedure("billing.manage")
     .input(
       z.object({
         razorpayPaymentId: z.string().min(1),
@@ -483,7 +484,7 @@ export const billingRouter = createTRPCRouter({
    * Deliberately reuses createCheckoutSession's machinery rather than a
    * parallel path, so the supersede bookkeeping cannot diverge between the two.
    */
-  startPaymentMethodUpdate: orgProcedure.mutation(async ({ ctx }) => {
+  startPaymentMethodUpdate: permissionProcedure("billing.manage").mutation(async ({ ctx }) => {
     const org = await ctx.prisma.organization.findUniqueOrThrow({
       where: { id: ctx.session.user.organizationId },
       select: { ...BILLING_SELECT, plan: true },
@@ -544,7 +545,7 @@ export const billingRouter = createTRPCRouter({
   }),
 
   // Update subscription to a new plan (for orgs with an existing subscription)
-  updateSubscription: orgProcedure
+  updateSubscription: permissionProcedure("billing.manage")
     .input(z.object({ newPlanId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.prisma.organization.findUniqueOrThrow({
@@ -602,7 +603,7 @@ export const billingRouter = createTRPCRouter({
     }),
 
   // Cancel subscription
-  cancelSubscription: orgProcedure.mutation(async ({ ctx }) => {
+  cancelSubscription: permissionProcedure("billing.manage").mutation(async ({ ctx }) => {
     const org = await ctx.prisma.organization.findUniqueOrThrow({
       where: { id: ctx.session.user.organizationId },
       select: BILLING_SELECT,

@@ -26,13 +26,22 @@ remote_write:
       username: '3419742'
       password_file: /etc/prometheus/secrets/grafana_cloud_api_key
 
-# ── Alerting (optional – configure Alertmanager separately) ──────────────
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ['alertmanager:9093']
+# ── Alerting (WAVE 10.1) ─────────────────────────────────────────────────
+# Was commented out while rule_files pointed at a directory that did not
+# exist — so this config advertised alerting and delivered none, silently,
+# because Prometheus tolerates a non-matching rule glob without error.
+# Alertmanager forwards to the same OPS_ALERT_WEBHOOK_URL the app's own
+# alert.ts uses (monitoring/alertmanager.yml): one destination, not two.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
 
 # ── Rule files ────────────────────────────────────────────────────────────
+# monitoring/rules/dharma.yml now exists. Keep the glob — a second file for a
+# future rule group needs no config change — but note that a glob matching
+# nothing is silent, so tests/monitoringRules.test.ts asserts the directory is
+# non-empty and that every rule parses.
 rule_files:
   - "rules/*.yml"
 

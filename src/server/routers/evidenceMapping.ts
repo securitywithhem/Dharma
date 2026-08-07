@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { createAuditLog } from "@/server/audit-log";
 import { getConnectorAdapter } from "@/server/connectors/registry";
 import {
@@ -88,7 +89,7 @@ export const evidenceMappingRouter = createTRPCRouter({
       });
     }),
 
-  create: managerProcedure
+  create: permissionProcedure("connectors.manage")
     .input(
       z.object({
         connectorId: z.string(),
@@ -160,7 +161,7 @@ export const evidenceMappingRouter = createTRPCRouter({
       return mapping;
     }),
 
-  update: managerProcedure
+  update: permissionProcedure("connectors.manage")
     .input(z.object({ id: z.string(), schedule: cronSchema }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -185,7 +186,7 @@ export const evidenceMappingRouter = createTRPCRouter({
       return updated;
     }),
 
-  delete: managerProcedure
+  delete: permissionProcedure("connectors.manage")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
@@ -215,7 +216,7 @@ export const evidenceMappingRouter = createTRPCRouter({
       return { deleted: true };
     }),
 
-  triggerNow: managerProcedure
+  triggerNow: permissionProcedure("connectors.manage")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;

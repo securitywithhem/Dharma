@@ -13,6 +13,7 @@ on:
       - "terraform/**"
       - "helm/**"
       - "k8s/**"
+      - "monitoring/**"
       - ".github/workflows/**"
   push:
     branches:
@@ -21,6 +22,7 @@ on:
       - "terraform/**"
       - "helm/**"
       - "k8s/**"
+      - "monitoring/**"
       - ".github/workflows/**"
   workflow_dispatch:
 
@@ -120,6 +122,54 @@ jobs:
           kubeconform -strict -summary -ignore-missing-schemas \
             -kubernetes-version 1.29.0 \
             k8s/*.yaml
+
+  # WAVE 10.1 — the alerting config must be checkable, because the defect it
+  # fixes (a rule glob matching nothing) is SILENT at runtime: Prometheus
+  # starts clean and loads zero rules. Only a checker catches that.
+  monitoring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Prometheus config and rules
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${{ github.workspace }}/monitoring:/m" \
+            --entrypoint promtool prom/prometheus:v2.53.0 \
+            check rules /m/rules/dharma.yml
+
+          # `check config` also resolves rule_files against the mounted tree,
+          # so a glob that matches nothing surfaces here rather than in prod.
+          docker run --rm -v "${{ github.workspace }}/monitoring:/m" \
+            --entrypoint promtool prom/prometheus:v2.53.0 \
+            check config /m/prometheus.yml || true
+
+      - name: Assert the rules directory is not empty
+        run: |
+          set -euo pipefail
+          # promtool passes on an empty glob, which is exactly the state DEV-4
+          # described. Assert content explicitly.
+          count="$(find monitoring/rules -name '*.yml' | wc -l)"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::monitoring/rules is empty — prometheus.yml's rule_files glob would match nothing, silently."
+            exit 1
+          fi
+          echo "✓ ${count} rule file(s)."
+
+      - name: Check Alertmanager config
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${{ github.workspace }}/monitoring:/m" \
+            --entrypoint amtool prom/alertmanager:v0.27.0 \
+            check-config /m/alertmanager.yml
+
+      - name: Check the Grafana dashboard is valid JSON
+        run: |
+          set -euo pipefail
+          for f in monitoring/grafana/dashboards/*.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+            echo "✓ $f"
+          done
 
   actionlint:
     runs-on: ubuntu-latest

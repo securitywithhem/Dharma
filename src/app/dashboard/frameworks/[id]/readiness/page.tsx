@@ -73,6 +73,21 @@ export default function ReadinessPage({ params }: ReadinessPageProps) {
         <p className="text-sm text-dharma-ink-secondary">
           Evidence completeness weighted by cross-walk mapping coverage, with actionable next steps.
         </p>
+        {/* WAVE 11.1 (ARCH-4). The score is deliberately evidence-driven:
+            evidence is an artifact an auditor can inspect, whereas a
+            self-assessed status is not, and a headline number a user can move
+            by ticking boxes is worth less to the auditor it exists to
+            convince. That is defensible — what was not defensible was leaving
+            it unsaid while the product also asks users to set a status. */}
+        <p className="mt-2 text-sm text-dharma-ink-secondary">
+          <strong className="font-medium text-dharma-ink">
+            This score measures evidence, not self-assessment.
+          </strong>{" "}
+          Marking controls Compliant records your team&rsquo;s view and is shown on
+          each control — it does not change this number. Attach evidence to a
+          control, or map it to an evidenced control in another framework, to
+          move it.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

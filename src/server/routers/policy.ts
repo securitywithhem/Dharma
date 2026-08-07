@@ -13,7 +13,8 @@
 import { PolicyType } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, managerProcedure, orgProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { reviewPolicyQueue, type ReviewPolicyJobData } from "@/workers/policy";
 import { Job } from "bullmq";
 import { TRPCError } from "@trpc/server";
@@ -39,15 +40,257 @@ export const policyRouter = createTRPCRouter({
    */
   list: orgProcedure.query(async ({ ctx }) => {
     return ctx.prisma.policy.findMany({
-      where: { organizationId: ctx.session.user.organizationId },
+      // deletedAt: null — soft-deleted policies stay in the table for the audit
+      // trail (see the schema comment) but must never appear in the working list.
+      where: { organizationId: ctx.session.user.organizationId, deletedAt: null },
       orderBy: [{ updatedAt: "desc" }],
     });
   }),
 
+  // ── Lifecycle (WAVE 7) ────────────────────────────────────────────────────
+  //
+  // fullstack-audit-2026-08-06 §4 CRITICAL: this router exposed only list,
+  // create, listTemplates, generateFromTemplate, reviewDraft and
+  // getReviewStatus. There was no getById, update, publish or delete, and
+  // `isPublished` was settable only at create time — so the flagship
+  // "AI-drafted policy" feature produced documents that could never be opened,
+  // reviewed or published, breaking User_Journeys.md flow 3 at the review step.
+
+  /**
+   * Fetch one policy. Org-scoped by the query itself, never by a
+   * client-supplied organizationId.
+   */
+  getById: orgProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const policy = await ctx.prisma.policy.findFirst({
+        where: {
+          id: input.id,
+          organizationId: ctx.session.user.organizationId,
+          deletedAt: null,
+        },
+      });
+
+      if (!policy) {
+        // Same response for "not yours" and "does not exist", so this cannot be
+        // used to probe which policy ids exist in other tenants.
+        throw new TRPCError({ code: "NOT_FOUND", message: "Policy not found." });
+      }
+
+      return policy;
+    }),
+
+  /**
+   * Edit a policy's title and/or content.
+   *
+   * Editing a PUBLISHED policy bumps `version` and returns it to draft. That is
+   * deliberate and is the compliance-correct behaviour: a published policy is
+   * the document the organisation attests to, so silently changing its text
+   * underneath an auditor — while it still reads "Published" — would make the
+   * badge a lie. Re-publishing is one click, and the audit entry records the
+   * version transition.
+   */
+  update: permissionProcedure("policies.write")
+    .input(
+      z.object({
+        id: z.string().min(1),
+        title: z.string().min(3).max(160).optional(),
+        content: z.string().min(10).optional(),
+        policyType: z.nativeEnum(PolicyType).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...changes } = input;
+
+      if (Object.keys(changes).length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No changes supplied." });
+      }
+
+      const existing = await ctx.prisma.policy.findFirst({
+        where: {
+          id,
+          organizationId: ctx.session.user.organizationId,
+          deletedAt: null,
+        },
+      });
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Policy not found." });
+      }
+
+      // Only a content change invalidates publication. Retitling a published
+      // policy is not a change to the text anyone attested to.
+      const contentChanged =
+        changes.content !== undefined && changes.content !== existing.content;
+      const revoking = existing.isPublished && contentChanged;
+
+      const policy = await ctx.prisma.policy.update({
+        where: { id },
+        data: {
+          ...changes,
+          ...(revoking
+            ? { isPublished: false, publishedAt: null, version: existing.version + 1 }
+            : {}),
+        },
+      });
+
+      await createAuditLog(ctx.prisma, {
+        organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
+        action: "POLICY_UPDATED",
+        entity: "Policy",
+        entityId: policy.id,
+        changes: {
+          title: policy.title,
+          fields: Object.keys(changes),
+          ...(revoking
+            ? {
+                unpublishedByEdit: true,
+                versionFrom: existing.version,
+                versionTo: policy.version,
+              }
+            : {}),
+        },
+      });
+
+      return policy;
+    }),
+
+  /**
+   * Publish a policy. This is the step User_Journeys.md flow 3 described and
+   * the router never implemented.
+   */
+  publish: permissionProcedure("policies.write")
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.policy.findFirst({
+        where: {
+          id: input.id,
+          organizationId: ctx.session.user.organizationId,
+          deletedAt: null,
+        },
+      });
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Policy not found." });
+      }
+      if (existing.isPublished) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This policy is already published.",
+        });
+      }
+
+      const policy = await ctx.prisma.policy.update({
+        where: { id: input.id },
+        data: { isPublished: true, publishedAt: new Date() },
+      });
+
+      await createAuditLog(ctx.prisma, {
+        organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
+        action: "POLICY_PUBLISH",
+        entity: "Policy",
+        entityId: policy.id,
+        changes: {
+          title: policy.title,
+          policyType: policy.policyType,
+          version: policy.version,
+        },
+      });
+
+      return policy;
+    }),
+
+  /**
+   * Withdraw a published policy back to draft.
+   *
+   * Included alongside publish so publication is not a one-way door: a policy
+   * published in error otherwise has no route back except deletion, which is a
+   * far heavier action and loses the draft.
+   */
+  unpublish: permissionProcedure("policies.write")
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.policy.findFirst({
+        where: {
+          id: input.id,
+          organizationId: ctx.session.user.organizationId,
+          deletedAt: null,
+        },
+      });
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Policy not found." });
+      }
+      if (!existing.isPublished) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This policy is not published." });
+      }
+
+      const policy = await ctx.prisma.policy.update({
+        where: { id: input.id },
+        data: { isPublished: false, publishedAt: null },
+      });
+
+      await createAuditLog(ctx.prisma, {
+        organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
+        action: "POLICY_UNPUBLISHED",
+        entity: "Policy",
+        entityId: policy.id,
+        changes: { title: policy.title, version: policy.version },
+      });
+
+      return policy;
+    }),
+
+  /**
+   * Soft-delete a policy — see the schema comment on Policy.deletedAt for why
+   * this is not a hard delete.
+   */
+  delete: permissionProcedure("policies.write")
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.policy.findFirst({
+        where: {
+          id: input.id,
+          organizationId: ctx.session.user.organizationId,
+          deletedAt: null,
+        },
+      });
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Policy not found." });
+      }
+
+      await ctx.prisma.policy.update({
+        where: { id: input.id },
+        data: { deletedAt: new Date() },
+      });
+
+      await createAuditLog(ctx.prisma, {
+        organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
+        action: "POLICY_DELETED",
+        entity: "Policy",
+        entityId: input.id,
+        changes: {
+          title: existing.title,
+          policyType: existing.policyType,
+          version: existing.version,
+          // Recorded because "was this live when it was removed" is materially
+          // different from deleting an unpublished draft.
+          wasPublished: existing.isPublished,
+        },
+      });
+
+      return { id: input.id };
+    }),
+
   /**
    * Create or update a policy (manual save — does not call LLM).
    */
-  create: managerProcedure
+  create: permissionProcedure("policies.write")
     .input(
       z.object({
         title: z.string().min(3).max(160),
@@ -106,7 +349,7 @@ export const policyRouter = createTRPCRouter({
    * No LLM call — pure Handlebars substitution.
    * Returns rendered markdown immediately.
    */
-  generateFromTemplate: managerProcedure
+  generateFromTemplate: permissionProcedure("policies.write")
     .input(
       z.object({
         templateId: z.string().min(1),
@@ -153,7 +396,7 @@ export const policyRouter = createTRPCRouter({
    * Submit a policy draft for AI review (audit-only — no rewrites).
    * Enqueues a review-policy-draft BullMQ job.
    */
-  reviewDraft: managerProcedure
+  reviewDraft: permissionProcedure("policies.write")
     .input(
       z.object({
         policyContent: z.string().min(50).max(50_000),
@@ -171,7 +414,7 @@ export const policyRouter = createTRPCRouter({
   /**
    * Poll the status of a policy review job.
    */
-  getReviewStatus: managerProcedure
+  getReviewStatus: permissionProcedure("policies.write")
     .input(z.object({ jobId: z.string().min(1) }))
     .query(async ({ input }) => {
       const job = await Job.fromId(reviewPolicyQueue, input.jobId);

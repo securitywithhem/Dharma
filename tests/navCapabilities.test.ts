@@ -8,7 +8,7 @@
  * deliverable, was reachable only by typing the URL.
  *
  * Two halves, both needed: the nav list must actually contain them (otherwise
- * they are still orphaned), and `user.navCapabilities` must gate them
+ * they are still orphaned), and `user.capabilities` must gate them
  * correctly (otherwise the sidebar advertises sections the API refuses).
  */
 import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
@@ -76,17 +76,22 @@ describe("the previously-orphaned routes are in the nav", () => {
   });
 });
 
-describe("user.navCapabilities", () => {
+describe("user.capabilities", () => {
   it("grants nothing extra to an ordinary viewer", async () => {
     const viewer = await seedRoleUser(prisma, orgId, Role.VIEWER, "nav");
-    const caps = await callerFor(viewer).user.navCapabilities();
+    const caps = await callerFor(viewer).user.capabilities();
 
-    expect(caps).toEqual({ mssp: false, publisher: false, platformAdmin: false });
+    expect(caps).toEqual({
+      mssp: false,
+      publisher: false,
+      platformAdmin: false,
+      policiesWrite: false,
+    });
   });
 
   it("grants publisher to a PUBLISHER but not moderation", async () => {
     const publisher = await seedRoleUser(prisma, orgId, Role.PUBLISHER, "nav");
-    const caps = await callerFor(publisher).user.navCapabilities();
+    const caps = await callerFor(publisher).user.capabilities();
 
     expect(caps.publisher).toBe(true);
     expect(caps.platformAdmin).toBe(false);
@@ -96,7 +101,7 @@ describe("user.navCapabilities", () => {
     // The whole point of BE-2: a tenant admin is an admin of their own org,
     // not of the shared catalogue.
     const admin = await seedRoleUser(prisma, orgId, Role.ADMIN, "nav");
-    const caps = await callerFor(admin).user.navCapabilities();
+    const caps = await callerFor(admin).user.capabilities();
 
     expect(caps.publisher).toBe(true);
     expect(caps.platformAdmin).toBe(false);
@@ -109,8 +114,22 @@ describe("user.navCapabilities", () => {
       data: { isPlatformAdmin: true },
     });
 
-    const caps = await callerFor(operator).user.navCapabilities();
+    const caps = await callerFor(operator).user.capabilities();
     expect(caps.platformAdmin).toBe(true);
+  });
+
+  // WAVE 7: policiesWrite must mirror the server gate on
+  // policy.update/publish/delete (managerProcedure -> hasManagementAccess)
+  // EXACTLY, or the policy detail page renders controls the API refuses.
+  it.each([
+    [Role.VIEWER, false],
+    [Role.PUBLISHER, false],
+    [Role.COMPLIANCE_MANAGER, true],
+    [Role.ADMIN, true],
+  ])("policiesWrite for %s is %s, matching managerProcedure", async (role, expected) => {
+    const user = await seedRoleUser(prisma, orgId, role, "nav");
+    const caps = await callerFor(user).user.capabilities();
+    expect(caps.policiesWrite).toBe(expected);
   });
 
   it("grants mssp from the permission, not from a role name", async () => {
@@ -127,7 +146,7 @@ describe("user.navCapabilities", () => {
       data: { customRoleId: role.id },
     });
 
-    const caps = await callerFor(user).user.navCapabilities();
+    const caps = await callerFor(user).user.capabilities();
     expect(caps.mssp).toBe(true);
   });
 });

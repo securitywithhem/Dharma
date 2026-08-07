@@ -613,6 +613,10 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # WAVE 10.1 — rule_files has always pointed at "rules/*.yml"; without
+      # this mount the glob matched nothing and Prometheus loaded zero rules
+      # silently, which is exactly how DEV-4 stayed invisible.
+      - ./monitoring/rules:/etc/prometheus/rules:ro
       - ./monitoring/secrets/grafana_cloud_api_key:/etc/prometheus/secrets/grafana_cloud_api_key:ro
       - prometheus_data:/prometheus
     command:
@@ -633,11 +637,65 @@ services:
       - postgres-exporter
       - redis-exporter
       - blackbox-exporter
+      - alertmanager
     deploy:
       resources:
         limits:
           memory: 512M
         reservations:
+          memory: 128M
+    networks:
+      - dharma-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ------------------------------------------------------------
+  # Alertmanager – routes Prometheus alerts to OPS_ALERT_WEBHOOK_URL
+  # Profile: monitoring (opt-in)
+  # WAVE 10.1 (fullstack-audit-2026-08-06 DEV-4)
+  #
+  # Posts to the SAME webhook src/server/lib/ops/alert.ts uses, so there is one
+  # destination rather than two half-built ones. The app alerts on what only it
+  # can see (a dead-lettered job); Prometheus alerts on what only outside
+  # observation can see (a process that died and cannot report it).
+  #
+  # The webhook URL comes from monitoring/secrets/ops_alert_webhook_url
+  # (gitignored), the same pattern Prometheus already uses for its Grafana
+  # Cloud key. Alertmanager refuses to start if that file is absent or empty,
+  # rather than starting and discarding every alert — a silent failure of the
+  # alerting system is the precise defect being fixed here.
+  #
+  # Create it with:
+  #   echo -n "https://hooks.slack.com/services/..." \
+  #     > monitoring/secrets/ops_alert_webhook_url
+  # ------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: dharma-alertmanager
+    restart: on-failure:3
+    profiles:
+      - monitoring
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/secrets:/etc/alertmanager/secrets:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
           memory: 128M
     networks:
       - dharma-network
@@ -726,6 +784,7 @@ volumes:
       o: bind
       device: ${BACKUP_HOST_PATH:-/tmp/dharma-backups}
   # Monitoring
+  alertmanager_data:
   prometheus_data:
     driver: local
     name: dharma_prometheus_data

@@ -13,7 +13,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createAuditLog } from "@/server/audit-log";
-import { createTRPCRouter, orgProcedure, managerProcedure } from "@/server/trpc";
+import { createTRPCRouter, orgProcedure } from "@/server/trpc";
+import { permissionProcedure } from "@/server/middleware/requirePermission";
 import { enqueueAiIngestion } from "@/server/queue/aiIngestionQueue";
 import { pruneGraphForDocument } from "@/server/ai/graphExtraction";
 import { deleteFile, generatePresignedUploadUrl } from "@/lib/storage/minioClient";
@@ -136,7 +137,7 @@ export const aiIngestionRouter = createTRPCRouter({
    * orphaned graph data survives — a data-retention requirement). Best-effort
    * removal of the MinIO object too. Management-only (destructive).
    */
-  deleteIngestedDocument: managerProcedure
+  deleteIngestedDocument: permissionProcedure("evidence.upload")
     .input(z.object({ documentId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.session.user.organizationId;
