@@ -314,3 +314,100 @@ at a ~1495px viewport where a fresh session renders it at 240px (their card
 geometry puts the container at the 1408px max-width, i.e. no sidebar column).
 Fresh Playwright sessions have never reproduced it. Presumed stale dev bundle.
 The toggle makes this moot — the sidebar can now always be summoned.
+
+---
+
+## 2026-08-07 — Session revocation: stamped-cutoff kill-switch, and database-backed sessions DEFERRED
+
+Closes GH #22. The issue offered four options; we shipped A + B + D and are
+recording C as a deliberate deferral rather than letting it lapse by default.
+
+**Shipped.** `User.sessionsValidFrom`, a nullable cutoff. Every JWT carries a
+`sessionIssuedAt` claim stamped once at sign-in; `enforceOrganizationContext`
+refuses any token stamped before the user's cutoff. Org-wide revocation is an
+`updateMany` stamping every member; per-user revocation stamps one row.
+`maxAge` went 30 days → 7 days idle with hourly re-issue.
+
+**Three decisions inside that worth remembering, because each had a plausible
+alternative we rejected:**
+
+1. **The cutoff lives on `User`, not on `Organization`** — even though one of
+   the two switches is org-wide. Putting it on Organization would force a join
+   into the identity read that runs on *every request to every org router*, the
+   one read this codebase deliberately keeps to a single indexed primary-key
+   lookup. Org-wide revocation is instead an `updateMany` over the org's users.
+   Cost: an org-wide press cannot be attributed to a single id by the
+   cache-invalidation middleware, so those entries clear by TTL — up to 30s
+   during which some replicas still honour an old row. Accepted and documented
+   rather than closed by bursting a Redis delete per member during an incident.
+
+2. **Our own `sessionIssuedAt` claim, not the standard `iat`.** NextAuth
+   rewrites `iat` on every re-encode (hourly). A cutoff compared against `iat`
+   would be defeated by the stolen session simply *staying active* past the
+   cutoff — the exact opposite of the intent. Ours is written only when `user`
+   is present in the `jwt` callback, i.e. only at sign-in.
+
+3. **`revokeAllSessions` does not exempt the caller.** The reason to press it is
+   "a session was stolen and we cannot tell which one"; the exemption would
+   cover precisely the session an attacker who escalated to admin holds.
+
+**7 days, not 8 hours.** NextAuth's `maxAge` is an *idle* window. 8h was
+rejected because Dharma's non-SSO credential is a magic link with no refresh
+token, so a short window means re-authenticating through an inbox — and the
+predictable response to that friction is admins turning SSO enforcement off. A
+control that pushes operators toward a weaker configuration is a bad control.
+7 days is defensible now that it is no longer the *only* bound.
+
+### DEFERRED — database-backed sessions with a per-device list (option C)
+
+**Revisit by 2026-11-07** (with the Phase 9 endpoint work, which already carries
+per-device identity and is the natural place to reuse it).
+
+Not shipped because it means a session table read on every request, a migration
+off the JWT strategy, and reworking the hand-rolled SSO session minting in
+`src/server/services/sso/session.ts` — for a capability that is *nice* in a
+questionnaire but does not change what an admin can actually accomplish today.
+The gap it leaves is real and is now stated plainly in the Security settings UI:
+we can revoke org-wide and per-user; we cannot show or sign out one device.
+
+**The trigger that should force this decision open early:** a prospect requiring
+per-device session listing as a contractual control, or native MFA landing (at
+which point per-device trust becomes worth modelling anyway).
+
+---
+
+## 2026-08-07 — Soft-delete for compliance artefacts: NOT adopted, and why
+
+Closes GH #24's third acceptance criterion, which asked for a decision "either
+way". This is the "way" and the reasoning, so nobody re-opens it by default.
+
+**Decision: keep hard deletion for reports, pentest runs and scan schedules.
+Do NOT add a `deletedAt` tombstone.**
+
+The issue's argument for soft-delete is good and worth stating fairly: hard
+deletion of a compliance artefact is rarely what the user wants and never what
+their auditor wants. What tipped it the other way is that Dharma is
+**self-hosted GRC handling other companies' evidence**, and a tombstone changes
+two things we care about more:
+
+1. **It silently defeats deletion as a data-subject right.** DPDP/GDPR erasure
+   requests reach evidence and reports. A `deletedAt` model means "delete"
+   stops meaning delete, and the first time that matters is during someone
+   else's regulatory response — the worst possible moment to discover it.
+2. **The audit trail we actually need already exists and is stronger.** Every
+   delete path writes a hash-chained `AuditLog` entry naming actor, target and
+   timestamp — verified exhaustively, not assumed, by
+   `tests/destructiveActions.test.ts`. That records *that the artefact existed
+   and who destroyed it*, which is the auditor's real question. A tombstone
+   would add the artefact's contents, at the cost above.
+
+**What we did instead**, because the underlying risk (an irreversible misclick)
+is real: every destructive action now routes through a confirmation naming the
+specific record and stating the consequence, with type-to-confirm on the ones
+whose blast radius is invisible from the UI (API-key revocation, org-wide
+session revocation).
+
+**Revisit if** a customer's auditor requires recovery of deleted compliance
+artefacts as a contractual control, or if we ship configurable retention — at
+which point retention policy, not a tombstone flag, is the right shape, and it
+can be built to honour erasure requests explicitly rather than by accident.

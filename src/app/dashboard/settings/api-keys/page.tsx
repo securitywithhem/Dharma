@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Copy, Trash2, Code2, KeyRound, CheckCircle2, ExternalLink } from "lucide-react";
 import { api } from "@/lib/trpc";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,8 @@ export default function ApiKeysPage() {
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<Record<string, boolean>>({});
   const [createdToken, setCreatedToken] = useState<string | null>(null);
+  // GH #24 — pending target of the revoke confirmation.
+  const [pendingRevoke, setPendingRevoke] = useState<{ id: string; name: string } | null>(null);
 
   const create = api.apiKey.create.useMutation({
     onSuccess: (res) => {
@@ -44,6 +47,7 @@ export default function ApiKeysPage() {
   const revoke = api.apiKey.revoke.useMutation({
     onSuccess: () => {
       toast.success("API key revoked");
+      setPendingRevoke(null);
       void utils.apiKey.list.invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -129,7 +133,12 @@ export default function ApiKeysPage() {
                         variant="ghost"
                         size="icon"
                         disabled={revoke.isPending}
-                        onClick={() => revoke.mutate({ id: k.id })}
+                        aria-label={`Revoke API key ${k.name}`}
+                        // GH #24 — this fired on the first click. Revoking a
+                        // key breaks every integration authenticating with it,
+                        // with no undo: the token is stored hashed, so it
+                        // cannot be reissued, only replaced.
+                        onClick={() => setPendingRevoke({ id: k.id, name: k.name })}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -223,6 +232,28 @@ export default function ApiKeysPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingRevoke !== null}
+        onOpenChange={(o) => !o && setPendingRevoke(null)}
+        title="Revoke this API key?"
+        description={
+          <>
+            Every integration authenticating with{" "}
+            <span className="font-medium">{pendingRevoke?.name}</span> starts failing
+            immediately. This cannot be undone — the token is stored hashed, so it
+            cannot be reissued; you would have to create a new key and update each
+            caller. Revocation is written to the audit log.
+          </>
+        }
+        confirmLabel={revoke.isPending ? "Revoking…" : "Revoke key"}
+        pending={revoke.isPending}
+        // Type-to-confirm: an API key revocation is silent from the UI's side —
+        // nothing here shows the integrations that break — so the friction is
+        // doing the work a visible blast radius would otherwise do.
+        requireTypedConfirmation={pendingRevoke?.name}
+        onConfirm={() => pendingRevoke && revoke.mutate({ id: pendingRevoke.id })}
+      />
     </div>
   );
 }

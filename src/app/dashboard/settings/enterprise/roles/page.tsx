@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Table,
   TableBody,
@@ -49,6 +50,10 @@ function groupPermissionKeys(keys: string[]): Record<string, string[]> {
 }
 
 export default function RolesSettingsPage() {
+  // GH #24 — pending target of the delete confirmation.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(
+    null,
+  );
   const [draft, setDraft] = useState<RoleDraft | null>(null);
   const utils = api.useUtils();
 
@@ -75,6 +80,7 @@ export default function RolesSettingsPage() {
   const deleteRole = api.roles.delete.useMutation({
     onSuccess: () => {
       toast.success("Role deleted");
+      setPendingDelete(null);
       invalidate();
     },
     onError: (error) => toast.error(error.message),
@@ -180,6 +186,12 @@ export default function RolesSettingsPage() {
                           variant="ghost"
                           size="icon"
                           disabled={role.isDefault || deleteRole.isPending}
+                          aria-label={`Delete role ${role.name}`}
+                          // GH #24 — this deleted on the first click. The
+                          // members-assigned guard below stays where it is: it
+                          // is a precondition, not a confirmation, and telling
+                          // someone "reassign members first" is more useful
+                          // before they read a consequence they cannot act on.
                           onClick={() => {
                             if (role._count.users > 0) {
                               toast.error(
@@ -187,7 +199,7 @@ export default function RolesSettingsPage() {
                               );
                               return;
                             }
-                            deleteRole.mutate({ id: role.id });
+                            setPendingDelete({ id: role.id, name: role.name });
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -272,6 +284,24 @@ export default function RolesSettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Delete this custom role?"
+        description={
+          <>
+            <span className="font-medium">{pendingDelete?.name}</span> and its
+            permission matrix are removed permanently. Only roles with no members
+            assigned can be deleted, so nobody loses access as a result — but the
+            permission set itself is not recoverable and would have to be rebuilt
+            checkbox by checkbox. This is written to the audit log.
+          </>
+        }
+        confirmLabel={deleteRole.isPending ? "Deleting…" : "Delete role"}
+        pending={deleteRole.isPending}
+        onConfirm={() => pendingDelete && deleteRole.mutate({ id: pendingDelete.id })}
+      />
     </div>
   );
 }

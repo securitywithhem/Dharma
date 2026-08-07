@@ -16,6 +16,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { MessageBubble, type AdvisorCitationRef } from "./MessageBubble";
@@ -28,6 +29,18 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   citations?: AdvisorCitationRef[];
+  /**
+   * GH #25 — this turn did not happen. Retrieval failed, so NO assessment was
+   * performed against the knowledge base.
+   *
+   * Modelled as a transcript entry rather than only a toast, deliberately. A
+   * toast disappears; what persists is the user's question sitting in the
+   * transcript with no reply under it, which reads as "the advisor had nothing
+   * to say" — i.e. as an all-clear. For a user preparing an audit, that is the
+   * single most dangerous thing this panel could imply, so the absence of an
+   * answer has to be stated where the answer would have been.
+   */
+  failed?: boolean;
 }
 
 const MIN_WIDTH = 360;
@@ -66,7 +79,22 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
         void usageQuery.refetch();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Something went wrong";
-        toast.error(msg.includes("AI_BUDGET_EXCEEDED") ? "Monthly AI token budget reached." : msg);
+        const budget = msg.includes("AI_BUDGET_EXCEEDED");
+        toast.error(budget ? "Monthly AI token budget reached." : msg);
+
+        // GH #25 — and leave a permanent mark in the transcript. The toast is
+        // the notification; this is the record, and it is the half that stops
+        // an unanswered question from reading as a clean result.
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            failed: true,
+            content: budget
+              ? "Your organization's monthly AI budget is exhausted, so this question was not assessed. No analysis of your compliance data was performed."
+              : "The Compliance Advisor is unavailable, so this question was NOT assessed. Nothing was checked against your compliance data — this is not a finding of \u201Cno gaps\u201D. Try again once the assistant is available.",
+          },
+        ]);
         void usageQuery.refetch();
       }
     },
@@ -153,9 +181,26 @@ export function AIAdvisorPanel({ open, onClose }: { open: boolean; onClose: () =
             </p>
           )}
           <div aria-live="polite" className="space-y-3">
-            {messages.map((m, i) => (
-              <MessageBubble key={i} role={m.role} content={m.content} citations={m.citations} />
-            ))}
+            {messages.map((m, i) =>
+              m.failed ? (
+                // GH #25 — deliberately NOT a MessageBubble. A failed turn must
+                // not be able to pass for an answer, so it does not share the
+                // assistant bubble's shape or colour; it uses the danger
+                // treatment and role="alert" so screen readers announce it as a
+                // failure rather than reading it out as the reply.
+                <div
+                  key={i}
+                  role="alert"
+                  data-testid="advisor-turn-failed"
+                  className="flex items-start gap-2 rounded-lg border border-dharma-danger bg-dharma-danger-bg p-3 text-xs text-dharma-danger-text"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>{m.content}</span>
+                </div>
+              ) : (
+                <MessageBubble key={i} role={m.role} content={m.content} citations={m.citations} />
+              ),
+            )}
           </div>
           {sendMessage.isPending && <TypingIndicator />}
         </div>

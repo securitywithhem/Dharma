@@ -1,0 +1,13 @@
+-- GH #22 — session revocation kill-switch.
+--
+-- Nullable with no default and no backfill, deliberately. Stamping every
+-- existing row with now() would sign out every user in the deployment the
+-- moment this migration lands, which is a self-inflicted outage rather than a
+-- security improvement: no credential is known to be compromised at migration
+-- time. NULL reads as "no cutoff has ever been set" everywhere it is consumed.
+--
+-- No index: the column is only ever read off a row already fetched by
+-- `findUnique({ where: { id } })` in sessionIdentity.ts, and only ever written
+-- by an explicit admin action. An index would be write cost for no read
+-- benefit — the same reasoning recorded on User.isPlatformAdmin.
+ALTER TABLE "User" ADD COLUMN "sessionsValidFrom" TIMESTAMP(3);

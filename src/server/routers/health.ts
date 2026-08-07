@@ -2,7 +2,9 @@
  * src/server/routers/health.ts
  *
  * tRPC health check router.
- * Verifies connectivity to PostgreSQL, Redis, Ollama, and MinIO.
+ * Verifies connectivity to PostgreSQL, Redis, Ollama, MinIO, and — since
+ * GH #25 — the embedding backend specifically, which can be broken while
+ * Ollama itself answers happily.
  *
  * Endpoint: GET /api/trpc/health.checkAll
  * Auth: public (no session required – used by load balancers / monitoring)
@@ -11,6 +13,8 @@
 import { createTRPCRouter, publicProcedure } from "@/server/trpc";
 import { prisma } from "@/server/db";
 import { minioClient, BUCKET_NAME } from "@/server/minio";
+import { checkAdvisorHealth } from "@/server/ai/advisorHealth";
+import { opsAlert } from "@/server/lib/ops/alert";
 
 // ── Redis health check using BullMQ's built-in ioredis ────────────────────
 // BullMQ re-exports ioredis – we access it via a dynamic import to avoid
@@ -101,19 +105,57 @@ export const healthRouter = createTRPCRouter({
    *     redis:    { healthy: boolean, latencyMs?: number, error?: string },
    *     ollama:   { healthy: boolean, models?: string[], error?: string },
    *     minio:    { healthy: boolean, bucket?: string,   error?: string },
+   *     embedding:{ healthy: boolean, model: string, reason?: string, error?: string },
    *   }
    * }
    */
   checkAll: publicProcedure.query(async () => {
-    const [postgres, redis, ollama, minio] = await Promise.all([
+    const [postgres, redis, ollama, minio, advisor] = await Promise.all([
       checkPostgres(),
       checkRedis(),
       checkOllama(),
       checkMinio(),
+      // GH #25 — `ollama` above only proves the process answers /api/tags. The
+      // advisor can pass that and still fail every single request: the
+      // embedding model may not be pulled (Ollama 404s per-request), or it may
+      // emit a dimension count the schema's vector(384) columns cannot store.
+      // Both were invisible to this endpoint, so the operator's health page
+      // read green while the Compliance Advisor was completely non-functional.
+      checkAdvisorHealth(),
     ]);
 
+    const embedding = {
+      healthy: advisor.healthy,
+      model: advisor.model,
+      ...(advisor.reason ? { reason: advisor.reason } : {}),
+      ...(advisor.compatibility.compatible
+        ? {}
+        : { error: advisor.compatibility.reason }),
+    };
+
     const allHealthy =
-      postgres.healthy && redis.healthy && ollama.healthy && minio.healthy;
+      postgres.healthy &&
+      redis.healthy &&
+      ollama.healthy &&
+      minio.healthy &&
+      embedding.healthy;
+
+    // GH #25 — raise an ops alert rather than waiting for a user to report it.
+    //
+    // Severity is split on the reason, which matters: DIMENSION_MISMATCH is a
+    // misconfiguration that will never self-heal and silently poisons stored
+    // vectors, so it pages. UNREACHABLE/MODEL_MISSING are usually a restarting
+    // container or a pull in progress, and paging on those trains the operator
+    // to ignore the channel.
+    if (!advisor.healthy) {
+      void opsAlert({
+        event: "ai.embedding.unavailable",
+        severity: advisor.reason === "DIMENSION_MISMATCH" ? "CRITICAL" : "WARN",
+        message:
+          "Embedding backend is not usable — the Compliance Advisor cannot perform retrieval.",
+        context: { reason: advisor.reason, model: advisor.model },
+      });
+    }
 
     return {
       status: allHealthy ? ("healthy" as const) : ("degraded" as const),
@@ -124,6 +166,7 @@ export const healthRouter = createTRPCRouter({
         redis,
         ollama,
         minio,
+        embedding,
       },
     };
   }),

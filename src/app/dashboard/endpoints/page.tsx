@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EndpointStatusDot } from "@/components/endpoints/EndpointStatusDot";
 
 export default function EndpointsPage() {
@@ -32,6 +33,9 @@ export default function EndpointsPage() {
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [form, setForm] = useState({ hostname: "", os: "macOS", osVersion: "" });
   const [enrolled, setEnrolled] = useState<{ token: string; command: string } | null>(null);
+  // GH #24 — the pending target of the revoke confirmation. One dialog serves
+  // the whole grid rather than one rendered per card.
+  const [pendingRevoke, setPendingRevoke] = useState<{ id: string; name: string } | null>(null);
 
   const enroll = api.endpoint.enroll.useMutation({
     onSuccess: (result) => {
@@ -43,6 +47,7 @@ export default function EndpointsPage() {
   const revoke = api.endpoint.revoke.useMutation({
     onSuccess: () => {
       toast.success("Endpoint revoked — future heartbeats will be rejected");
+      setPendingRevoke(null);
       void utils.endpoint.list.invalidate();
     },
     onError: (error) => toast.error(error.message),
@@ -134,7 +139,12 @@ export default function EndpointsPage() {
                       variant="ghost"
                       size="sm"
                       disabled={revoke.isPending}
-                      onClick={() => revoke.mutate({ id: endpoint.id })}
+                      // GH #24 — revoking an endpoint stops its compliance
+                      // check history from continuing; it used to fire on the
+                      // first click.
+                      onClick={() =>
+                        setPendingRevoke({ id: endpoint.id, name: endpoint.hostname })
+                      }
                     >
                       <ShieldOff className="mr-1 h-3 w-3" /> Revoke
                     </Button>
@@ -231,6 +241,24 @@ export default function EndpointsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingRevoke !== null}
+        onOpenChange={(open) => !open && setPendingRevoke(null)}
+        title="Revoke this endpoint?"
+        description={
+          <>
+            <span className="font-medium">{pendingRevoke?.name}</span> stops being
+            able to report compliance checks — its next heartbeat is rejected and it
+            contributes nothing further to your control coverage. Checks it has
+            already reported are retained. Re-enrolling requires generating a new
+            install command and running it on the machine.
+          </>
+        }
+        confirmLabel={revoke.isPending ? "Revoking…" : "Revoke endpoint"}
+        pending={revoke.isPending}
+        onConfirm={() => pendingRevoke && revoke.mutate({ id: pendingRevoke.id })}
+      />
     </div>
   );
 }

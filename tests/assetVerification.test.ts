@@ -172,11 +172,19 @@ describe("assertTargetVerified", () => {
     } as any;
   }
 
+  // GH #20 — `verifiedAt` is now load-bearing, not decorative: authorization
+  // requires a proof that is still CURRENT, not merely present. This fixture
+  // always claimed to be a verified asset; it now actually carries the proof
+  // date that makes it one. Expiry behaviour has its own suite
+  // (tests/assetVerificationExpiry.test.ts) — this one stays focused on
+  // coverage matching (apex vs. subdomain vs. unrelated).
   const verified = {
     id: "asset-1",
     organizationId: "org-1",
     value: "example.com",
     kind: "DOMAIN",
+    verifiedAt: new Date(),
+    revokedAt: null,
   };
 
   it("returns the covering asset for a verified domain", async () => {

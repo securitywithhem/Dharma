@@ -34,29 +34,30 @@ model Plan {
 }
 
 model Organization {
-  id              String               @id @default(cuid())
-  name            String
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  users           User[]
-  frameworks      Framework[]
-  evidences       Evidence[]
-  policies        Policy[]
-  auditLogs       AuditLog[]
-  auditorKeys     AuditorAccess[]
-  invites         OrganizationInvite[]
-  chainAnchors    ChainAnchor[]
-  connectors      Connector[]
-  webhooks        Webhook[]
-  auditExports    AuditExport[]
-  importedItems   ImportedItem[]
-  penTests        PenTest[]
-  vulnerabilities Vulnerability[]
-  assets          Asset[]
-  verifiedAssets  VerifiedAsset[]
-  controlMappings ControlMapping[]
-  readinessScores ReadinessScore[]
-  recommendations Recommendation[]
+  id                      String                   @id @default(cuid())
+  name                    String
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  users                   User[]
+  frameworks              Framework[]
+  evidences               Evidence[]
+  policies                Policy[]
+  auditLogs               AuditLog[]
+  auditorKeys             AuditorAccess[]
+  invites                 OrganizationInvite[]
+  chainAnchors            ChainAnchor[]
+  connectors              Connector[]
+  webhooks                Webhook[]
+  auditExports            AuditExport[]
+  importedItems           ImportedItem[]
+  penTests                PenTest[]
+  vulnerabilities         Vulnerability[]
+  assets                  Asset[]
+  verifiedAssets          VerifiedAsset[]
+  auditChainVerifications AuditChainVerification[]
+  controlMappings         ControlMapping[]
+  readinessScores         ReadinessScore[]
+  recommendations         Recommendation[]
 
   // Phase 7 Part 1 — AI Advisor data layer
   aiAdvisorSessions      AIAdvisorSession[]
@@ -192,6 +193,9 @@ model User {
   verifiedAssetsRequested VerifiedAsset[] @relation("VerifiedAssetRequester")
   verifiedAssetsVerified  VerifiedAsset[] @relation("VerifiedAssetVerifier")
 
+  // GH #26 — chain verifications this user started.
+  auditVerificationsRequested AuditChainVerification[] @relation("AuditVerificationRequester")
+
   // Phase 7 Part 1 — AI Advisor data layer
   aiAdvisorSessions AIAdvisorSession[]
   ingestedDocuments IngestedDocument[] @relation("IngestedDocumentUploader")
@@ -230,13 +234,34 @@ model User {
   // surface an attacker who reached the app could reach.
   isPlatformAdmin Boolean @default(false)
 
+  /// Session kill-switch. Any JWT stamped with a `sessionIssuedAt` earlier than
+  /// this instant is refused server-side on every authenticated request
+  /// (src/server/trpc.ts `enforceOrganizationContext`).
+  ///
+  /// WHY A PER-USER COLUMN CARRIES *BOTH* THE PER-USER AND THE ORG-WIDE SWITCH:
+  /// org-wide revocation is an `updateMany` that stamps every member of the org
+  /// with the same instant. Keeping the cutoff on Organization instead would
+  /// force a join on the identity read that runs on every request to every org
+  /// router — the one read this codebase deliberately keeps to a single indexed
+  /// primary-key lookup (see src/server/lib/sessionIdentity.ts). One column
+  /// answers both questions with no join and no second cache entry.
+  ///
+  /// Null means "no cutoff has ever been set", which is the correct default:
+  /// a cutoff of `now()` at row creation would invalidate the session the user
+  /// is being created with.
+  ///
+  /// This is NOT a substitute for database-backed sessions — it cannot list or
+  /// revoke an individual device. That deferral is recorded, with a revisit
+  /// date, in Dharma-Knowledge-OS/99_AI_MEMORY/decisions.md.
+  sessionsValidFrom DateTime?
+  // No index on isPlatformAdmin: the only access path is findUnique by id
+  // (sessionIdentity.ts reads the flag off the already-fetched row), so an
+  // index would be write cost for no read benefit.
+
   @@unique([organizationId, scimExternalId])
   @@index([organizationId])
   @@index([email])
   @@index([customRoleId])
-  // No index on isPlatformAdmin: the only access path is findUnique by id
-  // (sessionIdentity.ts reads the flag off the already-fetched row), so an
-  // index would be write cost for no read benefit.
 }
 
 enum Role {
@@ -617,6 +642,81 @@ model AuditLog {
   @@index([organizationId])
   @@index([timestamp])
   @@index([userId])
+  /// GH #26 — the composite the chain-verification walk pages on. Verification
+  /// must read entries in exactly the order they were written, and the plain
+  /// [organizationId] and [timestamp] indexes above force a sort for that
+  /// ordering over an org's whole history. Includes `id` because it is the
+  /// tiebreaker for entries written in the same millisecond, without which
+  /// keyset pagination is unstable across page boundaries and reports a chain
+  /// break that does not exist.
+  @@index([organizationId, timestamp, createdAt, id])
+}
+
+/// GH #26 — the result of a hash-chain verification run, kept so an auditor can
+/// be handed an artefact rather than a screenshot, and so scheduled runs have
+/// somewhere to record that they happened and passed.
+///
+/// Retained independently of the AuditLog entries it verified: the whole point
+/// is to attest to the state of the log at a moment in time, and a record that
+/// vanished with its subject would attest to nothing.
+model AuditChainVerification {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  status AuditVerificationStatus @default(RUNNING)
+
+  /// How this run was started — an operator pressing the button, or the
+  /// schedule. Distinguished because a FAILED scheduled run is an incident
+  /// (tampering nobody triggered a check for) while a failed manual run is
+  /// usually someone investigating a known problem.
+  trigger AuditVerificationTrigger @default(MANUAL)
+
+  /// Inclusive range covered. Null/null means the entire chain.
+  rangeFrom DateTime?
+  rangeTo   DateTime?
+
+  /// True when rangeFrom was set, so the first entry's back-link could not be
+  /// checked against its predecessor. Surfaced on the report: a partial
+  /// verification does not prove nothing was deleted before the range.
+  partial Boolean @default(false)
+
+  entriesChecked Int @default(0)
+
+  /// Populated only on FAILED — the first entry at which the chain diverges.
+  /// Deliberately a plain String and NOT a relation to AuditLog: a broken
+  /// chain's most likely cause is a deleted row, and a foreign key would make
+  /// it impossible to record the id of the entry that is no longer there.
+  brokenAtId        String?
+  brokenAtTimestamp DateTime?
+  failureReason     String?
+
+  /// Object key of the signed PDF report, once generated.
+  reportObjectKey String?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  requestedById String?
+  requestedBy   User?   @relation("AuditVerificationRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, startedAt])
+  @@index([organizationId, status])
+}
+
+enum AuditVerificationStatus {
+  RUNNING
+  PASSED
+  FAILED
+  /// The run itself could not complete (database error, worker killed). Kept
+  /// separate from FAILED so an infrastructure problem is never mistaken for
+  /// evidence of tampering — the two demand completely different responses.
+  ERRORED
+}
+
+enum AuditVerificationTrigger {
+  MANUAL
+  SCHEDULED
 }
 
 model RegulationSnippet {

@@ -13,6 +13,7 @@ import {
   hashAuditorToken
 } from "@/server/auditor-access";
 import { resolveSessionIdentity } from "@/server/lib/sessionIdentity";
+import { isSessionWithinValidity } from "@/server/lib/sessionPolicy";
 
 export type PrismaLike = PrismaClient;
 
@@ -183,6 +184,25 @@ const enforceOrganizationContext = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "This account is deactivated."
+    });
+  }
+
+  // GH #22 — the session kill-switch. An admin who offboards a user, or who
+  // cuts every session for the org after a suspected compromise, gets an
+  // answer that takes effect on the NEXT REQUEST rather than at next sign-in:
+  // this runs on every authenticated call, so a still-valid, unexpired JWT
+  // stops working immediately.
+  //
+  // Placed after the isActive check on purpose. Deactivation and revocation are
+  // different states — "your account is disabled" and "sign in again" need
+  // different words in front of the user, and a deactivated user must not be
+  // told that re-authenticating will help.
+  if (
+    !isSessionWithinValidity(sessionUser.sessionIssuedAt, identity.sessionsValidFromMs)
+  ) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This session was revoked. Please sign in again."
     });
   }
 
