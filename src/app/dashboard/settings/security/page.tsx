@@ -3,16 +3,22 @@
 // Settings → Security — the signed-in user's own account security.
 // Distinct from Settings → SSO & SCIM, which configures org-wide identity.
 //
-// This page deliberately does NOT show an "active sessions" table or an MFA
-// toggle: see src/server/routers/user.ts for why neither has a backing store
-// under the current JWT session strategy. The gaps are stated in the UI
+// This page deliberately does NOT show a per-device "active sessions" table or
+// an MFA toggle: see src/server/routers/user.ts for why neither has a backing
+// store under the current JWT session strategy. The gaps are stated in the UI
 // rather than filled with placeholder data.
+//
+// GH #22 changed what that gap actually IS. Org-wide and per-user session
+// revocation now exist (SessionControlCard below); what remains missing is only
+// per-device granularity. The copy below was updated to match — an out-of-date
+// "we cannot revoke sessions" on a page prospects read is worse than no page.
 import React from "react";
 import { Info, KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SessionControlCard } from "@/components/settings/SessionControlCard";
 
 const PROVIDER_LABELS: Record<string, string> = {
   google: "Google",
@@ -146,6 +152,12 @@ export default function SecuritySettingsPage() {
             </CardContent>
           </Card>
 
+          {/* GH #22 — this page used to list only what was missing. A
+              prospect's security reviewer reads it, so it now states the
+              control posture: what an admin CAN do first, what is still
+              unavailable second. */}
+          <SessionControlCard />
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -156,9 +168,11 @@ export default function SecuritySettingsPage() {
             <CardContent>
               <ul className="space-y-2 text-sm text-dharma-ink-secondary">
                 <li>
-                  <span className="font-medium text-dharma-ink">Active session list &amp; remote sign-out</span>{" "}
+                  <span className="font-medium text-dharma-ink">Per-device session list</span>{" "}
                   — sessions are stateless JWTs, so the server holds no record of
-                  individual devices to display or revoke.
+                  individual devices to display or sign out one at a time.
+                  Organization-wide and per-user revocation are available above;
+                  what is missing is only the per-device granularity.
                 </li>
                 <li>
                   <span className="font-medium text-dharma-ink">Multi-factor authentication</span>{" "}

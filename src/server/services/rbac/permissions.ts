@@ -21,6 +21,12 @@ export const PERMISSION_KEYS = [
   "vulns.manage",
   "members.invite",
   "roles.manage",
+  // GH #22 — pressing the session kill-switch (org-wide or per-user).
+  // Deliberately its own key rather than reusing `members.invite`: revoking
+  // every session in the org is an incident-response action that signs out the
+  // whole company, and an org that has delegated "can invite teammates" to an
+  // office manager has not thereby delegated that.
+  "sessions.revoke",
   "marketplace.publish",
   "reports.generate",
   "sso.configure",

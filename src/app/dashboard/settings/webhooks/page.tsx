@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useWebhooks } from '@/lib/hooks/useWebhooks';
 import { WebhookDeliveryLog } from '@/components/connectors/WebhookDeliveryLog';
 
@@ -148,14 +149,19 @@ export default function WebhooksSettingsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [revealSecret, setRevealSecret] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // GH #24 — pending target of the delete confirmation.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; url: string } | null>(null);
 
   const { listQuery, deleteMutation, updateMutation, testDeliverMutation } = useWebhooks();
   const { data: webhooks, isLoading } = listQuery;
 
+  // GH #24 — reached only from the confirmation dialog now; the trash icon
+  // used to call this straight through.
   const handleDelete = async (id: string) => {
     try {
       await deleteMutation.mutateAsync({ id });
       toast.success('Webhook removed');
+      setPendingDelete(null);
     } catch (error) {
       toast.error('Failed to remove webhook');
     }
@@ -252,7 +258,7 @@ export default function WebhooksSettingsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(webhook.id)}
+                      onClick={() => setPendingDelete({ id: webhook.id, url: webhook.url })}
                       className="text-dharma-danger-text hover:bg-dharma-surface-hover"
                       title="Delete webhook"
                     >
@@ -284,6 +290,25 @@ export default function WebhooksSettingsPage() {
       {revealSecret && (
         <SecretRevealDialog secret={revealSecret} onClose={() => setRevealSecret(null)} />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Delete this webhook?"
+        description={
+          <>
+            Dharma stops delivering events to{" "}
+            <span className="font-mono text-xs break-all">{pendingDelete?.url}</span>.
+            Its delivery history is removed with it, so failed deliveries you have
+            not yet investigated are lost. The signing secret cannot be recovered —
+            recreating this endpoint issues a new one, and the receiving system must
+            be updated to match. This is written to the audit log.
+          </>
+        }
+        confirmLabel={deleteMutation.isPending ? 'Deleting…' : 'Delete webhook'}
+        pending={deleteMutation.isPending}
+        onConfirm={() => pendingDelete && void handleDelete(pendingDelete.id)}
+      />
     </div>
   );
 }

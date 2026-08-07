@@ -21,8 +21,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+
+type PendingRevoke = { id: string; orgCount: number };
 
 export default function MsspGrantsPage() {
+  // GH #24 — pending target of the revoke confirmation.
+  const [pendingRevoke, setPendingRevoke] = useState<PendingRevoke | null>(null);
   const utils = api.useUtils();
   const groupsQuery = api.mssp.listGroups.useQuery();
 
@@ -54,6 +59,7 @@ export default function MsspGrantsPage() {
   const revokeGrant = api.mssp.revokeGrant.useMutation({
     onSuccess: () => {
       toast.success("Grant revoked — access is blocked immediately");
+      setPendingRevoke(null);
       invalidate();
     },
     onError: (error) => toast.error(error.message),
@@ -140,7 +146,16 @@ export default function MsspGrantsPage() {
                           variant="ghost"
                           size="sm"
                           disabled={revokeGrant.isPending}
-                          onClick={() => revokeGrant.mutate({ grantId: grant.id })}
+                          // GH #24 — fired on the first click. Revoking a grant
+                          // cuts a partner's live cross-tenant access; naming
+                          // the client orgs in the dialog is the point, since
+                          // the row shows only a count.
+                          onClick={() =>
+                            setPendingRevoke({
+                              id: grant.id,
+                              orgCount: grant.scopeOrgIds.length,
+                            })
+                          }
                         >
                           <ShieldOff className="mr-1 h-3 w-3" /> Revoke
                         </Button>
@@ -237,6 +252,30 @@ export default function MsspGrantsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingRevoke !== null}
+        onOpenChange={(o) => !o && setPendingRevoke(null)}
+        title="Revoke this access grant?"
+        description={
+          <>
+            The grantee loses access to{" "}
+            <span className="font-medium">
+              {pendingRevoke?.orgCount} client organization
+              {pendingRevoke?.orgCount === 1 ? "" : "s"}
+            </span>{" "}
+            immediately — any of their in-flight sessions stop resolving this tenant
+            on their next request. Restoring access means creating a new grant with
+            the same scope; the revoked one is kept as a record and is not reusable.
+            This is written to the audit log.
+          </>
+        }
+        confirmLabel={revokeGrant.isPending ? "Revoking…" : "Revoke grant"}
+        pending={revokeGrant.isPending}
+        onConfirm={() =>
+          pendingRevoke && revokeGrant.mutate({ grantId: pendingRevoke.id })
+        }
+      />
     </div>
   );
 }

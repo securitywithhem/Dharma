@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Download,
   Hash,
   Loader2,
   RefreshCw,
@@ -14,6 +15,7 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/hooks/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -211,8 +213,12 @@ export function AuditLogViewer() {
     reason: string | null;
     checkedAt: Date;
     totalChecked: number;
+    partial?: boolean;
   } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  // GH #26 — set when the chain is too large to walk inline. The UI then
+  // switches to the background job and polls the row.
+  const [backgroundId, setBackgroundId] = useState<string | null>(null);
 
   const utils = api.useUtils();
 
@@ -229,11 +235,50 @@ export function AuditLogViewer() {
     enabled: false, // only fetch on demand
   });
 
+  const startBackground = api.audit.startVerification.useMutation({
+    onSuccess: (r) => setBackgroundId(r.verificationId),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const downloadReport = api.audit.getVerificationReportUrl.useMutation({
+    onSuccess: (r) => window.open(r.url, "_blank", "noopener"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  // GH #26 — poll a running background verification. Stops polling the moment
+  // it leaves RUNNING, so a completed run does not keep a timer alive.
+  const backgroundQuery = api.audit.getVerification.useQuery(
+    { id: backgroundId ?? "" },
+    {
+      enabled: backgroundId !== null,
+      refetchInterval: (query) =>
+        query.state.data?.status === "RUNNING" ? 2_000 : false,
+    },
+  );
+
+  /**
+   * GH #26 — try the inline walk first; escalate to the background job when
+   * the server says the range is too large.
+   *
+   * Escalating automatically rather than making the user choose: "verify the
+   * audit chain" is one intent, and asking someone to first know how many
+   * entries they have is asking them to do the server's job.
+   */
   async function handleVerify() {
     setIsVerifying(true);
+    setBackgroundId(null);
     try {
-      const result = await utils.audit.verifyIntegrity.fetch();
+      const result = await utils.audit.verifyIntegrity.fetch({});
       setVerifyResult(result as typeof verifyResult);
+    } catch (err) {
+      const tooLarge =
+        (err as { data?: { code?: string } } | null)?.data?.code === "PAYLOAD_TOO_LARGE";
+      if (tooLarge) {
+        setVerifyResult(null);
+        startBackground.mutate({});
+      } else {
+        toast.error(err instanceof Error ? err.message : "Verification failed to start");
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -278,7 +323,67 @@ export function AuditLogViewer() {
           </div>
         </CardHeader>
 
-        {verifyResult && (
+        {/* GH #26 — background verification: progress, then the outcome plus
+            the signed artefact an auditor can be handed. */}
+        {backgroundId && backgroundQuery.data && (
+          <CardContent>
+            <div
+              role="status"
+              aria-live="polite"
+              className={cn(
+                "flex items-start gap-3 rounded-lg border p-4",
+                backgroundQuery.data.status === "RUNNING" && "border-dharma-border",
+                backgroundQuery.data.status === "PASSED" &&
+                  "border-dharma-success bg-dharma-success-bg",
+                backgroundQuery.data.status === "FAILED" &&
+                  "border-dharma-danger bg-dharma-danger-bg",
+                backgroundQuery.data.status === "ERRORED" &&
+                  "border-dharma-warning bg-dharma-warning-bg",
+              )}
+            >
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">
+                  {backgroundQuery.data.status === "RUNNING" &&
+                    `Verifying the chain… ${backgroundQuery.data.entriesChecked.toLocaleString()} entries checked`}
+                  {backgroundQuery.data.status === "PASSED" &&
+                    "Audit chain is intact — no tampering detected"}
+                  {backgroundQuery.data.status === "FAILED" &&
+                    "Chain integrity violation detected"}
+                  {/* ERRORED is deliberately worded so it can never be read as
+                      a tampering finding — see the enum comment in the schema. */}
+                  {backgroundQuery.data.status === "ERRORED" &&
+                    "Verification could not complete — this is NOT a tampering finding"}
+                </p>
+                <p className="text-xs text-dharma-ink-secondary">
+                  {backgroundQuery.data.entriesChecked.toLocaleString()} entries
+                  {backgroundQuery.data.partial && " · partial range — does not prove nothing was deleted before it"}
+                </p>
+                {backgroundQuery.data.status === "FAILED" && backgroundQuery.data.brokenAtId && (
+                  <p className="text-xs text-dharma-danger-text">
+                    First broken entry ID:{" "}
+                    <span className="font-mono">{backgroundQuery.data.brokenAtId}</span>
+                    {backgroundQuery.data.failureReason &&
+                      ` — ${backgroundQuery.data.failureReason}`}
+                  </p>
+                )}
+                {backgroundQuery.data.reportObjectKey && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    disabled={downloadReport.isPending}
+                    onClick={() => downloadReport.mutate({ id: backgroundId })}
+                  >
+                    <Download className="mr-1.5 h-4 w-4" />
+                    Download signed verification report
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+
+        {verifyResult && !backgroundId && (
           <CardContent>
             <div
               role="status"
@@ -309,8 +414,10 @@ export function AuditLogViewer() {
                     : `Chain integrity violation detected`}
                 </p>
                 <p className="text-xs text-dharma-ink-secondary">
-                  Checked {verifyResult.totalChecked} entries ·{" "}
+                  Checked {verifyResult.totalChecked.toLocaleString()} entries ·{" "}
                   {new Date(verifyResult.checkedAt).toLocaleString("en-IN")}
+                  {verifyResult.partial &&
+                    " · partial range — does not prove nothing was deleted before it"}
                 </p>
                 {!verifyResult.ok && verifyResult.brokenAtId && (
                   <p className="text-xs text-dharma-danger-text">

@@ -7,6 +7,12 @@ import GoogleProvider from "next-auth/providers/google";
 import nodemailer from "nodemailer";
 import { env } from "@/env";
 import { prisma } from "@/server/db";
+import {
+  SESSION_ISSUED_AT_CLAIM,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_UPDATE_AGE_SECONDS,
+  nowSessionIssuedAt,
+} from "@/server/lib/sessionPolicy";
 
 const shouldEnableGoogle =
   env.GOOGLE_CLIENT_ID.length > 0 && env.GOOGLE_CLIENT_SECRET.length > 0;
@@ -135,7 +141,11 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60
+    // GH #22 — both values, and the reasoning for choosing them over 30 days,
+    // live in src/server/lib/sessionPolicy.ts so the enterprise-SSO minting
+    // path (which encodes its own JWT outside this flow) cannot drift from it.
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS
   },
   callbacks: {
     // Phase 8 Part 1: block deactivated (SCIM-deprovisioned) users, and
@@ -193,6 +203,13 @@ export const authOptions: NextAuthOptions = {
         token.sub = dbUser.id;
         token.role = dbUser.role;
         token.organizationId = dbUser.organizationId;
+        // GH #22 — stamp the session's true origin, once. `user` is only
+        // present at sign-in, so every later re-encode (hourly, per
+        // SESSION_UPDATE_AGE_SECONDS) carries this value forward untouched.
+        // That is the whole point: the standard `iat` claim IS rewritten on
+        // each re-encode, so a revocation cutoff compared against it would be
+        // defeated by an attacker simply keeping the stolen session active.
+        token[SESSION_ISSUED_AT_CLAIM] = nowSessionIssuedAt();
       }
 
       return token;
@@ -203,6 +220,13 @@ export const authOptions: NextAuthOptions = {
         session.user.role = getRoleFromToken(token.role);
         session.user.organizationId =
           typeof token.organizationId === "string" ? token.organizationId : "";
+        // Carried onto the session so the tRPC layer can compare it against the
+        // user's revocation cutoff. Left undefined for tokens minted before
+        // #22 shipped — sessionPolicy.isSessionWithinValidity fails those
+        // closed once a cutoff exists, which is the intended behaviour.
+        const issuedAt = token[SESSION_ISSUED_AT_CLAIM];
+        session.user.sessionIssuedAt =
+          typeof issuedAt === "number" ? issuedAt : undefined;
       }
 
       return session;

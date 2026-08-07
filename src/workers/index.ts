@@ -35,6 +35,8 @@ import { startDunningWorker } from "@/server/queue/workers/dunningWorker";
 import { registerDunningSweep } from "@/server/queue/dunningQueue";
 import { startBillingReconciliationWorker } from "@/server/queue/workers/billingReconciliationWorker";
 import { registerBillingReconciliation } from "@/server/queue/billingReconciliationQueue";
+import { startAuditVerificationWorker } from "@/server/queue/workers/auditVerificationWorker";
+import { registerScheduledChainVerification } from "@/server/queue/auditVerificationQueue";
 import { attachDeadLetterAlerting } from "@/server/lib/ops/alert";
 
 console.log("🚀 Starting Dharma background workers...");
@@ -66,6 +68,8 @@ const regulatoryFanoutWorker = startRegulatoryFanoutWorker();
 // pair of jobs covers every subscribed org — no per-provider queues.
 const dunningWorker = startDunningWorker();
 const billingReconciliationWorker = startBillingReconciliationWorker();
+// GH #26 — audit hash-chain verification, on demand and on a nightly schedule.
+const auditVerificationWorker = startAuditVerificationWorker();
 
 // ── Dead-letter alerting ────────────────────────────────────────────────────
 // Each worker above already logs its own `failed` events, but only as free
@@ -107,6 +111,10 @@ const allWorkers: unknown[] = [
   // cancellation we never saw) go uncorrected. Both fail silently otherwise.
   dunningWorker,
   billingReconciliationWorker,
+  // A dead-lettered verification job leaves an AuditChainVerification row stuck
+  // at RUNNING forever — which the UI renders as "still checking", i.e. as an
+  // answer that is on its way rather than one that will never arrive.
+  auditVerificationWorker,
 ];
 
 // Not every entry above is a real BullMQ Worker — at least one start* function
@@ -141,6 +149,7 @@ void registerEndpointStaleSweep();
 void registerReportScheduleDispatch();
 void registerDunningSweep();
 void registerBillingReconciliation();
+void registerScheduledChainVerification();
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received — draining workers...");
