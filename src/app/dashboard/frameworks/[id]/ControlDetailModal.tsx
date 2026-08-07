@@ -190,6 +190,20 @@ export function ControlDetailModal({
                   </SelectContent>
                 </Select>
 
+                {/* WAVE 11.1 (fullstack-audit-2026-08-06 ARCH-4) — say it where
+                    the number is actually being set. Readiness is computed from
+                    evidence presence and cross-walk mapping only
+                    (src/server/services/readinessScoring.ts); Control.status is
+                    never read by it. Leaving both numbers on screen without
+                    this note implies one drives the other, and a compliance
+                    officer can mark every control COMPLIANT and watch readiness
+                    stay at 0%. */}
+                <p className="text-xs text-dharma-ink-secondary">
+                  Status records your team&rsquo;s assessment. The framework&rsquo;s
+                  evidence-coverage score is computed from attached evidence and
+                  cross-walk mappings, so changing this does not move it.
+                </p>
+
                 {updateMutation.isSuccess && (
                   <p role="status" className="text-xs text-dharma-success-text">
                     ✓ Status updated successfully
