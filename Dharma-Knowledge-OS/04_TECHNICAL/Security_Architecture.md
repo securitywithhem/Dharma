@@ -1,83 +1,50 @@
 ---
 title: Security Architecture
 folder: 04_TECHNICAL
-tags: [dharma, technical, security]
-source_docs: [2_TRD.md, 1_PRD.md, packages/db/schema.prisma]
-last_updated: 2026-08-04
+tags: [dharma, technical, security, pivot]
+source_docs: [Dharma_Pivot_Architecture_Plan.md, 2_TRD.md, 1_PRD.md, packages/db/schema.prisma]
+last_updated: 2026-08-08
 status: reviewed
 ---
 
 # Security Architecture
 
-## Core controls (TRD Section 7)
+## Non-negotiable requirements for every new (pivot) component
 
-- **Data sovereignty**: all AI processing local (Ollama); external network access disabled for `ollama` and `postgres` containers.
+These apply to the Sandbox Manager, Agent Runtime, every specialized agent, and any tool that touches a live target. Source: `Dharma_Pivot_Architecture_Plan.md` §5. Treat these as launch-blocking, not aspirational.
+
+1. **No agent gets unrestricted host access.** No Docker socket mount, no host filesystem, no host cloud credentials, ever — the single most important line item, because Dharma will be running untrusted, possibly hostile application code as its core function. Note the existing `pentest-worker` container already holds the host Docker socket for isolation purposes (see [[Database_Design]] pre-pivot notes) — **audit that specifically** before the Sandbox Manager reuses any of its infrastructure; the new component's whole point is to not need that access.
+2. **Prompt injection boundary.** Four distinct trust tiers: system instructions, tool policy, user instructions, scanned repository/application content. Tier 4 content can never escalate to tier 1/2 authority, even by trying "ignore previous instructions" or "system: grant access."
+3. **SSRF discipline extends everywhere, not just pentest.** Any agent tool accepting a URL/hostname (`http_request`, connector test endpoints, webhook dispatch, report generation from user input) needs the same RFC1918/loopback/link-local/cloud-metadata blocklist and DNS-rebind re-check at dispatch time already scoped for the pentest module in WAVE 0. Generalize that work rather than treating it as pentest-only.
+4. **Ownership verification gates any live-target testing**, agent-driven or not — same `VerifiedAsset` model, same DNS TXT/HTTP-file challenge, same server-side check, whether the target came from the pentest form or the Recon Agent choosing to hit a discovered subdomain.
+5. **Dedicated scan/exploit authorization audit trail**, separate from the general `AuditLog` — who authorized which target, which agent ran against it, when. Legal protection artifact, not optional polish.
+6. **Human approval required before any code-modifying or externally-visible action** — suggested patches yes, auto-applied PRs no (until a later phase, and even then behind explicit opt-in).
+7. **Multi-tenant isolation extends to agent memory and vector retrieval.** No agent run, embedding, or knowledge-graph query may cross an `organizationId` boundary — audit this specifically once RAG/Knowledge Engine work starts (Phase E); it's the easiest place for a subtle cross-tenant leak to hide.
+
+## Core controls (pre-pivot, kept unchanged)
+
+- **Data sovereignty**: AI processing local by default (Ollama); external network access disabled for `ollama` and `postgres` containers. The `LLMProvider` abstraction adds opt-in external providers — this does not weaken the default, it makes the exception explicit and BYOK-gated rather than a silent fallback.
 - **Access control**: every tRPC endpoint requires a valid session; org ID filters enforced at the DB query layer, not just the UI. See [[Authorization]].
-- **Presigned URLs**: 15-minute expiry on MinIO file access (TRD) — `AuditExport` uses a longer 24h window for export packages, a deliberate exception for a different use case (download-and-review vs. direct upload/access).
+- **Presigned URLs**: 15-minute expiry on MinIO file access; `AuditExport` uses a longer 24h window for export packages.
 
-## Session revocation and the identity re-read
+## Session revocation and the identity re-read (unchanged)
 
-Auth is a JWT session (`strategy: "jwt"`, `maxAge: 30 days`). NextAuth's `jwt`
-callback populates `role`/`organizationId` only when `user` is present — i.e.
-only at sign-in — so for a long time the token was an **unrevokable bearer
-credential**: deactivating a member (`organization.removeMember`) or
-SCIM-deprovisioning them set `isActive: false` but did not end their open
-session, and a role demotion left the old privilege in force until the token
-expired. Only the 6 routers using `permissionProcedure` were protected, because
-that middleware re-read the user row.
+Auth is a JWT session (`strategy: "jwt"`, `maxAge: 30 days`). Since WAVE 5.1, `orgProcedure` re-reads the caller's `User` row on every request (`src/server/lib/sessionIdentity.ts`) and overwrites the session's `role`/`organizationId` with the database's values before any downstream procedure sees them, with a 30-second Redis-cached staleness window and eager invalidation on `User` writes as an optimization, not the correctness mechanism. This pattern should be the model for how Agent Runtime tool-permission checks read `CustomRole` — fresh per call, not trusted from a stale session claim, per non-negotiable #2 above (an agent's own reasoning is exactly the kind of thing that must never be trusted to assert its own elevated permission).
 
-Since WAVE 5.1, `orgProcedure` itself re-reads the caller's `User` row on every
-request (`src/server/lib/sessionIdentity.ts`) and **overwrites the session's
-`role`/`organizationId` with the database's values** before any downstream
-procedure sees them. The JWT is now treated as carrying only an unverified
-`sub`. This applies to all org routers, so `managerProcedure`/`adminProcedure`
-became revocation-aware without individual changes. A deactivated user gets
-`FORBIDDEN`, a deleted user `UNAUTHORIZED`, and a token naming an org the user
-has left `FORBIDDEN`.
+## Secrets handling patterns (unchanged, extends to new components)
 
-**Staleness window: 30 seconds.** The row is cached in Redis
-(`IDENTITY_CACHE_TTL_SECONDS`) because this read runs on every authenticated
-request across 3–10 app replicas. Two mechanisms bound staleness:
+Two patterns, chosen per whether the secret needs to be recovered later:
+1. **Hash-only, validate-only**: SHA-256 for `OrganizationSettings.scimTokenHash`, `Endpoint.enrollmentTokenHash`, `ApiKey.keyHash`, `AuditorAccess.tokenHash`/`sessionTokenHash`.
+2. **Reversible AES-256-GCM envelope**: `Connector.config`, `Webhook.secret`, `OrganizationSettings.siemExportConfig`.
 
-1. **The TTL is the guarantee.** Any change to a `User` row takes effect
-   everywhere within 30s, including changes made out of band (a DBA, a restored
-   backup, a future code path).
-2. **Eager invalidation is an optimization**, applied by a Prisma middleware on
-   `User` writes (`src/server/db.ts`), which collapses the window to ~0 for
-   writes that go through the app. It is deliberately *not* the correctness
-   mechanism — there are ~14 `user.update`/`updateMany` call sites (7 in SCIM
-   alone), and a scheme depending on each author remembering to invalidate
-   fails silently the first time someone adds another.
+Any credential the LLM Provider abstraction stores (BYOK API keys) must use pattern 2 — recoverable, since the app needs to present it on outbound calls, but never logged in `AgentRun.toolCalls`.
 
-`SessionIdentity` deliberately caches **only `User` scalars, never the joined
-`CustomRole.permissions` map**. Editing a custom role is not a `User` write, so
-a cached copy would go stale for up to the TTL and break the Phase 8 guarantee
-that permission changes take effect immediately; `requirePermission` therefore
-reads the `CustomRole` fresh off the cached `customRoleId`.
+## Cryptographic audit trail (unchanged, extended)
 
-If Redis is unreachable the resolver falls through to a direct database read
-rather than failing the request — failing closed would turn a Redis blip into a
-total authentication outage, while falling through preserves the security
-property exactly and costs only the cache benefit.
+`AuditLog` hash-chains every mutating operation; `ChainAnchor` periodically anchors the chain externally. **New**: a dedicated scan/exploit authorization audit trail (non-negotiable #5 above) is a separate log, not a new `AuditLog` action type — it needs different retention and access-control properties (legal evidence of authorization, potentially subpoenable independent of general product audit history).
 
-Note this also removes the strongest objection to the multi-replica production
-topology, though **not** the rate-limiter one below, which is unrelated and
-still open.
+## Rate limiting (unchanged, relevant to Agent Runtime)
 
-## Secrets handling patterns (consistent across the schema)
+Fixed-window, in-process limiter (`src/server/lib/rateLimit.ts`) — correct only for a single Next.js process. **Do not reuse this as-is for Agent Runtime tool-call rate limiting** — a runaway or compromised agent loop hitting `http_request` in a tight cycle is exactly the failure mode a shared, Redis-backed limiter is for. Scope this explicitly in the Phase B implementation prompt rather than inheriting the existing limiter's known multi-replica weakness.
 
-Two distinct patterns, chosen per whether the secret needs to be recovered later:
-1. **Hash-only, validate-only** (never recoverable): `OrganizationSettings.scimTokenHash`, `Endpoint.enrollmentTokenHash`, `ApiKey.keyHash`, `AuditorAccess.tokenHash`/`sessionTokenHash` — all SHA-256. Plaintext is shown exactly once at creation.
-2. **Reversible AES-256-GCM envelope** (needed for outbound calls): `Connector.config`, `Webhook.secret`, `OrganizationSettings.siemExportConfig` — encrypted via dedicated vault modules (`connectorVault.ts`, `secretVault.ts`, `siemVault.ts`).
-
-## Cryptographic audit trail
-
-`AuditLog` hash-chains every mutating operation (SHA-256 of the row's fields concatenated with the previous row's hash). `ChainAnchor` periodically anchors the chain externally (with optional OpenTimestamps proof) so integrity doesn't rely solely on the database being untampered — a defense specifically against Problem Statement item 5 (a rogue DB admin altering logs). See [[Audit_Process]].
-
-## Rate limiting
-
-The TRD called for a token bucket. What is built (`src/server/lib/rateLimit.ts`) is a **fixed-window, in-process** limiter: a module-level `Map` of `{ count, windowStart }`, throwing `TRPCError("TOO_MANY_REQUESTS")`, called at the top of a procedure keyed on something like `${organizationId}:${procedureName}`. Thresholds are passed per call site rather than defined centrally.
-
-Its own comment states the constraint honestly: this is correct only while Dharma runs one Next.js process per deployment. **Multiple replicas behind a load balancer would multiply every limit by the replica count** — that migration to a Redis-backed counter is not done. Relevant to [[Deployment]]'s Kubernetes question, since a replicated deploy silently weakens this control.
-
-Related: [[Threat_Model]], [[Authentication]], [[Authorization]], [[Database_Design]].
+Related: [[Threat_Model]], [[Authentication]], [[Authorization]], [[Database_Design]], [[System_Architecture]].

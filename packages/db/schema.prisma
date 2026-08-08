@@ -54,6 +54,7 @@ model Organization {
   vulnerabilities         Vulnerability[]
   assets                  Asset[]
   verifiedAssets          VerifiedAsset[]
+  findingControlMappings  FindingControlMapping[]
   auditChainVerifications AuditChainVerification[]
   controlMappings         ControlMapping[]
   readinessScores         ReadinessScore[]
@@ -352,6 +353,9 @@ model Control {
 
   // ----- Phase 6 Part 3: Readiness Scoring -----
   recommendations Recommendation[]
+
+  // ----- WAVE 12: proven-exploit mappings (AI-suggested or human-attested) -----
+  findingMappings FindingControlMapping[]
 
   // ----- Phase 6: Advanced Frameworks — arbitrary-depth control hierarchy -----
   // Optional external identifier, e.g. NIST 800-53 "AC-2(1)". Distinct from `title`.
@@ -1055,10 +1059,53 @@ model PenTest {
   id             String        @id @default(cuid())
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  target         String // domain or IP, org-admin-confirmed as owned
+  target         String // domain or IP, proven owned via `verifiedAsset` below
   type           PenTestType
   status         PenTestStatus @default(QUEUED)
   result         Json? // raw scan output / error detail
+
+  // ----- WAVE 12: pluggable scan engines -----
+
+  /// Which engine produced (or will produce) this run. Defaults to NUCLEI so
+  /// every pre-WAVE-12 row keeps its true provenance without a data migration.
+  engine ScanEngine @default(NUCLEI)
+
+  /// The engine's own run identifier, for correlating back to raw agent output
+  /// that lives outside the database. For STRIX this is the run name, i.e. the
+  /// directory `strix_runs/<engineRunId>/` inside the scan container volume.
+  /// Null for engines with no addressable run of their own (nuclei).
+  engineRunId String?
+
+  /// WAVE 12 — destructive-testing opt-in, default OFF.
+  ///
+  /// Strix can be told to attempt actions that modify data or degrade a
+  /// service. Read-only recon plus validated exploitation is the only mode a
+  /// scan may run in unless a human explicitly turns this on for this one run.
+  /// Deliberately per-run and not an org setting: "we allow destructive tests"
+  /// as a standing preference is precisely the kind of durable authorization
+  /// that WAVE 0 exists to prevent.
+  allowDestructiveTests Boolean @default(false)
+
+  /// Human-readable failure reason surfaced in the UI and audit log. Raw
+  /// engine stderr is logged server-side only (it can carry target internals);
+  /// this field is the sanitized, actionable half. See WAVE 1.4's convention:
+  /// a container that dies must fail loudly, not vanish into Redis.
+  failureReason String? @db.Text
+
+  /// WAVE 12 — the authorization this scan runs under, promoted from an
+  /// implicit lookup to a hard foreign key.
+  ///
+  /// WAVE 0 gated scanning by resolving `target` against VerifiedAsset at
+  /// create AND at dispatch. That control is correct but leaves no durable
+  /// record ON the scan of which proof authorized it, and every new engine or
+  /// enqueue path has to remember to re-run the lookup. Making it a required
+  /// FK means the database itself refuses a scan row with no authorization —
+  /// a new engine cannot open a second, ungated path by forgetting a call.
+  /// The runtime checks are NOT removed: a FK proves an asset was verified at
+  /// some point, not that it still is (verification expires — GH #20 — and can
+  /// be revoked), so the worker still re-validates at dispatch.
+  verifiedAssetId String
+  verifiedAsset   VerifiedAsset @relation(fields: [verifiedAssetId], references: [id])
 
   // MinIO object path for the raw scanner stdout (pentest-logs/{orgId}/{id}.jsonl),
   // kept separate from `result` for audit/debug access to the untruncated log.
@@ -1084,6 +1131,17 @@ model PenTest {
 enum PenTestType {
   EXTERNAL_NETWORK
   WEB_APP
+}
+
+/// WAVE 12 — which scanner backs a PenTest run. ZAP and BURP are declared but
+/// not implemented; they are listed so the engine dimension is a closed enum
+/// from the start rather than a string that grows ad hoc. `engines.status`
+/// reports them unavailable, and the UI never offers a dead option.
+enum ScanEngine {
+  NUCLEI
+  STRIX
+  ZAP
+  BURP
 }
 
 enum PenTestStatus {
@@ -1115,6 +1173,27 @@ model Vulnerability {
   remediation    String?      @db.Text
   status         VulnStatus   @default(OPEN)
   createdAt      DateTime     @default(now())
+
+  // ----- WAVE 12: engine provenance + proof of concept -----
+
+  /// The engine's own identifier for this finding, e.g. Strix's `vuln-0001`
+  /// within `strix_runs/<PenTest.engineRunId>/vulnerabilities/`. Lets an
+  /// auditor walk from this row back to the untruncated agent artifact.
+  rawFindingId String?
+
+  /// Structured proof that the finding is real rather than suspected: request/
+  /// response evidence, reproduction steps, the PoC script, and code locations.
+  /// Json rather than columns because the shape is engine-specific and a
+  /// per-engine column set would have to change every time an engine is added.
+  /// Shape is normalized on ingest by src/server/pentest/strix/parseStrixFindings.ts
+  /// (see PocEvidence there) so the UI renders one format regardless of engine.
+  ///
+  /// This field is what distinguishes a Dharma finding from a scanner alert:
+  /// a compliance officer reading it sees proof, not a claim.
+  pocEvidence Json?
+
+  /// Control mappings proposed or confirmed for this finding (WAVE 12).
+  controlMappings FindingControlMapping[]
 
   // pgvector embedding of title+description+remediation, for future
   // semantic search / AI advisor retrieval (Phase 7). Same vector(384)
@@ -1211,6 +1290,13 @@ model VerifiedAsset {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// WAVE 12 — scans authorized by this asset. No onDelete rule is declared, so
+  /// Prisma/Postgres default to RESTRICT: a VerifiedAsset with scan history
+  /// cannot be deleted out from under the scans it authorized. Revocation is
+  /// the supported withdrawal path (revokedAt above), and it preserves the
+  /// trail; deletion would destroy it.
+  penTests PenTest[]
+
   @@unique([organizationId, value])
   @@index([organizationId, verifiedAt])
 }
@@ -1228,6 +1314,71 @@ enum VulnStatus {
   IN_PROGRESS
   RESOLVED
   WONT_FIX
+}
+
+// -----------------------------------------------------------------------------
+// WAVE 12 — finding → control mapping.
+//
+// This is the join that turns a validated exploit into a compliance artifact:
+// "control A.12.6.1 has a proven, evidenced failure" rather than "the scanner
+// found something". It is deliberately NOT a nullable column on Vulnerability
+// (`Vulnerability.controlId` already is one, set by the legacy exact-title
+// matcher): one finding can bear on several controls across several frameworks,
+// and — more importantly — a column cannot record HOW the link was made.
+//
+// `mappingSource` + `confirmedBy` are the point of the model, not metadata. An
+// AI-suggested link an auditor cannot distinguish from a human-confirmed one is
+// a trust liability: it lets a similarity score masquerade as an attestation.
+// Only HUMAN_CONFIRMED / HUMAN_OVERRIDDEN rows are allowed to influence control
+// status or the readiness score — enforced in the scoring engine, not the UI.
+// -----------------------------------------------------------------------------
+
+enum MappingSource {
+  /// Proposed by the embedding matcher. Advisory only — never affects scoring.
+  AI_SUGGESTED
+  /// A human agreed with the AI's proposed control.
+  HUMAN_CONFIRMED
+  /// A human rejected the AI's control and named a different one. Kept distinct
+  /// from HUMAN_CONFIRMED so the matcher's real-world hit rate stays measurable.
+  HUMAN_OVERRIDDEN
+}
+
+model FindingControlMapping {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vulnerabilityId String
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+  controlId       String
+  control         Control       @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  /// Cosine similarity in [0,1] from the embedding match that proposed this
+  /// row. Retained on HUMAN_* rows too: the score the human overrode is the
+  /// only way to tell a good matcher from a lucky one.
+  confidence Float
+
+  mappingSource MappingSource
+
+  /// User id of the confirming human; null while AI_SUGGESTED.
+  ///
+  /// DEVIATION (deliberate): a plain String, not a User FK, unlike most
+  /// user references in this schema. This is an attestation — the record that
+  /// a named person accepted responsibility for linking a proven exploit to a
+  /// control. A FK would let user deletion cascade or null the attester away,
+  /// erasing the accountability the field exists to preserve. Same reasoning
+  /// as the append-mostly tombstone on VerifiedAsset.revokedAt.
+  confirmedBy String?
+  confirmedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  /// One verdict per (finding, control) pair — confirming a mapping twice must
+  /// not create two conflicting attestations.
+  @@unique([vulnerabilityId, controlId])
+  /// Drives the Findings Review Queue: pending AI suggestions, newest first.
+  @@index([organizationId, mappingSource, createdAt])
+  /// Drives the "N pending findings" badge on a control.
+  @@index([controlId, mappingSource])
 }
 
 // =============================================================================

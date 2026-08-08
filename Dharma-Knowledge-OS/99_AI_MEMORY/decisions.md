@@ -1,9 +1,9 @@
 ---
 title: Decisions
 folder: 99_AI_MEMORY
-tags: [dharma, ai-memory, decisions]
+tags: [dharma, ai-memory, decisions, pivot]
 source_docs: []
-last_updated: 2026-07-29
+last_updated: 2026-08-08
 status: stable
 ---
 
@@ -20,6 +20,10 @@ status: stable
 | 2026-07-29 | Kept dark mode. It is shipped (`next-themes`, `ThemeToggle`, a full `.dark` token block with separately validated ramps), and retokening *removed* 143 hand-written `dark:` overrides rather than porting them — the tokens already carry their own dark values. |
 | 2026-07-29 | Added `--*-on-tint` tokens, one per semantic role and severity step. `-foreground` means "text on a solid fill"; `-on-tint` means "text on a ~12% wash of the same role over the card". They are different jobs and haldi proved it: `text-warning` on `bg-warning/12` measured 2.71:1. Same root cause the file already documented for `--warning-foreground` being ink rather than paper. Gated by `scripts/validate-token-contrast.js`. |
 | 2026-07-29 | AI-assisted surfaces are marked with haldi (`--accent`) as a standing convention. `AISuggestionsPanel` was already approximating this with `amber-500` by eye; the policy-builder "AI Audit" action was on `purple-100`. One token, one meaning. |
+| 2026-08-08 | **Pivot decision: Dharma moves from a GRC tracker to an evidence-driven Security & Compliance OS.** `Dharma_Pivot_Architecture_Plan.md` (project doc) becomes the top-level governing document, above `PRD.md`/`TRD.md`/`BackendSchema.md`/`Implementationplan.md` and above `dharma-master-remediation-prompt.md`. Every `03_PRODUCT/` and `04_TECHNICAL/` note in this vault was rewritten the same day to remove mixed pre-/post-pivot framing rather than left to drift — see [[Dharma_Master_Context]] for the disposition table (kept/extended/replaced/discarded) and [[Roadmap]] for the new Phase A–G sequencing that replaces the old Phase 3b–9 numbering. |
+| 2026-08-08 | `Vulnerability`/`PenTest` are deprecated-pending-migration in favor of a unified `Finding` model; not dropped yet — additive migration + backfill script required first, `Vulnerability`/`PenTest` stay readable in parallel until cutover is proven. See [[Database_Design]]. |
+| 2026-08-08 | The existing pentest-scoped `Asset` model is reused, not duplicated, for the pivot's broader `Asset`/`AssetType` concept — flagged as a required reconciliation step before Phase B rather than silently building a second table. See [[Database_Design]]. |
+| 2026-08-08 | Marketplace commerce, EDR-lite endpoint agent, and white-label/MSSP dashboard investment are explicitly discarded/parked from the near-term roadmap per the pivot plan — built code for all three stays in place (no ripout), but no further engineering investment goes into them until re-prioritized. |
 
 See [[Decisions]] in `05_DEVELOPMENT` for the code-facing mirror of this log.
 
@@ -361,7 +365,10 @@ control that pushes operators toward a weaker configuration is a bad control.
 ### DEFERRED — database-backed sessions with a per-device list (option C)
 
 **Revisit by 2026-11-07** (with the Phase 9 endpoint work, which already carries
-per-device identity and is the natural place to reuse it).
+per-device identity and is the natural place to reuse it). Note: Phase 9
+endpoint-agent work is now parked per the pivot (see 2026-08-08 entry above) —
+if this trigger date arrives before that work is unparked, re-evaluate the
+"natural place to reuse it" premise rather than assuming it still holds.
 
 Not shipped because it means a session table read on every request, a migration
 off the JWT strategy, and reworking the hand-rolled SSO session minting in
@@ -411,3 +418,31 @@ session revocation).
 artefacts as a contractual control, or if we ship configurable retention — at
 which point retention policy, not a tombstone flag, is the right shape, and it
 can be built to honour erasure requests explicitly rather than by accident.
+
+---
+
+## 2026-08-08 — Pivot: GRC tracker → evidence-driven Security & Compliance OS
+
+Full rationale lives in `Dharma_Pivot_Architecture_Plan.md` (project doc) —
+this entry records the vault-side consequence, not the architecture case
+itself.
+
+**What changed today:** every note in `00_START_HERE/`, `03_PRODUCT/`, and
+`04_TECHNICAL/` that described the pre-pivot roadmap, feature set, or security
+posture as the current target was rewritten so the vault carries one
+consistent story instead of two overlapping ones. Nothing pre-pivot was
+deleted from the codebase or this history — the row above and the whole log
+above this entry stays as the accurate record of what was built and why,
+through 2026-08-07.
+
+**What did NOT change:** the live schema, the built features, the design
+system, session revocation, soft-delete stance — all of it stands as shipped.
+The pivot changes what gets built *next* and how the already-shipped
+`Vulnerability`/`PenTest`/`Asset`/`Connector` surfaces get subsumed into the
+new `Finding`/`Asset`(reconciled)/Agent Runtime model, not what already
+exists.
+
+**Explicit non-goal:** this was not treated as license to also re-litigate
+already-closed decisions above (Warm Paper, session revocation shape,
+soft-delete). Those stand. Do not re-open them as part of pivot work unless a
+pivot requirement genuinely forces it (none identified so far).

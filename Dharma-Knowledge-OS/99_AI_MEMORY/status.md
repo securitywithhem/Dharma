@@ -1,9 +1,9 @@
 ---
 title: Status
 folder: 99_AI_MEMORY
-tags: [dharma, ai-memory, status]
+tags: [dharma, ai-memory, status, pivot]
 source_docs: []
-last_updated: 2026-08-04
+last_updated: 2026-08-08
 status: stable
 ---
 
@@ -65,3 +65,34 @@ not exist.
   `.claude/settings.json` line 21 still calls `code-review-graph status --json`
   and that flag does not exist — the hook still errors. `detect-changes --brief`
   works. Not fixed here; this audit touched documentation only.
+
+## 2026-08-08 — Pivot adopted; vault rewritten to a single consistent story
+
+**Decision**: Dharma pivots from a GRC tracker to an evidence-driven Security &
+Compliance OS. `Dharma_Pivot_Architecture_Plan.md` (project doc) is now the
+governing document above PRD/TRD/BackendSchema/Implementationplan. Full
+rationale in [[decisions]], full spec in the pivot plan itself — read it
+directly before implementing anything under Phase B onward.
+
+**Vault state**: every note in `00_START_HERE/`, `03_PRODUCT/`, and
+`04_TECHNICAL/` rewritten same-day to carry the pivot framing consistently —
+no note should describe the old Phase 3b–9 roadmap or the pre-pivot component
+set as the current target anymore. `99_AI_MEMORY/` (this file, `decisions.md`,
+`progress.md`) got an appended entry each rather than a rewrite, preserving the
+full pre-pivot history.
+
+**What's confirmed vs. still open, going into Phase A:**
+- Live 49-model schema, 31 routers, 14 queues/16 workers — unchanged by the
+  pivot, this is the substrate Phase B builds on.
+- **WAVE 0/1 status from `dharma-master-remediation-prompt.md` is
+  UNCONFIRMED** — that file was not located at the repo root during this pass.
+  This blocks Phase B start per the pivot plan's own sequencing (§8) — verify
+  before beginning Sandbox Manager work. See [[Development_Status]].
+- **`Asset` model reconciliation flagged, not yet done** — the live
+  pentest-scoped `Asset` model and the pivot's broader `AssetType` concept need
+  to be merged into one table before the Phase B `Finding` migration. See
+  [[Database_Design]].
+- No `Finding` migration, no Sandbox Manager, no Agent Runtime, no
+  `LLMProvider` abstraction exist yet — Phase B has not started.
+
+Related: [[progress]], [[decisions]], [[Development_Status]], [[Roadmap]].

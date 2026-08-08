@@ -1,71 +1,80 @@
 ---
 title: Dharma Master Context
 folder: 00_START_HERE
-tags: [dharma, overview, context, second-brain]
-source_docs: [README.md, 1_PRD.md, 2_TRD.md, 6_IMPLEMENTATION_PLAN.md, "Future Scope PRD/TRD/Appflow/BackendSchema/UI-UX/Implementationplan (absorbed 2026-07-23, source vault since deleted)", packages/db/schema.prisma]
-last_updated: 2026-08-04
+tags: [dharma, overview, context, second-brain, pivot]
+source_docs: [Dharma_Pivot_Architecture_Plan.md, README.md, 1_PRD.md, 2_TRD.md, 6_IMPLEMENTATION_PLAN.md, packages/db/schema.prisma]
+last_updated: 2026-08-08
 status: reviewed
 ---
 
 # Dharma — Master Context
 
-Read this note first in any new session. It is the single-page synthesis of what Dharma is, where it actually stands, and where the source docs disagree with the live codebase.
+Read this note first in any new session. It is the single-page synthesis of what Dharma is, where it actually stands, and — as of 2026-08-08 — what it is becoming.
 
-## Identity
+## Governing document
 
-Dharma is a self-hosted, open-source **GRC (governance, risk, compliance) platform**, originally scoped for Indian MSMEs and startups needing DPDP Act 2023, ISO 27001, and SOC 2 compliance without leaking sensitive data to cloud AI vendors. See [[Vision]] and [[Problem_Statement]].
+**`Dharma_Pivot_Architecture_Plan.md` is now the top-level authority**, sitting above `PRD.md` / `TRD.md` / `BackendSchema.md` / `Implementationplan.md` and above the older `dharma-master-remediation-prompt.md`. Where any of those disagree with the pivot plan, the pivot plan wins. This note, and every note under `03_PRODUCT/` and `04_TECHNICAL/`, has been rewritten to be consistent with it — do not reintroduce framing from the pre-pivot docs (e.g. "Marketplace commerce," "EDR-lite," "white-label MSSP dashboard" as active roadmap items). Those are explicitly parked or discarded — see [[Roadmap]].
 
-## Core value proposition
+## Identity — before and after
 
-- **Zero-cloud AI**: embeddings and generation run locally via Ollama (`nomic-embed-text`, Llama 3), confirmed by the live schema still using `vector(384)` — the local embedding dimension, not OpenAI's 1536. See [[Database_Design]].
-- **Tamper-evident audit log**: SHA-256 hash-chained `AuditLog` rows, verifiable end-to-end. See [[Security_Architecture]].
-- **Self-hosted stack**: Next.js 14 + tRPC v11 + Prisma + PostgreSQL/pgvector + Redis/BullMQ + MinIO + Ollama, all via Docker Compose. See [[System_Architecture]].
+**Before (what shipped through 2026-08-04):** a self-hosted, open-source GRC (governance, risk, compliance) **tracker**. Frameworks and controls exist; evidence is collected manually or via scheduled cloud connectors; a human decides what's true.
 
-## Actual current stage (not what the original MVP PRD says)
+**After (the pivot, in progress from 2026-08-08):** a self-hosted **evidence-driven Security & Compliance OS**. The causality inverts:
 
-The numbered planning docs (`1_PRD.md`–`6_IMPLEMENTATION_PLAN.md`) describe a **single-tenant, 11-model MVP** with PRD Section 6 explicitly marking multi-tenant SaaS, cloud connectors, and pentest scanning as **out of scope for "Phase 1."**
+- Old: `Framework → Control → user manually uploads Evidence → score`
+- New: `Application → Agents discover & validate Findings → Evidence auto-generated → Control status updates → Framework score`
 
-There was a second, distinctly-named document set — "Dharma Future Scope – PRD/TRD/App Flow/Backend Schema/UI-UX/Implementation Plan" — that picked up exactly where the MVP PRD's Section 6 left off, planning Phase 3b through Phase 9 (billing, marketplace, connectors, pentest, cross-walking, AI advisor, enterprise/white-label, MSSP). These lived in `obsidian-vaults/Dharma-Project/` under unnumbered filenames (`PRD.md`, `TRD.md`, `Appflow.md`, `BackendSchema.md`, `UI:UX.md`, `Implementationplan.md`) — that vault has since been deleted (its content is absorbed into this vault and remains in git history); see [[Roadmap]] for the full phase breakdown now sourced from it.
+This is **not a rewrite**. The existing data model (`Framework`, `Control`, `ControlMapping`, `Evidence`, `AuditLog`) is structurally correct for the target state — see [[Database_Design]]. What's being added is the engine that produces evidence automatically (Security Engine, Agent Runtime, Sandbox Manager) plus the discipline (Risk Engine, Knowledge Engine) to keep its output trustworthy instead of noisy. Still zero-cloud-AI by default: local embeddings/generation via Ollama remain the baseline; the pivot adds an **LLM Provider abstraction** (BYOK, multi-provider) because the new agents need it, not because the local-first principle is being dropped. See [[System_Architecture]].
 
-The live schema (`packages/db/schema.prisma`) has **49 models**, closely matching that Future Scope spec but with real, documented deviations (e.g. embeddings stay `vector(384)`/Ollama, not the spec's `vector(1536)`/OpenAI; `AuditLog` not `AuditEvent`; MSSP cross-tenant access uses an explicit revocable `MsspGrant` allow-list, not a role-based RLS bypass). It includes everything the Future Scope docs planned, plus a few things neither doc set mentions:
-- Billing/plans (`Plan`, `ProcessedWebhookEvent`) — provider-agnostic across Stripe and Razorpay; see [[Billing_And_Payments]]
-- Marketplace (`MarketplaceItem`, `MarketplaceReview`, `MarketplaceItemRevision`, `ImportedItem`)
-- Cloud connectors (`Connector`, `EvidenceMapping`, `Webhook`, `WebhookDelivery`)
-- Pentest/vuln management (`PenTest`, `Vulnerability`, `Asset`)
-- AI Advisor / RAG (`AIAdvisorSession`, `OrganizationEmbedding`, `IngestedDocument`, `OrgGraphNode`, `OrgGraphEdge`, `AIUsageLog`)
-- Enterprise/white-label + SSO (`OrganizationSettings`, SAML via `@node-saml/node-saml`, OIDC via `openid-client`)
-- RBAC (`CustomRole`, `OrganizationGroup`)
-- MSSP multi-org management (`MsspGrant`)
-- Endpoint agent monitoring (`Endpoint`, `EndpointCheck`) — this is Future Scope PRD's "Phase 9 (Bonus)" EDR-lite item, built as "Phase 9 Part 1"
-- Reporting (`Report`, `ReportSchedule`) — Future Scope's "Phase 9" advanced reporting, built as "Phase 9 Part 2"
-- Framework versioning (`FrameworkVersion`), regulatory alerts (`RegulatoryAlert`) — Future Scope's "Phase 9" regulatory monitoring, built as "Phase 9 Part 3", alongside `ApiKey` (Future Scope's "full API for third-party integrations")
+## Core value proposition (unchanged, extended)
 
-**Treat both PRD document sets as the founding vision, not current-state docs.** For current state, trust the live schema and [[Development_Status]]; for the *documented* plan (as opposed to what the schema implies), see [[Roadmap]] and [[Feature_Backlog]].
+- **Zero-cloud AI by default**, multi-provider by design — Ollama stays the default provider; OpenAI/Anthropic become opt-in via the new `LLMProvider` interface, not a silent fallback. See [[System_Architecture]].
+- **Tamper-evident audit log**: SHA-256 hash-chained `AuditLog` rows, verifiable end-to-end, extended with a **dedicated scan/exploit authorization audit trail** for anything agents do against a live target. See [[Security_Architecture]].
+- **Self-hosted stack**: Next.js 14 + tRPC v11 + Prisma + PostgreSQL/pgvector + Redis/BullMQ + MinIO + Ollama, all via Docker Compose — now adding a **Sandbox Manager** (ephemeral, isolated per-scan containers) as a new substrate layer. See [[System_Architecture]].
 
-## Core modules (as actually built)
+## Actual current stage
 
-1. Framework/Control tracking (DPDP, ISO 27001, SOC 2, extensible via `FrameworkVersion`)
-2. Evidence management with pgvector-backed AI mapping
-3. Policy drafting via local RAG (Ollama + `RegulationSnippet`)
-4. Cryptographic audit trail (SHA-256 hash chain)
-5. Multi-tenant billing (`Plan`) behind a provider-agnostic payment interface — Razorpay is the live provider, Stripe is retained; see [[Billing_And_Payments]]
-6. Marketplace for frameworks/controls
-7. Cloud connectors + evidence auto-mapping
-8. Pentest/vulnerability tracking
-9. AI Advisor (RAG chat over org data)
-10. Enterprise SSO/SCIM, custom RBAC, white-label
-11. MSSP dashboard (multi-org oversight)
-12. Endpoint agent monitoring
+The live schema (`packages/db/schema.prisma`) has 49 models and already covers billing, marketplace, cloud connectors, pentest/vulnerability tracking, AI Advisor/RAG, enterprise SSO/RBAC, MSSP, endpoint agent monitoring, and reporting — see [[Feature_Backlog]] for the full built-vs-planned mapping. **Treat this as the pre-pivot baseline, not the target state.** The pivot plan's own component-disposition table (§2) is the authority on what from that baseline survives untouched, gets extended, gets replaced, or gets discarded:
+
+| Verdict | Examples |
+|---|---|
+| Keep, unchanged | Multi-tenant foundation, RLS pattern, `AuditLog` hash chain (extended, not replaced) |
+| Keep — now core, not a side feature | `Framework`/`Control`/`ControlMapping` — becomes the landing surface for auto-generated evidence |
+| Keep, extend | `Evidence` model (+`source: "agent"`), Ollama/pgvector RAG (becomes one implementation behind the new `LLMProvider` interface) |
+| **Replace** | `Vulnerability`/`PenTest` → unified `Finding` model (see [[Database_Design]]) |
+| **Absorb as one tool, not a standalone module** | The pentest module (nuclei + checkbox) becomes a callable `run_external_scan` tool inside the sandboxed Agent Runtime |
+| **Discard from near-term roadmap** | Marketplace **commerce** (paid frameworks, revenue share) — keep browse/import UX, drop the storefront |
+| **Discard / indefinite park** | EDR-lite endpoint agent (`Endpoint`/`EndpointCheck`), white-label/MSSP multi-org dashboard as a roadmap item (code stays, no further investment) |
+| **Park to Phase 8–9 of the new roadmap** | Regulatory change monitoring, questionnaire automation |
+
+See [[Roadmap]] for the full Phase A–G sequencing this table feeds into.
+
+## New components being built (no existing analog)
+
+Sandbox Manager, Agent Runtime + Tool System (policy-engine-gated), five specialized agents built one vertical slice at a time (Recon → Code → Web/API → Exploit → Validator, SQLi + IDOR first), `Finding` model, Risk Engine, Asset & Data Inventory, Knowledge Engine (versioned/provenance-tracked frameworks), LLM Provider Abstraction, Benchmark/False-Positive Harness, CLI + GitHub Action. Full spec for each is in `Dharma_Pivot_Architecture_Plan.md` §3 — read that directly rather than this summary before implementing any of them.
+
+## Non-negotiable security posture for every new component
+
+1. No agent gets unrestricted host access (no Docker socket, no host filesystem, no host cloud credentials).
+2. Prompt injection boundary: four trust tiers (system/tool-policy/user/scanned-content); tier 4 never escalates to tier 1/2.
+3. SSRF discipline (RFC1918/loopback/link-local/cloud-metadata blocklist + DNS-rebind re-check) applies to every URL-accepting tool, not just pentest.
+4. Ownership verification gates any live-target testing, agent-driven or not.
+5. Dedicated scan/exploit authorization audit trail, separate from the general `AuditLog`.
+6. Human approval required before any code-modifying or externally-visible action.
+7. Multi-tenant isolation extends to agent memory and vector retrieval — no agent run, embedding, or knowledge-graph query may cross an `organizationId` boundary.
+
+See [[Security_Architecture]] and [[Threat_Model]] for the full detail behind each line.
 
 ## Frameworks supported
 
-DPDP Act 2023, ISO 27001:2022, SOC 2 Type II — see [[ISO_27001]] and [[SOC_2]], cross-walked via `ControlMapping` (e.g. SOC2 CC6.1 ↔ ISO27001 A.9.2.1).
+DPDP Act 2023, ISO 27001:2022, SOC 2 Type II — see [[ISO_27001]] and [[SOC_2]], cross-walked via `ControlMapping`. The Knowledge Engine (Phase E) adds ASVS and NIST CSF, versioned with provenance, in that priority order.
 
 ## Where to go next
 
+- Full pivot spec (read before building anything new) → `Dharma_Pivot_Architecture_Plan.md` (project doc)
 - Product vision → [[Vision]], [[Mission]], [[Product_Principles]]
-- Full feature/phase breakdown → [[Feature_Backlog]], [[Roadmap]]
-- Schema detail → [[Database_Design]]
-- Billing/payments (two providers, entitlements, dunning) → [[Billing_And_Payments]]
-- Metrics, dashboards, tracing → [[Observability]]
-- Current build status → [[Development_Status]]
+- What's built vs. what's now the target → [[Feature_Backlog]], [[Roadmap]]
+- Schema detail incl. new `Finding`/`Asset`/`AgentRun`/`Risk` models → [[Database_Design]]
+- Architecture layers (Sandbox Manager, Agent Runtime, LLM Provider) → [[System_Architecture]]
+- Security requirements for agent-facing work → [[Security_Architecture]], [[Threat_Model]], [[Authorization]]
+- Current build status against the new phase plan → [[Development_Status]]

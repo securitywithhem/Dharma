@@ -1,74 +1,122 @@
 ---
 title: Database Design
 folder: 04_TECHNICAL
-tags: [dharma, technical, database, prisma, pgvector]
-source_docs: [packages/db/schema.prisma, 5_BACKEND_SCHEMA.md]
-last_updated: 2026-08-04
+tags: [dharma, technical, database, prisma, pgvector, pivot]
+source_docs: [Dharma_Pivot_Architecture_Plan.md, packages/db/schema.prisma, 5_BACKEND_SCHEMA.md]
+last_updated: 2026-08-08
 status: reviewed
 ---
 
 # Database Design
 
-PostgreSQL + `pgvector` extension (`extensions = [pgvector(map: "vector")]`), Prisma ORM. This note transcribes the **live schema** (`packages/db/schema.prisma`, 49 models), organized by the phase comments already present in the file — which makes this schema unusually self-documenting about its own build history and deviations from `obsidian-vaults/Dharma-Project/5_BACKEND_SCHEMA.md`.
+PostgreSQL + `pgvector` extension, Prisma ORM. This note transcribes the **live schema** (`packages/db/schema.prisma`, 49 models as of 2026-08-04) and then layers the pivot's additive migration plan (`Dharma_Pivot_Architecture_Plan.md` §4) on top. **Migration discipline: additive only in the first pass.** Do not drop `Vulnerability`/`PenTest` until `Finding` has a proven writer path and a backfill script.
 
-**pgvector dependency**: five columns use `Unsupported("vector(384)")` — `Control.embedding`, `Evidence.embedding`, `RegulationSnippet.embedding`, `Vulnerability.embedding`, `OrganizationEmbedding.embedding`. All are 384-dimensional (Ollama `nomic-embed-text`), **not** 1536 (OpenAI) — confirms [[Dharma_Master_Context]]'s "local AI, no exceptions" principle. This is the exact pattern any new vault-embedding table (see the RAG-wiring section of this vault's bootstrap) should follow: raw SQL writes via `$1::vector`, since Prisma has no native vector type.
+**pgvector dependency**: five columns use `Unsupported("vector(384)")` — `Control.embedding`, `Evidence.embedding`, `RegulationSnippet.embedding`, `Vulnerability.embedding`, `OrganizationEmbedding.embedding`. All 384-dimensional (Ollama `nomic-embed-text`). The pivot's `LLMProvider` abstraction (see [[System_Architecture]]) does not change this convention — Ollama stays the default embedding provider; raw SQL writes via `$1::vector` remain the pattern for any new embedding column, since Prisma has no native vector type.
 
-## Foundation (Phase 0–1, matches original PRD scope)
+## Foundation (pre-pivot, kept unchanged)
 
 - **`Organization`** — tenant root; owns nearly every other model by `organizationId`.
 - **`User`** / **`Account`** / **`Session`** / **`VerificationToken`** — NextAuth-compatible identity. `Role` enum: `ADMIN`, `COMPLIANCE_MANAGER`, `VIEWER`, `PUBLISHER`.
-- **`Framework`** → **`Control`** (domain-scoped, self-referential hierarchy via `parentId`/`path`/`depth` for arbitrary-depth control families like NIST 800-53's `AC-2(1)`).
-- **`Evidence`** — MinIO file pointer + `vector(384)` embedding + `embeddingStatus` lifecycle (`PENDING`/`SUCCESS`/`FAILED`).
-- **`Policy`** — versioned markdown/TipTap content.
-- **`AuditLog`** — SHA-256 hash-chained (`previousHash`/`currentHash`). See [[Audit_Process]], [[Security_Architecture]].
-- **`RegulationSnippet`** — RAG source material (DPDP Act chunks).
-- **`AuditorAccess`** — time-limited, token-hashed read-only access.
-- **`OrganizationInvite`** — email invite flow with expiry.
+- **`Framework`** → **`Control`** (self-referential hierarchy via `parentId`/`path`/`depth`) — **now core**, the landing surface for auto-generated evidence, unchanged shape.
+- **`Evidence`** — MinIO file pointer + `vector(384)` embedding + `embeddingStatus`. **Extend**: add a `source` field (`"manual" | "auto-connector" | "agent"`) so agent-produced evidence is distinguishable, never conflated with manual uploads.
+- **`Policy`**, **`AuditLog`** (SHA-256 hash chain), **`RegulationSnippet`**, **`AuditorAccess`**, **`OrganizationInvite`** — unchanged.
 
-## Phase 2 — Connectors, chain anchoring, policy templates, exports
+## Pre-pivot Phase 2–9 models (kept, unaffected unless noted)
 
-- **`ChainAnchor`** — periodically anchors the audit-log hash chain externally (OpenTimestamps `.ots` receipt support) so integrity doesn't rely solely on the DB itself.
-- **`Connector`** (`ConnectorType`: AWS/AZURE/GCP/GITHUB/OKTA/JIRA/VERCEL) + **`EvidenceMapping`** — auto-collect evidence on a schedule.
-- **`Webhook`** / **`WebhookDelivery`** — outgoing webhook dispatch with AES-256-GCM secret storage.
-- **`PolicyTemplate`** — Handlebars-templated policy generation.
-- **`AuditExport`** — signed export packages with 24h presigned expiry.
+- **`ChainAnchor`**, **`Connector`**/**`EvidenceMapping`**, **`Webhook`**/**`WebhookDelivery`**, **`PolicyTemplate`**, **`AuditExport`** — unchanged. `Connector` is re-scoped conceptually (Phase E) as one evidence source among several, no schema change required.
+- **`MarketplaceItem`**/**`MarketplaceReview`**/**`MarketplaceItemRevision`**/**`ImportedItem`** — kept for browse/import; no further schema investment for a commerce layer.
+- **`PenTest`** / **`Vulnerability`** / **`Asset`** — **`Vulnerability`/`PenTest` are deprecated-pending-migration**, replaced by `Finding` (below). Do not add new fields to `Vulnerability`. `Asset` is **kept and reused**, but see the reconciliation note below before Phase B.
+- **`ControlMapping`**, **`ReadinessScore`**, **`Recommendation`** — unchanged.
+- **`AIAdvisorSession`**, **`OrganizationEmbedding`**, **`IngestedDocument`**, **`OrgGraphNode`**/**`OrgGraphEdge`**, **`AIUsageLog`** — kept; rewired onto the Knowledge Engine + `LLMProvider` in Phase E, not replaced.
+- **`OrganizationSettings`**, **`CustomRole`**, **`OrganizationGroup`**/**`MsspGrant`** — kept. `CustomRole` gains new agent-tool permission keys in Phase B/F (additive to `PERMISSION_KEYS`, no schema change) — see [[Authorization]].
+- **`Endpoint`**/**`EndpointCheck`** — kept as-is, no further investment (EDR-lite discarded from roadmap).
+- **`Report`**/**`ReportSchedule`**, **`FrameworkVersion`**/**`RegulatoryAlert`**, **`ApiKey`** — kept, unaffected near-term; `Report` templates extend with Finding evidence sections in Phase D, `RegulatoryAlert` work parked to Phase G.
+- **Billing** (`Plan`, `ProcessedWebhookEvent`, provider fields on `Organization`) — kept, entirely unaffected by the pivot. See [[Billing_And_Payments]].
 
-## Phase 3c — Marketplace
+## ⚠️ Reconciliation required before Phase B: `Asset`
 
-**`MarketplaceItem`** (types: FRAMEWORK/TEMPLATE/CONNECTOR) → **`MarketplaceReview`**, **`MarketplaceItemRevision`**, **`ImportedItem`**. See [[Security_Control_Frameworks]] for how this feeds framework import.
+The **live schema already has an `Asset` model**, scoped to the pentest module. The pivot plan's §4.1 `Asset` is broader (`AssetType`: `APPLICATION | REPOSITORY | API | DOMAIN | CLOUD_ACCOUNT | DATABASE | VENDOR`). **Do not create a second `Asset` table.** Before writing the Phase B migration:
+1. Diff the existing `Asset` model's fields against the pivot's `AssetType` enum and `metadata Json` shape.
+2. Extend the existing model's type enum and add `metadata` if missing, rather than duplicating.
+3. Update every existing `Asset` foreign key (from `PenTest`/`Vulnerability`) to remain valid once `Finding.assetId` also points at the same table.
 
-## Phase 5 — Pentest & vulnerability management
+This is exactly the kind of deviation the coding standard requires documenting inline once resolved — see [[Coding_Standards]] item 6.
 
-**`PenTest`** (EXTERNAL_NETWORK/WEB_APP, cron-schedulable) → **`Vulnerability`** (CVSS score + vector string, `vector(384)` embedding) → optional **`Asset`** registry. `Vulnerability.controlId` links a finding back to the control it violates.
+## New — pivot data model (Phase B onward, additive migrations)
 
-## Phase 6 — Cross-walking & readiness scoring
+```prisma
+// Replaces the narrow Vulnerability/PenTest split with a unified discovery model
+model Finding {
+  id              String   @id @default(cuid())
+  organizationId  String
+  assetId         String?          // -> reconciled Asset model, see note above
+  controlId       String?          // links straight into existing Control/Framework graph
+  title           String
+  description     String
+  severity        Severity         // reuse existing enum
+  confidence      Float            // 0.0–1.0, SEPARATE from severity
+  status          FindingStatus    // POTENTIAL | UNDER_INVESTIGATION | CONFIRMED | REJECTED | ACCEPTED_RISK | RESOLVED | REOPENED
+  cwe             String?
+  source          FindingSource    // SAST | SCA | SECRETS | DAST | AGENT_EXPLOIT | MANUAL | CONNECTOR
+  sourceLocation  Json?            // { file, line }
+  targetEndpoint  Json?            // { method, path, parameter }
+  evidenceIds     String[]         // -> Evidence
+  reproduction    Json?            // ordered repro steps
+  remediation     Json?            // { description, suggestedPatch }
+  agentRunId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
 
-- **`ControlMapping`** — the cross-walk table (`MappingStrength`: EQUIVALENT/PARTIAL/RELATED), AI-suggestible via `Control.embedding` similarity. This is the model backing the SOC2 CC6.1 ↔ ISO27001 A.9.2.1 example — see [[SOC_2]], [[ISO_27001]].
-- **`ReadinessScore`** / **`Recommendation`** — computed gap-heatmap data. See [[Risk_Management]].
+enum FindingStatus {
+  POTENTIAL
+  UNDER_INVESTIGATION
+  CONFIRMED
+  REJECTED
+  ACCEPTED_RISK
+  RESOLVED
+  REOPENED
+}
 
-## Phase 7 — AI Advisor data layer
+enum FindingSource {
+  SAST
+  SCA
+  SECRETS
+  DAST
+  AGENT_EXPLOIT
+  MANUAL
+  CONNECTOR
+}
 
-**`AIAdvisorSession`** (chat history) → **`OrganizationEmbedding`** (per-org, tenant-isolated RAG chunks, sourced from **`IngestedDocument`**) → **`OrgGraphNode`**/**`OrgGraphEdge`** (per-org knowledge graph — deliberately Postgres-backed rather than a dedicated graph DB, per the schema's own comment, to keep the tenant-isolation boundary simple). **`AIUsageLog`** tracks token spend against `Plan.limits.aiTokensPerMonth`. **`Evidence.suggestedControlIds`** (Phase 7 Part 3 auto-tagging) is explicitly suggestion-only — never auto-applied, preserving audit integrity.
+model AgentRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  scanId         String?
+  agentType      String       // "recon" | "code" | "web" | "exploit" | "validator"
+  toolCalls      Json         // structured log of every tool_use + result
+  status         String
+  startedAt      DateTime @default(now())
+  completedAt    DateTime?
+}
 
-## Phase 8 — Enterprise SSO/SCIM/RBAC + MSSP
+model Risk {
+  id              String   @id @default(cuid())
+  organizationId  String
+  findingId       String?
+  assetId         String?
+  likelihood      RiskLevel
+  impact          RiskLevel
+  inherentRisk    RiskLevel
+  residualRisk    RiskLevel?
+  treatment       String?
+  ownerId         String?
+  status          String
+  createdAt       DateTime @default(now())
+}
+```
 
-- **`OrganizationSettings`** — SSO config (SAML/OIDC via `ssoConfig` Json), SCIM (`scimTokenHash`, hashed not encrypted), white-label (`whiteLabel` Json: logo/color/custom domain), SIEM export target.
-- **`CustomRole`** — permissions-as-JSON RBAC, with `User.customRoleId` falling back to the legacy `Role` enum when null (zero-downtime migration path).
-- **`OrganizationGroup`** + **`MsspGrant`** — MSSP parent-org grouping with an explicit, revocable, time-boxable allow-list of client org IDs (deliberately not "role == MSSP admin ⇒ bypass tenant isolation"). See [[Threat_Model]].
+**Backfill**: existing `Vulnerability` rows migrate to `Finding` with `source = MANUAL` or `AGENT_EXPLOIT` depending on origin, `confidence = 1.0` for anything already `RESOLVED`/`CONFIRMED`. `ControlMapping`/`Control` stay exactly as-is — `Finding.controlId` is the new writer into that graph, the graph's shape does not change.
 
-## Phase 9 — Endpoint agent, reporting, regulatory monitoring, API
-
-- **`Endpoint`** (enrollment token stored as SHA-256 hash, never plaintext) → **`EndpointCheck`** (disk encryption, patch level, screen lock, firewall — optionally mapped to a `Control`).
-- **`Report`** / **`ReportSchedule`** — async PDF generation (CUSTOM_PDF, BOARD_SUMMARY), never in a request thread.
-- **`FrameworkVersion`** → **`RegulatoryAlert`** — diffs control trees between marketplace framework versions, fans out per-org alerts.
-- **`ApiKey`** — third-party API credentials, SHA-256 hashed.
-
-## Billing (Phase 3b–3c)
-
-**`Plan`** (free/pro/enterprise) carries **both** provider IDs — `stripePriceId` and `razorpayPlanId` — plus `price` and an ISO-4217 `currency`, so one row can be sold through either provider. A Razorpay Plan (`plan_…`) is its own object with its own amount and currency and is **not** interchangeable with a Stripe Price ID.
-
-**`Organization`** holds the per-provider subscription state: `paymentProvider` (nullable — free orgs have none, so the reconciliation and dunning workers skip them), `stripeCustomerId`/`stripeSubscriptionId`, `razorpayCustomerId`/`razorpaySubscriptionId`, `razorpayPreviousSubscriptionId` (the subscription being replaced during a payment-method update — Razorpay binds the mandate to the subscription, so a card change means create-new/cancel-old), `subscriptionStatus`, `subscriptionEndsAt`, `dunningStartedAt` (set on the *first* failed invoice and cleared on any success, so provider retries don't restart the grace clock).
-
-**`ProcessedWebhookEvent`** — webhook idempotency, unique on the composite `(provider, eventId)` rather than `eventId` alone: event IDs are only unique within a provider's namespace, and Razorpay events carry no ID at all (the receiver synthesises one). See [[Billing_And_Payments]].
+**Tenant isolation**: every new model above carries `organizationId` and must be filtered the same way as every other model — see [[Authorization]]. This extends explicitly to `AgentRun.toolCalls`, vector retrieval for any agent embedding, and Knowledge Engine queries (Phase E) — no agent run, embedding, or knowledge-graph query may cross an `organizationId` boundary. Audit this specifically once Phase E RAG/knowledge-engine work starts.
 
 Related: [[System_Architecture]], [[Security_Architecture]], [[Authentication]], [[Authorization]], [[Feature_Backlog]], [[Billing_And_Payments]].

@@ -90,6 +90,30 @@ const envSchema = z.object({
   NUCLEI_SCANNER_IMAGE: z.string().min(1).default("dharma-pentest-scanner:local"),
   PENTEST_SCAN_TIMEOUT_MS: z.coerce.number().int().positive().default(600_000),
   PENTEST_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
+
+  // ── WAVE 12: Strix scan engine ──────────────────────────────────────────
+  // Name of the long-lived container built from docker/strix/Dockerfile. The
+  // worker `docker exec`s into it rather than `docker run`-ing a fresh image
+  // per scan, because Strix pulls its own multi-hundred-MB sandbox image on
+  // first use — paying that once at compose-up is the difference between a
+  // scan starting in seconds and a scan appearing to hang on its first run.
+  STRIX_CONTAINER_NAME: z.string().min(1).default("dharma-strix"),
+  // Sandbox image Strix launches per agent. Pinned, not :latest — an
+  // autonomous exploitation agent is the last component that should silently
+  // change version under a running deployment. Keep in step with
+  // docker/strix/Dockerfile's pre-pull.
+  STRIX_SANDBOX_IMAGE: z.string().min(1).default("ghcr.io/usestrix/strix-sandbox:1.3.0"),
+  // Path INSIDE both the strix and pentest-worker containers where the shared
+  // `strix_runs` volume is mounted. The worker reads run artifacts straight
+  // off this volume rather than shelling out to `strix view`.
+  STRIX_RUNS_DIR: z.string().min(1).default("/strix-runs"),
+  // Deliberately NOT PENTEST_SCAN_TIMEOUT_MS. See strixScanQueue.ts for why an
+  // agentic scan needs its own budget rather than inheriting nuclei's.
+  STRIX_SCAN_TIMEOUT_MS: z.coerce.number().int().positive().default(7_200_000),
+  // Strix is an LLM agent: with no model configured it cannot scan at all.
+  // Optional here so the rest of the platform boots without it — engines.status
+  // reports STRIX unavailable instead, and the UI disables the option.
+  STRIX_LLM: z.string().min(1).optional(),
 });
 
 // ── Production placeholder guard ────────────────────────────────────────────
