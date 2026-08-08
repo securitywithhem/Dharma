@@ -104,20 +104,23 @@ describe("Organization deletion cascades", () => {
   it("still cascades genuinely tenant-scoped rows away", async () => {
     const { org, user } = await seedOrgWithUser("cascade-scoped");
 
-    const penTest = await prisma.penTest.create({
-      data: {
-        organizationId: org.id,
-        target: "example.com",
-        type: "EXTERNAL_NETWORK",
-        requestedById: user.id,
-      },
-    });
+    // Ordered asset-then-scan since WAVE 12: PenTest.verifiedAssetId is a
+    // required FK, so the authorization has to exist first.
     const asset = await prisma.verifiedAsset.create({
       data: {
         organizationId: org.id,
         value: uniq("cascade") + ".example.com",
         verificationToken: "token",
         requestedById: user.id,
+      },
+    });
+    const penTest = await prisma.penTest.create({
+      data: {
+        organizationId: org.id,
+        target: "example.com",
+        type: "EXTERNAL_NETWORK",
+        requestedById: user.id,
+        verifiedAssetId: asset.id,
       },
     });
 

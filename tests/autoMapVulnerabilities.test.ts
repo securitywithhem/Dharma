@@ -17,6 +17,17 @@ async function seedOrg(label: string) {
   const user = await prisma.user.create({
     data: { email: `${label}-${Date.now()}@test.com`, name: label, role: Role.ADMIN, organizationId: org.id },
   });
+  // WAVE 12 — a PenTest cannot exist without the authorization it ran under.
+  const verifiedAsset = await prisma.verifiedAsset.create({
+    data: {
+      organizationId: org.id,
+      value: "example.com",
+      verificationToken: `${label}-token`,
+      requestedById: user.id,
+      verifiedById: user.id,
+      verifiedAt: new Date(),
+    },
+  });
   const penTest = await prisma.penTest.create({
     data: {
       organizationId: org.id,
@@ -24,9 +35,10 @@ async function seedOrg(label: string) {
       type: PenTestType.EXTERNAL_NETWORK,
       status: PenTestStatus.COMPLETED,
       requestedById: user.id,
+      verifiedAssetId: verifiedAsset.id,
     },
   });
-  return { org, user, penTest };
+  return { org, user, penTest, verifiedAsset };
 }
 
 const sampleFindings: NucleiFinding[] = [
