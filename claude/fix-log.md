@@ -271,6 +271,72 @@ API refuses. The endpoint was never only about navigation.
 
 **WAVE 11 GATE: PASSED** — typecheck, lint, **102 suites / 980 tests**, build.
 
+### WAVE 12 — Strix as a pluggable scan engine + finding→control mapping
+
+> **Numbering.** The brief calls this "WAVE 0.5". That name is already taken:
+> WAVE 0 above is itemized 0.1–0.5, and its **0.5** is the AUP + abuse runbook.
+> Logging a second, unrelated "0.5" would make the two indistinguishable in a
+> document whose whole job is telling an auditor which control closed when. It
+> is recorded as **WAVE 12**; brief item `0.5.N` maps to `12.N` throughout.
+
+**STEP 0 — gate check on WAVE 0 (the brief's precondition).** PASSED. All five
+WAVE 0 items are DONE above with named passing tests: `VerifiedAsset` model +
+migration `20260805150000_…` and `src/server/pentest/assetVerification.ts` (0.1,
+`tests/assetVerification.test.ts`, 40); the SSRF blocklist, later generalized to
+`src/server/lib/net/assertPublicHttpTarget.ts` by WAVE 8 (0.2,
+`tests/ssrfGuard.test.ts`, 42); the `PENTEST_SCAN_AUTHORIZED` audit trail (0.3);
+the anomaly signal (0.4, `tests/scanAnomaly.test.ts`, 5); the AUP (0.5). The
+gate's substance — that this wave must not open a second, ungated path to a scan
+— is the binding constraint on 12.1/12.2 below.
+
+**Skills.** None of the nine named skills (`prisma-schema`, `trpc-router`,
+`bullmq-setup`, `pgvector`, `graphify-rag`, `docker`, `audit-logging`,
+`ui-components`, `obsidian-context`) is installed in this environment. Per the
+prior-wave convention they are treated as a checklist of conventions to hold to,
+stated once here.
+
+**Brief premises corrected against the repo (STEP 0 findings, before any code).**
+Same pattern as prior waves — the brief cites documents and models that this
+repo does not have:
+
+| Brief says | Repo actually has |
+|---|---|
+| `5_BACKEND_SCHEMA.md`, `6_IMPLEMENTATION_PLAN.md`, `4_UI_UX_DESIGN.md` | None exist. Authoritative locations: `packages/db/schema.prisma`, `Dharma-Knowledge-OS/04_TECHNICAL/Database_Design.md`, `03_PRODUCT/`, `04_TECHNICAL/Design_System.md`. |
+| `AuditEvent` model | `AuditLog` (hash-chained, written via `createAuditLog`). There is no `AuditEvent`. Mappings will write `AuditLog`, i.e. the *same* surface as the nuclei path, which is what the brief actually wants. |
+| Map findings against `OrganizationEmbedding where documentType = 'control'` | Controls are **not** embedded there. `Control.embedding` (`vector(384)`) is the populated column, and `packages/db/schema.prisma:376` states the convention explicitly: *"No separate embedding table: one embedding per control."* `src/server/services/controlEmbeddings.ts#suggestMappings` is the existing cosine-similarity reader. Following the brief literally would build the second embedding path the brief itself forbids — so 12.3 reuses `Control.embedding`. **Deviation, deliberate; the brief's intent (reuse) is honoured and its stated table is not.** |
+| Derive CVSS "via the existing calculator" from raw output | Strix computes CVSS v3.1 itself and emits both `cvss` (float) and a `cvss_breakdown`. Plan: rebuild the vector from the breakdown and re-score it through the repo's own `src/server/pentest/cvss.ts`, so one implementation governs the number and an agent-supplied score is never trusted verbatim. |
+| Strix run dir `agent_runs/<run-name>` | **`strix_runs/<run-name>`** — `strix/core/paths.py:8`, `RUNS_DIR_NAME = "strix_runs"`. The brief uses both spellings; only `strix_runs` is real. |
+| Finding→control mapping is new | `src/server/pentest/autoMapVulnerabilities.ts` already exists and links findings to a control **by exact case-insensitive title match on "Vulnerability Management"** — its own header comment flags this as fragile-by-design and asks for a non-string mechanism. 12.3 is the answer to that TODO, not a greenfield feature. |
+
+**Strix output shape — verified, not assumed.** The brief forbids faking a test
+against an engine whose output shape is unverified. Docker is not running in this
+environment and no Strix image is present, so a live run is impossible; instead
+upstream `usestrix/strix` was cloned and read at source. Verified facts driving
+the fixture and parser:
+`strix_runs/<run-name>/` contains `run.json` (`run_id`, `run_name`, `status` ∈
+running|completed|failed|stopped|interrupted, `start_time`, `end_time`,
+`targets_info`, `scan_mode`, …), `vulnerabilities.json` (the full array),
+`vulnerabilities.csv`, `vulnerabilities/<id>.md`, and
+`penetration_test_report.md` (`strix/report/writer.py`, `strix/report/state.py`).
+Each finding is keyed `id` (`vuln-0001`), `title`, `severity` (**lowercase**),
+`timestamp`, and optionally `description`, `impact`, `target`, `endpoint`,
+`method`, `cve`, `cwe`, `cvss`, `cvss_breakdown`, `technical_analysis`,
+`poc_description`, `poc_script_code` (markdown-fenced), `evidence`,
+`remediation_steps`, `assumptions`, `code_locations[]`, `fix_effort`,
+`dependency_metadata`. **There is no `validated` boolean** — the brief assumes
+one. Strix's contract is that `create_vulnerability_report` is only called for a
+"fully validated path"; validation must therefore be inferred from PoC presence,
+which is exactly the rule 12.2 will encode.
+
+| Item | Status | Evidence / commit | Test |
+|---|---|---|---|
+| 12.1 Prisma: `ScanEngine`, `engineRunId`, required `verifiedAssetId`, `pocEvidence`, `FindingControlMapping` | IN PROGRESS | | |
+| 12.2 Strix connector (compose service, `strixScanQueue`, worker w/ dispatch-time re-validation) | PENDING | | |
+| 12.3 `mapFindingsToControls` via `Control.embedding` | PENDING | | |
+| 12.4 tRPC: engine param, `findings.confirmMapping`, `findings.listPendingMappings`, `engines.status` | PENDING | | |
+| 12.5 UI: engine selector, Findings Review Queue, PoC panel, control badge | PENDING | | |
+| 12.6 Tests + WAVE 12 gate | PENDING | | |
+
 ---
 
 ## Remaining real work

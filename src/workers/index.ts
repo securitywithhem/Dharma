@@ -35,6 +35,7 @@ import { startDunningWorker } from "@/server/queue/workers/dunningWorker";
 import { registerDunningSweep } from "@/server/queue/dunningQueue";
 import { startBillingReconciliationWorker } from "@/server/queue/workers/billingReconciliationWorker";
 import { registerBillingReconciliation } from "@/server/queue/billingReconciliationQueue";
+import { startFindingMappingWorker } from "@/server/queue/workers/findingMappingWorker";
 import { startAuditVerificationWorker } from "@/server/queue/workers/auditVerificationWorker";
 import { registerScheduledChainVerification } from "@/server/queue/auditVerificationQueue";
 import { attachDeadLetterAlerting } from "@/server/lib/ops/alert";
@@ -49,6 +50,10 @@ const auditorPackageWorker = startAuditorPackageWorker();
 const connectorEvidenceWorker = startConnectorEvidenceWorker();
 const webhookWorker = startWebhookWorker();
 const controlEmbeddingWorker = startControlEmbeddingWorker();
+// WAVE 12 — finding→control mapping. Runs HERE, not in pentestScanRunner:
+// it needs Ollama, not the Docker socket, and keeping it out of the
+// socket-privileged process preserves that container's narrow blast radius.
+const findingMappingWorker = startFindingMappingWorker();
 const readinessScoreWorker = startReadinessScoreWorker();
 const aiIngestionWorker = startAiIngestionWorker();
 const evidenceAutoTagWorker = startEvidenceAutoTagWorker();
@@ -162,6 +167,7 @@ process.on("SIGTERM", async () => {
     connectorEvidenceWorker.close(),
     webhookWorker.close(),
     controlEmbeddingWorker.close(),
+    findingMappingWorker.close(),
     readinessScoreWorker.close(),
     aiIngestionWorker.close(),
     evidenceAutoTagWorker.close(),

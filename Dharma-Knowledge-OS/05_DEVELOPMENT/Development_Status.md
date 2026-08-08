@@ -1,46 +1,57 @@
 ---
 title: Development Status
 folder: 05_DEVELOPMENT
-tags: [dharma, development, status]
-source_docs: [6_IMPLEMENTATION_PLAN.md, "Future Scope Implementationplan (absorbed 2026-07-23, source vault since deleted)", packages/db/schema.prisma, src/server/routers/index.ts, src/app/dashboard/, docker-compose.yml, CLAUDE.md]
-last_updated: 2026-08-04
+tags: [dharma, development, status, pivot]
+source_docs: [Dharma_Pivot_Architecture_Plan.md, packages/db/schema.prisma, src/server/routers/index.ts, docker-compose.yml, CLAUDE.md]
+last_updated: 2026-08-08
 status: reviewed
 ---
 
 # Development Status
 
-## Verified against live code, 2026-08-04
+## Pivot status (governing framing as of 2026-08-08)
 
-Every line in this section was confirmed by reading the repo, not by reading another doc.
+Execution now follows the pivot plan's Phase A–G, not the old Phase 3b–9 numbering. Phase A–G status:
 
-- **Schema**: 49 models in `packages/db/schema.prisma` (was 48 at the 2026-07-23 vault bootstrap; `ProcessedWebhookEvent` is the addition). Five `vector(384)` columns.
-- **API**: 31 tRPC routers registered in `src/server/routers/index.ts`; REST surfaces at `src/app/api/v1/` (API-key authed), `src/app/api/scim/v2/[orgId]/*`, `src/app/api/sso/{saml,oidc}/[orgId]/*`, and two payment webhook receivers.
+| Phase | Scope | Status |
+|---|---|---|
+| A | Finish WAVE 0 (pentest ownership verification + SSRF blocklist + scan audit trail) + WAVE 1 (framework-detail crash, dead empty-state CTAs, SSO blank page, Ollama connectivity → build as LLM Provider abstraction instead of a point fix) | **Unconfirmed against `dharma-master-remediation-prompt.md`** — that file was not found at the repo root during this pass (only `LAUNCH_READINESS_REPORT.md` and `PROJECT_UNDERSTANDING_GUIDE.md` are present). Verify WAVE 0/1 completion against the actual remediation doc before assuming Phase A is done. **Do not start Phase B until this is confirmed.** |
+| B | Sandbox Manager against one known-safe test app; Agent Runtime + tool system + policy engine; `Finding` model migration + backfill; benchmark harness skeleton (SQLi, IDOR test apps) | Not started |
+| C | First vertical slice: Recon → Code → Web/API → Exploit → Validator, scoped to SQLi + IDOR only; confirmed `Finding` → `Evidence` → `Control` status auto-update; gated by benchmark suite (<10% FP target, define exact bar before Phase C exit) | Not started |
+| D | Expand vuln classes (Auth Agent, Command Injection, Path Traversal); CLI + GitHub Action; suggested-patch generation | Not started |
+| E | Asset & Data Inventory; Knowledge Engine (ASVS, NIST CSF, SOC2, ISO27001, DPDP — versioned/provenance-tracked); rewire Compliance Advisor onto Knowledge Engine + LLM Provider abstraction | Not started |
+| F | Risk Engine (`Risk` model, risk register UI, exceptions with mandatory expiry); reconcile Roles-page/Team-membership drift while RBAC is touched for agent tool permissions anyway | Not started |
+| G | Trust Center, security questionnaire automation, regulatory change monitoring | Not started — intentionally last |
+
+**Immediate next steps** (pivot plan §8, unchanged order — do not reorder):
+1. Confirm/finish WAVE 0 gate (this is the literal prerequisite for the Sandbox Manager's network policy).
+2. Write the `Finding` Prisma migration (additive) + backfill script from `Vulnerability`, before any agent code exists.
+3. Stand up the `LLMProvider` abstraction while fixing the Ollama connectivity bug — one PR, not two.
+4. Create `tests/vulnerable-apps/sqli` and `tests/vulnerable-apps/idor` (minimal deliberately-broken Next.js/Express apps) — needed before Phase C can be graded at all.
+5. Only after 1–4: begin Sandbox Manager + Agent Runtime scaffolding (Phase B).
+
+Do not start writing agent prompts or exploit logic before step 4 exists.
+
+## Pre-pivot baseline (verified against live code, 2026-08-04) — for reference, not the current target
+
+This section is retained because the pivot builds *on top of* this baseline, not instead of it. It describes what existed the day before the pivot decision, unchanged by this rewrite.
+
+- **Schema**: 49 models in `packages/db/schema.prisma`. Five `vector(384)` columns.
+- **API**: 31 tRPC routers registered in `src/server/routers/index.ts`; REST surfaces at `src/app/api/v1/` (API-key authed), `src/app/api/scim/v2/[orgId]/*`, `src/app/api/sso/{saml,oidc}/[orgId]/*`, two payment webhook receivers.
 - **Queues**: 14 BullMQ queues with 16 workers under `src/server/queue/`.
-- **Dashboard routes**: every Phase 5–9 surface has a page — `vulnerabilities/`, `pentests/`, `cross-walk/`, `marketplace/`, `mssp/`, `endpoints/`, `reports/`, `regulatory-alerts/`, `settings/enterprise/{sso,roles,white-label,audit-log}`, `settings/billing/`.
-- **Two open questions from the previous revision are now answered.** Phase 5 Part 3's **vulnerability management UI is built** (`src/app/dashboard/vulnerabilities/` with a triage board and swim lanes, per `64e20b1`); its **ZAP/Burp import is not** — no ZAP or Burp parser exists anywhere in `src/`. Phase 9 Parts 1–3 are built end-to-end (endpoint agent, reporting, regulatory monitoring + `ApiKey`), UI included.
-- **Newest work (2026-08-03), not present at the 2026-07-23 bootstrap**: billing Phase 3b (webhook idempotency, entitlement enforcement, reconciliation + dunning workers) and Phase 3c (provider-agnostic payments, Razorpay live alongside Stripe). See [[Billing_And_Payments]] — **server-complete but not signed off**, since no live provider test-mode cycle has been run.
-- **Observability shipped** as part of the same window: Prometheus, Grafana, OpenTelemetry collector and three exporters in `docker-compose.yml`. See [[Observability]].
-- **Not built, despite being described in [[System_Architecture]] as a target**: nothing found contradicting the documented stack, but rate limiting is a fixed-window in-process limiter rather than the TRD's token bucket — see [[Security_Architecture]].
+- **Dashboard routes**: `vulnerabilities/`, `pentests/`, `cross-walk/`, `marketplace/`, `mssp/`, `endpoints/`, `reports/`, `regulatory-alerts/`, `settings/enterprise/{sso,roles,white-label,audit-log}`, `settings/billing/`.
+- **Existing pentest surface** (`PenTest`, `Vulnerability`, `Asset`, a dedicated `pentest-worker` container holding the Docker socket) is the literal predecessor of the pivot's Sandbox Manager + `Finding` model + Agent Runtime — see [[Database_Design]] for the schema-level relationship and the migration/backfill discipline required before `Vulnerability`/`PenTest` can be deprecated.
+- **Existing `Asset` model** is pentest-scoped today. The pivot plan's `Asset` (§4.1: `APPLICATION`/`REPOSITORY`/`API`/`DOMAIN`/`CLOUD_ACCOUNT`/`DATABASE`/`VENDOR`) is broader. **Reconcile these before Phase B** — extend the existing model's `type` enum rather than creating a second `Asset` table. Flag this explicitly in the Phase B implementation prompt.
+- Billing Phase 3b/3c (Razorpay + Stripe) is **server-complete, not signed off** — unaffected by the pivot, still an open item. See [[Billing_And_Payments]].
+- Observability (Prometheus/Grafana/OTel) shipped and is unaffected by the pivot.
+- Rate limiting is fixed-window in-process, not the originally-planned token bucket — unaffected by the pivot but relevant once Agent Runtime tool calls need their own rate limits (see [[Security_Architecture]]).
 
-## Historical assessment (2026-07-23, retained)
+## Still open (pre-pivot items not resolved by the pivot, folded into Phase B/F backlog per pivot plan §7)
 
-As of 2026-07-23:
+- Billing sign-off (no live provider test-mode cycle run end to end).
+- Connector coverage gaps (`AZURE`/`GCP` null adapters; `VERCEL` legacy-only) — re-scoped by the pivot as **evidence collectors feeding the same `Evidence` model**, not a separate track. No new work here until Phase E/connector rewiring.
+- ZAP/Burp import (old Phase 5 Part 3) — superseded by the Agent Runtime's `run_external_scan` tool; do not build the standalone importer.
+- No deployment runbook / incident-response doc.
+- Session revocation, Roles/Team reconciliation, delete-confirmation, data hygiene items from the old WAVE 2–4 backlog — not new work streams, folded into Phase B/F.
 
-- **Phase 0 (Core Foundation)**: complete. Confirmed by live schema — `Organization`, `User`, `Framework`, `Control`, `Evidence`, `Policy`, `AuditLog` all present with the shape described in the Week 1–4 plan.
-- **Phase 1 (Local AI Integration)**: complete. `vector(384)` embeddings on `Evidence`/`RegulationSnippet`, confirming Ollama-based RAG is live, not just planned.
-- **Phase 2 and beyond**: the schema's own inline phase comments (`// Phase 2 Feature 2: Automated Evidence Connectors`, `// Phase 8 Part 1 — Enterprise SSO / SCIM / RBAC`, etc.) show continuous build-out through at least "Phase 9 Part 3," matching the separately-planned "Future Scope" roadmap (Phase 3b–9) almost model-for-model — see [[Roadmap]] for the full phase timeline and [[Feature_Backlog]] for the model-by-phase mapping.
-- This project's `CLAUDE.md` directs all code exploration through a `code-review-graph` MCP knowledge graph rather than raw file search — a sign of an actively maintained, tooled-up codebase, not an early-stage MVP.
-- Notably, **Phase 5 (Pentest) has real, dated implementation notes** (Parts 1 and 2, migrations `20260711143208_phase5_pentest_vulnerability_models` and `20260711152443_phase5_part2_vuln_enrichment`) documenting deviations from the original Future Scope spec as they were built — e.g. a dedicated `pentest-worker` container for Docker-socket isolation, and CVSS scoring via `ae-cvss-calculator`. Part 3 (vulnerability management UI, ZAP/Burp import) was explicitly deferred and its status is unconfirmed here.
-
-## Resolved: the Phase 3–9 roadmap does have a source doc
-
-An earlier version of this vault noted no single doc covered Phase 3–9. That was wrong — a distinct "Dharma Future Scope" document set (PRD/TRD/App Flow/Backend Schema/UI-UX/Implementation Plan) covered exactly that, just under unnumbered filenames in `obsidian-vaults/Dharma-Project/`, which has since been absorbed into this vault and deleted (recoverable via git history). See [[Roadmap]] for the full timeline this correction is based on.
-
-## Still open
-
-- **Billing sign-off.** Both payment providers are wired and unit-tested, but neither Stripe test mode nor Razorpay Test Mode has been driven through a full subscribe → invoice → fail → dun → cancel cycle against the live API. Until that happens, "billing works" is a code claim, not an operational one. See [[Billing_And_Payments]].
-- **Connector coverage.** `AZURE` and `GCP` are `null` in the adapter registry; `VERCEL` has only a legacy sync worker. [[Feature_Backlog]] previously marked this row complete and no longer does.
-- **ZAP/Burp import** (Phase 5 Part 3's remaining half) is unbuilt.
-- **No deployment runbook.** The four DevOps docs an earlier revision of [[Deployment]] listed as existing do not exist; there is no restore procedure for the `backup-scheduler`, and no incident-response doc for [[Threat_Model]] to point at.
-
-Related: [[Roadmap]], [[Feature_Backlog]], [[Progress_Log]], [[Billing_And_Payments]], [[Observability]].
+Related: [[Roadmap]], [[Feature_Backlog]], [[Progress_Log]], [[Database_Design]], [[Security_Architecture]].
